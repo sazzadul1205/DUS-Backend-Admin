@@ -19,6 +19,12 @@ import {
   FaLinkedin,
   FaGithub,
   FaTwitter,
+  FaFacebook,
+  FaYoutube,
+  FaMedium,
+  FaDev,
+  FaStackOverflow,
+  FaGlobe,
   FaFilePdf,
   FaFileWord,
   FaUserCircle,
@@ -30,8 +36,24 @@ import {
 } from 'react-icons/fa';
 import { GiSuitcase, GiAchievement } from 'react-icons/gi';
 import { MdWork, MdSchool, MdVerified, MdEmail } from 'react-icons/md';
+import { useState, useEffect } from 'react';
 
 const ReviewPage = ({ data, onEditStep }) => {
+  const [photoUrl, setPhotoUrl] = useState(null);
+
+  useEffect(() => {
+    // Handle photo URL for display
+    if (data.photo instanceof File) {
+      const url = URL.createObjectURL(data.photo);
+      setPhotoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (data.photo_path) {
+      setPhotoUrl(`/storage/${data.photo_path}`);
+    } else {
+      setPhotoUrl(null);
+    }
+  }, [data.photo, data.photo_path]);
+
   const formatDate = (date) => {
     if (!date) return 'Not provided';
     return new Date(date).toLocaleDateString('en-US', {
@@ -41,33 +63,73 @@ const ReviewPage = ({ data, onEditStep }) => {
     });
   };
 
+  // Function to get icon for any social platform
+  const getSocialIcon = (platform) => {
+    const icons = {
+      linkedin: <FaLinkedin className="h-4 w-4" />,
+      github: <FaGithub className="h-4 w-4" />,
+      twitter: <FaTwitter className="h-4 w-4" />,
+      facebook: <FaFacebook className="h-4 w-4" />,
+      youtube: <FaYoutube className="h-4 w-4" />,
+      medium: <FaMedium className="h-4 w-4" />,
+      devto: <FaDev className="h-4 w-4" />,
+      stackoverflow: <FaStackOverflow className="h-4 w-4" />,
+      portfolio: <FaGlobe className="h-4 w-4" />
+    };
+    return icons[platform] || <FaLink className="h-4 w-4" />;
+  };
+
+  // Function to get color for each platform
+  const getSocialColor = (platform) => {
+    const colors = {
+      linkedin: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+      github: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+      twitter: 'bg-sky-50 text-sky-700 hover:bg-sky-100',
+      facebook: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+      youtube: 'bg-red-50 text-red-700 hover:bg-red-100',
+      medium: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+      devto: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+      stackoverflow: 'bg-orange-50 text-orange-700 hover:bg-orange-100',
+      portfolio: 'bg-green-50 text-green-700 hover:bg-green-100'
+    };
+    return colors[platform] || 'bg-gray-50 text-gray-700 hover:bg-gray-100';
+  };
+
+  // Function to get display name for platform
+  const getSocialName = (platform) => {
+    const names = {
+      linkedin: 'LinkedIn',
+      github: 'GitHub',
+      twitter: 'Twitter',
+      facebook: 'Facebook',
+      youtube: 'YouTube',
+      medium: 'Medium',
+      devto: 'Dev.to',
+      stackoverflow: 'Stack Overflow',
+      portfolio: 'Portfolio'
+    };
+    return names[platform] || platform.charAt(0).toUpperCase() + platform.slice(1);
+  };
+
   const formatSocialLinks = (links) => {
-    if (!links || Object.keys(links).length === 0)
+    if (!links || Object.keys(links).length === 0) {
       return <p className="text-sm text-gray-400 italic">No social links provided</p>;
+    }
 
     return (
       <div className="flex flex-wrap gap-3">
-        {links.linkedin && (
-          <a href={links.linkedin} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 text-sm">
-            <FaLinkedin className="h-4 w-4" />
-            LinkedIn
+        {Object.entries(links).map(([platform, url]) => (
+          <a
+            key={platform}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 text-sm ${getSocialColor(platform)}`}
+          >
+            {getSocialIcon(platform)}
+            {getSocialName(platform)}
           </a>
-        )}
-        {links.github && (
-          <a href={links.github} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm">
-            <FaGithub className="h-4 w-4" />
-            GitHub
-          </a>
-        )}
-        {links.twitter && (
-          <a href={links.twitter} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-all duration-200 text-sm">
-            <FaTwitter className="h-4 w-4" />
-            Twitter
-          </a>
-        )}
+        ))}
       </div>
     );
   };
@@ -174,6 +236,33 @@ const ReviewPage = ({ data, onEditStep }) => {
         <SectionHeader icon={FaUser} title="Basic Information" step={0} color="blue"
           badge="Personal & Contact Details" />
         <div className="px-6 py-5">
+          {/* Profile Photo Display */}
+          <div className="flex justify-center md:justify-start mb-6">
+            <div className="relative">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-blue-500 shadow-md"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border-2 border-gray-300"><svg class="h-10 w-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>';
+                  }}
+                />
+              ) : (
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border-2 border-gray-300">
+                  <FaUser className="h-10 w-10 text-gray-400" />
+                </div>
+              )}
+              {(data.photo || data.photo_path) && (
+                <div className="absolute -bottom-2 -right-2 bg-green-500 text-white rounded-full p-1">
+                  <FaCheckCircle className="h-3 w-3" />
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <InfoRow label="Full Name" value={`${data.first_name} ${data.last_name}`.trim()} icon={FaUserCircle} highlight />
             <InfoRow label="Phone Number" value={data.phone} icon={FaPhone} />

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
 // Icons
+import { FaCakeCandles } from "react-icons/fa6";
 import {
   FaUser,
   FaEnvelope,
@@ -41,8 +42,19 @@ import {
   FaChartLine,
   FaUserTie,
   FaLink,
-} from 'react-icons/fa';
-import { MdOutlineBloodtype, MdSchool, MdPending } from 'react-icons/md';
+  FaCheckCircle,
+  FaClock,
+  FaGraduationCap,
+  FaBuilding,
+  FaCalendarDay,
+} from 'react-icons/fa'; // Fixed: Import from correct package
+import {
+  MdOutlineBloodtype,
+  MdSchool,
+  MdPending,
+  MdVerified,
+  MdEmail
+} from 'react-icons/md';
 
 // SweetAlert2
 import Swal from 'sweetalert2';
@@ -60,25 +72,17 @@ import ChangePasswordModal from './Modals/ChangePasswordModal';
 import ProfessionalInfoModal from './Modals/ProfessionalInfoModal';
 
 export default function Show({ profile }) {
-  // Get authenticated user
   const authUser = usePage().props?.auth?.user || null;
   const isOauthUser = !!authUser?.google_id;
 
-  // State for delete/restore actions
   const [deleting, setDeleting] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  // Base API path for profile actions
   const baseProfilePath = '/backend/applicant/profile';
-
-  // Modal states
   const [activeModal, setActiveModal] = useState(null);
-
-  // Check if profile is deleted
   const isDeleted = profile?.deleted_at !== null;
 
-  // Date formatting
   const formatDate = (date) => {
     if (!date) return 'Not specified';
     return new Date(date).toLocaleDateString('en-US', {
@@ -88,7 +92,6 @@ export default function Show({ profile }) {
     });
   };
 
-  // Calculate age from birth date
   const calculateAge = (birthDate) => {
     if (!birthDate) return null;
     const today = new Date();
@@ -101,7 +104,6 @@ export default function Show({ profile }) {
     return age;
   };
 
-  // Open Modal
   const openModal = (modalType) => {
     if (isDeleted) {
       Swal.fire({
@@ -114,12 +116,10 @@ export default function Show({ profile }) {
     setActiveModal(modalType);
   };
 
-  // Close Modal
   const closeModal = () => {
     setActiveModal(null);
   };
 
-  // Delete Profile
   const handleDelete = () => {
     Swal.fire({
       title: 'Delete Profile?',
@@ -170,7 +170,6 @@ export default function Show({ profile }) {
     });
   };
 
-  // Restore Profile
   const handleRestore = () => {
     Swal.fire({
       title: 'Restore Profile?',
@@ -221,7 +220,6 @@ export default function Show({ profile }) {
     });
   };
 
-  // Modal content mapping
   if (!profile) {
     return (
       <AuthenticatedLayout>
@@ -232,12 +230,10 @@ export default function Show({ profile }) {
               <FaUserCircle className="text-gray-400 text-5xl" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No Profile Found</h2>
-            <p className="text-gray-600 mb-6">
-              You haven't created a profile yet. Create one to apply for jobs.
-            </p>
+            <p className="text-gray-600 mb-6">You haven't created a profile yet. Create one to apply for jobs.</p>
             <Link
               href={route('backend.applicant.profile.create')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               <FaPlusCircle size={18} />
               Create Profile
@@ -248,19 +244,16 @@ export default function Show({ profile }) {
     );
   }
 
-  // Calculate age for display
   const age = calculateAge(profile?.birth_date);
   const stats = profile?.stats || {};
 
   return (
     <AuthenticatedLayout>
-
-      {/* Page Head */}
       <Head title={`${profile.first_name} ${profile.last_name} - Profile`} />
 
-      {/* Main Content */}
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="s mx-auto px-4 sm:px-6 lg:px-8">
+
           {/* Header */}
           <div className="mb-6 flex justify-between items-center flex-wrap gap-3">
             <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
@@ -268,7 +261,7 @@ export default function Show({ profile }) {
               {!isDeleted && !isOauthUser && (
                 <button
                   onClick={() => openModal('change-password')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                 >
                   <FaUser size={16} />
                   Change Password
@@ -288,7 +281,7 @@ export default function Show({ profile }) {
                 <>
                   <Link
                     href={route('backend.apply.index')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
                   >
                     <FaFileAlt size={16} />
                     My Applications ({stats.total_applications || 0})
@@ -327,6 +320,7 @@ export default function Show({ profile }) {
 
             {/* Content */}
             <div className="px-6 pb-6">
+
               {/* Profile Photo */}
               <div className="flex justify-center -mt-16 mb-4">
                 {profile.photo_url && !isDeleted && !imgError ? (
@@ -359,7 +353,6 @@ export default function Show({ profile }) {
 
               {/* Basic Information */}
               <div className="border-t pt-6 mb-6">
-                {/* Header */}
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <FaUser className="text-blue-600" />
@@ -375,14 +368,12 @@ export default function Show({ profile }) {
                   )}
                 </div>
 
-                {/* Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Basic info fields - same as before */}
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <FaEnvelope className="text-blue-600" size={18} />
+                    <MdEmail className="text-blue-600" size={18} />
                     <div>
                       <p className="text-xs text-gray-500">Email</p>
-                      <p className="text-sm font-medium text-gray-900">{profile?.email}</p>
+                      <p className="text-sm font-medium text-gray-900 break-all">{profile?.email}</p>
                     </div>
                   </div>
 
@@ -399,8 +390,7 @@ export default function Show({ profile }) {
                     <div>
                       <p className="text-xs text-gray-500">Birth Date</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {profile.birth_date ? formatDate(profile.birth_date) : 'Not specified'}
-                        {age && <span className="text-gray-500 ml-1">({age} years)</span>}
+                        {profile.birth_date ? `${formatDate(profile.birth_date)}${age ? ` (${age} years)` : ''}` : 'Not specified'}
                       </p>
                     </div>
                   </div>
@@ -448,7 +438,6 @@ export default function Show({ profile }) {
                   )}
                 </div>
 
-                {/* Empty State */}
                 {(!profile.experience_years && profile.experience_years !== 0) && !profile.current_job_title && (!profile.social_links || Object.keys(profile.social_links).length === 0) ? (
                   <div className="text-center py-8 bg-gray-50 rounded-lg">
                     <FaBriefcase className="h-12 w-12 text-gray-300 mx-auto mb-2" />
@@ -464,8 +453,7 @@ export default function Show({ profile }) {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Years of Experience */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <div className="p-2 bg-purple-100 rounded-lg">
                           <FaChartLine className="text-purple-600" size={18} />
@@ -480,7 +468,6 @@ export default function Show({ profile }) {
                         </div>
                       </div>
 
-                      {/* Current Job Title */}
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <div className="p-2 bg-purple-100 rounded-lg">
                           <FaUserTie className="text-purple-600" size={18} />
@@ -492,7 +479,7 @@ export default function Show({ profile }) {
                       </div>
                     </div>
 
-                    {/* Social Links Section */}
+                    {/* Social Links */}
                     {profile.social_links && Object.keys(profile.social_links).length > 0 && (
                       <div className="mt-4">
                         <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -501,61 +488,19 @@ export default function Show({ profile }) {
                         </p>
                         <div className="flex flex-wrap gap-3">
                           {Object.entries(profile.social_links).map(([platform, url]) => {
-                            let Icon = FaGlobe;
-                            let color = "text-gray-600";
-                            let bgColor = "bg-gray-50";
-
-                            switch (platform) {
-                              case 'linkedin':
-                                Icon = FaLinkedin;
-                                color = "text-blue-600";
-                                bgColor = "bg-blue-50";
-                                break;
-                              case 'github':
-                                Icon = FaGithub;
-                                color = "text-gray-800";
-                                bgColor = "bg-gray-100";
-                                break;
-                              case 'twitter':
-                                Icon = FaTwitter;
-                                color = "text-blue-400";
-                                bgColor = "bg-blue-50";
-                                break;
-                              case 'facebook':
-                                Icon = FaFacebook;
-                                color = "text-blue-700";
-                                bgColor = "bg-blue-50";
-                                break;
-                              case 'youtube':
-                                Icon = FaYoutube;
-                                color = "text-red-600";
-                                bgColor = "bg-red-50";
-                                break;
-                              case 'medium':
-                                Icon = FaMedium;
-                                color = "text-gray-700";
-                                bgColor = "bg-gray-100";
-                                break;
-                              case 'devto':
-                                Icon = FaDev;
-                                color = "text-gray-800";
-                                bgColor = "bg-gray-100";
-                                break;
-                              case 'stackoverflow':
-                                Icon = FaStackOverflow;
-                                color = "text-orange-600";
-                                bgColor = "bg-orange-50";
-                                break;
-                              case 'portfolio':
-                                Icon = FaGlobe;
-                                color = "text-green-600";
-                                bgColor = "bg-green-50";
-                                break;
-                              default:
-                                Icon = FaGlobe;
-                                color = "text-gray-600";
-                                bgColor = "bg-gray-50";
-                            }
+                            const platformConfig = {
+                              linkedin: { icon: FaLinkedin, color: "text-blue-600", bg: "bg-blue-50", name: "LinkedIn" },
+                              github: { icon: FaGithub, color: "text-gray-800", bg: "bg-gray-100", name: "GitHub" },
+                              twitter: { icon: FaTwitter, color: "text-sky-500", bg: "bg-sky-50", name: "Twitter" },
+                              facebook: { icon: FaFacebook, color: "text-blue-700", bg: "bg-blue-50", name: "Facebook" },
+                              youtube: { icon: FaYoutube, color: "text-red-600", bg: "bg-red-50", name: "YouTube" },
+                              medium: { icon: FaMedium, color: "text-gray-700", bg: "bg-gray-100", name: "Medium" },
+                              devto: { icon: FaDev, color: "text-gray-800", bg: "bg-gray-100", name: "Dev.to" },
+                              stackoverflow: { icon: FaStackOverflow, color: "text-orange-600", bg: "bg-orange-50", name: "Stack Overflow" },
+                              portfolio: { icon: FaGlobe, color: "text-green-600", bg: "bg-green-50", name: "Portfolio" }
+                            };
+                            const config = platformConfig[platform] || { icon: FaGlobe, color: "text-gray-600", bg: "bg-gray-50", name: platform };
+                            const Icon = config.icon;
 
                             return (
                               <a
@@ -563,24 +508,14 @@ export default function Show({ profile }) {
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`flex items-center gap-2 px-3 py-2 ${bgColor} rounded-lg hover:shadow-md transition-all duration-200 group`}
+                                className={`flex items-center gap-2 px-3 py-2 ${config.bg} rounded-lg hover:shadow-md transition-all group`}
                               >
-                                <Icon className={`${color} transition-transform group-hover:scale-110`} size={16} />
-                                <span className="text-sm text-gray-700 capitalize font-medium">{platform}</span>
+                                <Icon className={`${config.color} transition-transform group-hover:scale-110`} size={16} />
+                                <span className="text-sm text-gray-700 capitalize font-medium">{config.name}</span>
                               </a>
                             );
                           })}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Tips Section - Only show if there are social links */}
-                    {profile.social_links && Object.keys(profile.social_links).length > 0 && (
-                      <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                        <p className="text-xs text-gray-600 flex items-center gap-2">
-                          <FaLink className="h-3 w-3 text-purple-500" />
-                          Your social links help employers learn more about you professionally.
-                        </p>
                       </div>
                     )}
                   </>
@@ -610,7 +545,10 @@ export default function Show({ profile }) {
                         <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
                           <div>
                             <h4 className="font-semibold text-gray-900">{job.position}</h4>
-                            <p className="text-sm text-gray-600">{job.company_name}</p>
+                            <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                              <FaBuilding className="h-3 w-3 text-gray-400" />
+                              {job.company_name}
+                            </p>
                           </div>
                           {job.is_current && (
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
@@ -618,7 +556,7 @@ export default function Show({ profile }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 flex items-center gap-2">
+                        <p className="text-xs text-gray-500 flex items-center gap-2 mt-2">
                           <FaCalendarAlt size={12} />
                           {job.starting_year} - {job.is_current ? 'Present' : (job.ending_year || 'Present')}
                         </p>
@@ -662,8 +600,8 @@ export default function Show({ profile }) {
                     {profile.education_histories.map((edu, index) => (
                       <div key={edu.id || index} className="p-4 bg-gray-50 rounded-lg">
                         <h4 className="font-semibold text-gray-900">{edu.degree}</h4>
-                        <p className="text-sm text-gray-600">{edu.institution_name}</p>
-                        <p className="text-xs text-gray-500 mt-1">Passing Year: {edu.passing_year}</p>
+                        <p className="text-sm text-gray-600 mt-1">{edu.institution_name}</p>
+                        <p className="text-xs text-gray-500 mt-2">Passing Year: {edu.passing_year}</p>
                       </div>
                     ))}
                   </div>
@@ -702,13 +640,13 @@ export default function Show({ profile }) {
                 {profile.achievements && profile.achievements.length > 0 ? (
                   <div className="space-y-4">
                     {profile.achievements.map((achievement, index) => (
-                      <div key={achievement.id || index} className="p-4 bg-linear-to-r from-yellow-50 to-orange-50 rounded-lg">
+                      <div key={achievement.id || index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
                         <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                           <FaTrophy className="text-yellow-600" size={16} />
                           {achievement.achievement_name}
                         </h4>
                         {achievement.achievement_details && (
-                          <p className="text-sm text-gray-600 mt-2">{achievement.achievement_details}</p>
+                          <p className="text-sm text-gray-600 mt-2 ml-6">{achievement.achievement_details}</p>
                         )}
                       </div>
                     ))}
@@ -772,7 +710,7 @@ export default function Show({ profile }) {
                           href={cv.cv_url || `/storage/${cv.cv_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition"
                         >
                           View CV
                         </a>
@@ -811,22 +749,18 @@ export default function Show({ profile }) {
       </div>
 
       {/* Modals */}
-
-      {/* Basic Info */}
       <BasicInfoModal
         isOpen={activeModal === 'basic'}
         onClose={closeModal}
         profile={profile}
       />
 
-      {/* Professional Info */}
       <ProfessionalInfoModal
         isOpen={activeModal === 'professional'}
         onClose={closeModal}
         profile={profile}
       />
 
-      {/* Work Experience */}
       <WorkExperienceModal
         isOpen={activeModal === 'work'}
         onClose={closeModal}
@@ -839,21 +773,18 @@ export default function Show({ profile }) {
         profile={profile}
       />
 
-      {/* Achievements */}
       <AchievementsModal
         isOpen={activeModal === 'achievements'}
         onClose={closeModal}
         profile={profile}
       />
 
-      {/* CV */}
       <CVModal
         isOpen={activeModal === 'cv'}
         onClose={closeModal}
         profile={profile}
       />
 
-      {/* Change Password */}
       <ChangePasswordModal
         isOpen={activeModal === 'change-password'}
         onClose={closeModal}

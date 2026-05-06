@@ -106,6 +106,7 @@ class ProfileCompletionController extends Controller
                 'social_links' => $profile->social_links ?? [],
                 'experience_years' => $profile->experience_years,
                 'current_job_title' => $profile->current_job_title,
+                'photo_path' => $validated['photo_path'] ?? null,
                 'cvs' => $profile->cvs->map(function ($cv) {
                     return [
                         'id' => $cv->id,
@@ -295,7 +296,7 @@ class ProfileCompletionController extends Controller
     }
 
     /**
-     * Upload profile photo separately (AJAX endpoint)
+     * Upload profile photo (separate endpoint)
      */
     public function uploadPhoto(Request $request)
     {
@@ -310,18 +311,21 @@ class ProfileCompletionController extends Controller
             $this->placeholderProfileData($user)
         );
 
-        // Delete old photo
+        // Delete old photo if exists
         if ($profile->photo_path && Storage::disk('public')->exists($profile->photo_path)) {
             Storage::disk('public')->delete($profile->photo_path);
         }
 
-        $path = $this->handlePhotoUpload($request->file('photo'), $user->id);
+        $fileName = 'profile_' . $user->id . '_' . time() . '.' . $request->file('photo')->getClientOriginalExtension();
+        $path = $request->file('photo')->storeAs('profile_photos', $fileName, 'public');
+
         $profile->photo_path = $path;
         $profile->save();
 
         return response()->json([
             'success' => true,
-            'photo_url' => route('profile.photo', ['path' => $path]),
+            'photo_url' => asset('storage/' . $path),
+            'photo_path' => $path,
             'message' => 'Photo uploaded successfully'
         ]);
     }

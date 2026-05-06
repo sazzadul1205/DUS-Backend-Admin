@@ -38,6 +38,7 @@ import ProfessionalInfo from './Steps/ProfessionalInfo';
 const CompleteProfile = ({ applicantProfile = null }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState(null);
 
   // Initialize form data
   const { data, setData, post, processing, errors } = useForm({
@@ -50,6 +51,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
     phone: '',
     address: '',
     photo: null,
+    photo_path: null,
 
     // Professional Info
     experience_years: '',
@@ -80,6 +82,8 @@ const CompleteProfile = ({ applicantProfile = null }) => {
             setData(key, value);
           } else if (key === 'cvs') {
             setData('cvs', value);
+          } else if (key === 'photo_path') {
+            setData('photo_path', value);
           }
         });
       } catch (error) {
@@ -100,6 +104,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         phone: applicantProfile.phone || '',
         address: applicantProfile.address || '',
         photo: null,
+        photo_path: applicantProfile.photo_path || null,
         experience_years: applicantProfile.experience_years || '',
         current_job_title: applicantProfile.current_job_title || '',
         social_links: applicantProfile.social_links || {},
@@ -159,6 +164,42 @@ const CompleteProfile = ({ applicantProfile = null }) => {
     }, 500);
   };
 
+  // Handle photo upload
+  const handlePhotoUpload = async (file) => {
+    if (!file) return null;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+      const response = await fetch('/profile/photo', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Photo upload failed');
+      }
+
+      const result = await response.json();
+      setUploadedPhotoUrl(result.photo_url);
+      return result.photo_path;
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Photo Upload Failed',
+        text: 'Could not upload profile photo. Please try again.',
+        confirmButtonColor: '#ef4444',
+      });
+      return null;
+    }
+  };
+
   const steps = [
     { name: 'Basic Info', component: BasicInfo, icon: FaUser },
     { name: 'Professional', component: ProfessionalInfo, icon: MdWork },
@@ -173,7 +214,6 @@ const CompleteProfile = ({ applicantProfile = null }) => {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      // Save progress before moving to next step
       saveToLocalStorage(data);
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
@@ -194,7 +234,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
     window.scrollTo(0, 0);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     Swal.fire({
       title: 'Submit Profile?',
       html: `
@@ -218,7 +258,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         confirmButton: 'px-5 py-2 text-sm font-medium',
         cancelButton: 'px-5 py-2 text-sm font-medium'
       }
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
         if (!data.first_name || !data.last_name || !data.phone) {
           Swal.fire({
@@ -230,16 +270,36 @@ const CompleteProfile = ({ applicantProfile = null }) => {
           return;
         }
 
-        post('/profile/complete', {
-          transform: (payload) => ({
-            ...payload,
-            cvs: [], // CVs are uploaded immediately via /profile/cv
-          }),
-          forceFormData: true,
-          onSuccess: () => {
-            // Clear localStorage after successful submission
-            localStorage.removeItem('profile_form_data');
+        // Upload photo separately if it exists and is a new file
+        let photoPath = data.photo_path;
+        if (data.photo instanceof File) {
+          const uploadedPath = await handlePhotoUpload(data.photo);
+          if (uploadedPath) {
+            photoPath = uploadedPath;
+          }
+        }
 
+        // Prepare submission data
+        const submitData = {
+          ...data,
+          photo_path: photoPath,
+          cvs: data.cvs.map(cv => ({
+            id: cv.id,
+            is_primary: cv.is_primary,
+            order_position: cv.order_position
+          })),
+          job_histories: data.job_histories,
+          education_histories: data.education_histories,
+          achievements: data.achievements,
+        };
+
+        // Remove the actual File object from submission
+        delete submitData.photo;
+
+        post('/profile/complete', {
+          data: submitData,
+          onSuccess: () => {
+            localStorage.removeItem('profile_form_data');
             Swal.fire({
               icon: 'success',
               title: 'Profile Submitted!',
@@ -309,6 +369,29 @@ const CompleteProfile = ({ applicantProfile = null }) => {
             </p>
           </div>
         </div>
+
+        {/* Save Progress Button - Show on all except review page */}
+        {!isReviewPage && (
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={handleSaveProgress}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all duration-200 shadow-sm"
+            >
+              {isSaving ? (
+                <>
+                  <FaSpinner className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FaSave className="h-4 w-4 text-blue-600" />
+                  Save Progress
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Progress Bar - Hide on Review Page */}
         {!isReviewPage && (
