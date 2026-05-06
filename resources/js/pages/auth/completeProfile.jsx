@@ -21,7 +21,8 @@ import {
   FaGraduationCap,
   FaTrophy,
   FaEye,
-  FaUser
+  FaUser,
+  FaSave
 } from 'react-icons/fa';
 import { MdWork } from 'react-icons/md';
 
@@ -36,59 +37,127 @@ import ProfessionalInfo from './Steps/ProfessionalInfo';
 
 const CompleteProfile = ({ applicantProfile = null }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Initialize form data
   const { data, setData, post, processing, errors } = useForm({
     // Basic Info
-    first_name: applicantProfile?.first_name || '',
-    last_name: applicantProfile?.last_name || '',
-    birth_date: applicantProfile?.birth_date || '',
-    gender: applicantProfile?.gender || '',
-    blood_type: applicantProfile?.blood_type || '',
-    phone: applicantProfile?.phone || '',
-    address: applicantProfile?.address || '',
+    first_name: '',
+    last_name: '',
+    birth_date: '',
+    gender: '',
+    blood_type: '',
+    phone: '',
+    address: '',
     photo: null,
 
     // Professional Info
-    experience_years: applicantProfile?.experience_years || '',
-    current_job_title: applicantProfile?.current_job_title || '',
-    social_links: applicantProfile?.social_links || {},
+    experience_years: '',
+    current_job_title: '',
+    social_links: {},
 
     // CVs
-    cvs: applicantProfile?.cvs || [],
+    cvs: [],
 
     // Job History
-    job_histories: applicantProfile?.job_histories || [],
+    job_histories: [],
 
     // Education
-    education_histories: applicantProfile?.education_histories || [],
+    education_histories: [],
 
     // Achievements
-    achievements: applicantProfile?.achievements || [],
+    achievements: [],
   });
 
+  // Load data from localStorage on mount
   useEffect(() => {
-    const nextData = {
-      first_name: applicantProfile?.first_name || '',
-      last_name: applicantProfile?.last_name || '',
-      birth_date: applicantProfile?.birth_date || '',
-      gender: applicantProfile?.gender || '',
-      blood_type: applicantProfile?.blood_type || '',
-      phone: applicantProfile?.phone || '',
-      address: applicantProfile?.address || '',
-      photo: null,
-      experience_years: applicantProfile?.experience_years || '',
-      current_job_title: applicantProfile?.current_job_title || '',
-      social_links: applicantProfile?.social_links || {},
-      cvs: applicantProfile?.cvs || [],
-      job_histories: applicantProfile?.job_histories || [],
-      education_histories: applicantProfile?.education_histories || [],
-      achievements: applicantProfile?.achievements || [],
-    };
+    const savedData = localStorage.getItem('profile_form_data');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        Object.entries(parsedData).forEach(([key, value]) => {
+          if (key !== 'photo' && key !== 'cvs') {
+            setData(key, value);
+          } else if (key === 'cvs') {
+            setData('cvs', value);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading saved data:', error);
+      }
+    }
+  }, []);
 
-    Object.entries(nextData).forEach(([key, value]) => {
-      setData(key, value);
-    });
+  // Load applicant profile data when available
+  useEffect(() => {
+    if (applicantProfile?.id) {
+      const nextData = {
+        first_name: applicantProfile.first_name || '',
+        last_name: applicantProfile.last_name || '',
+        birth_date: applicantProfile.birth_date || '',
+        gender: applicantProfile.gender || '',
+        blood_type: applicantProfile.blood_type || '',
+        phone: applicantProfile.phone || '',
+        address: applicantProfile.address || '',
+        photo: null,
+        experience_years: applicantProfile.experience_years || '',
+        current_job_title: applicantProfile.current_job_title || '',
+        social_links: applicantProfile.social_links || {},
+        cvs: applicantProfile.cvs || [],
+        job_histories: applicantProfile.job_histories || [],
+        education_histories: applicantProfile.education_histories || [],
+        achievements: applicantProfile.achievements || [],
+      };
+
+      Object.entries(nextData).forEach(([key, value]) => {
+        setData(key, value);
+      });
+
+      // Save to localStorage
+      saveToLocalStorage(nextData);
+    }
   }, [applicantProfile?.id]);
+
+  // Save data to localStorage whenever it changes
+  const saveToLocalStorage = (dataToSave) => {
+    try {
+      const saveData = { ...dataToSave };
+      // Don't save File objects
+      if (saveData.photo instanceof File) {
+        saveData.photo = null;
+      }
+      localStorage.setItem('profile_form_data', JSON.stringify(saveData));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  // Wrapper for setData that also saves to localStorage
+  const handleSetData = (key, value) => {
+    setData(key, value);
+    const newData = { ...data, [key]: value };
+    saveToLocalStorage(newData);
+  };
+
+  // Manual save function
+  const handleSaveProgress = () => {
+    setIsSaving(true);
+    saveToLocalStorage(data);
+    setTimeout(() => {
+      setIsSaving(false);
+      Swal.fire({
+        icon: 'success',
+        title: 'Progress Saved!',
+        text: 'Your progress has been saved locally.',
+        timer: 1500,
+        showConfirmButton: false,
+        background: '#ffffff',
+        customClass: {
+          popup: 'rounded-2xl'
+        }
+      });
+    }, 500);
+  };
 
   const steps = [
     { name: 'Basic Info', component: BasicInfo, icon: FaUser },
@@ -104,6 +173,8 @@ const CompleteProfile = ({ applicantProfile = null }) => {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
+      // Save progress before moving to next step
+      saveToLocalStorage(data);
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
     }
@@ -111,12 +182,14 @@ const CompleteProfile = ({ applicantProfile = null }) => {
 
   const handleBack = () => {
     if (currentStep > 0) {
+      saveToLocalStorage(data);
       setCurrentStep(currentStep - 1);
       window.scrollTo(0, 0);
     }
   };
 
   const handleEditStep = (stepIndex) => {
+    saveToLocalStorage(data);
     setCurrentStep(stepIndex);
     window.scrollTo(0, 0);
   };
@@ -156,6 +229,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
           });
           return;
         }
+
         post('/profile/complete', {
           transform: (payload) => ({
             ...payload,
@@ -163,6 +237,9 @@ const CompleteProfile = ({ applicantProfile = null }) => {
           }),
           forceFormData: true,
           onSuccess: () => {
+            // Clear localStorage after successful submission
+            localStorage.removeItem('profile_form_data');
+
             Swal.fire({
               icon: 'success',
               title: 'Profile Submitted!',
@@ -210,7 +287,6 @@ const CompleteProfile = ({ applicantProfile = null }) => {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-8 text-black">
-
       <Head title="Complete Your Profile" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -246,15 +322,16 @@ const CompleteProfile = ({ applicantProfile = null }) => {
                 return (
                   <div
                     key={index}
-                    className="flex flex-col items-center text-center"
+                    className="flex flex-col items-center text-center cursor-pointer"
                     style={{ width: `${100 / (steps.length - 1)}%` }}
+                    onClick={() => handleEditStep(index)}
                   >
                     <div
                       className={`
                         w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
                         ${isCompleted ? 'bg-green-500 text-white' : ''}
                         ${isActive ? 'bg-blue-600 text-white ring-4 ring-blue-200' : ''}
-                        ${!isCompleted && !isActive ? 'bg-gray-200 text-gray-500' : ''}
+                        ${!isCompleted && !isActive ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : ''}
                       `}
                     >
                       {isCompleted ? <FaCheckCircle className="h-4 w-4" /> : index + 1}
@@ -282,13 +359,13 @@ const CompleteProfile = ({ applicantProfile = null }) => {
           ) : (
             <CurrentStepComponent
               data={data}
-              setData={setData}
+              setData={handleSetData}
               errors={errors}
             />
           )}
 
           {/* Navigation Buttons */}
-          <div className="mt-8 pt-6 border-t border-gray-200 ">
+          <div className="mt-8 pt-6 border-t border-gray-200">
             {!isReviewPage ? (
               <div className="flex justify-between gap-4">
                 <button
@@ -317,11 +394,26 @@ const CompleteProfile = ({ applicantProfile = null }) => {
             ) : (
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={() => setCurrentStep(0)}
-                  className="flex-1 px-6 py-2.5 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-all duration-200 flex items-center justify-center gap-2"
+                  onClick={() => {
+                    Swal.fire({
+                      title: 'Clear All Data?',
+                      text: 'This will clear all locally saved profile data. This action cannot be undone.',
+                      icon: 'warning',
+                      showCancelButton: true,
+                      confirmButtonColor: '#d33',
+                      cancelButtonColor: '#3085d6',
+                      confirmButtonText: 'Yes, clear it!'
+                    }).then((result) => {
+                      if (result.isConfirmed) {
+                        localStorage.removeItem('profile_form_data');
+                        window.location.reload();
+                      }
+                    });
+                  }}
+                  className="flex-1 px-6 py-2.5 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   <FaRedoAlt className="h-4 w-4" />
-                  Start Over
+                  Clear All Data
                 </button>
                 <button
                   onClick={handleSubmit}
@@ -349,9 +441,9 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         {!isReviewPage && (
           <div className="mt-6 text-center">
             <div className="inline-flex items-center gap-2 text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm">
-              <span className="text-blue-500">✨</span>
-              First name, last name, and phone are required to complete your profile.
-              <span className="text-blue-500">✨</span>
+              <span className="text-blue-500">💾</span>
+              Your progress is automatically saved locally. You can close the browser and continue later.
+              <span className="text-blue-500">💾</span>
             </div>
           </div>
         )}
@@ -361,4 +453,3 @@ const CompleteProfile = ({ applicantProfile = null }) => {
 };
 
 export default CompleteProfile;
-

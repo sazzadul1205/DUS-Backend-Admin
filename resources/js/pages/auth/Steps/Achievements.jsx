@@ -8,14 +8,30 @@ import {
   FaTrashAlt,
   FaMedal,
   FaCertificate,
-  FaRegStar
+  FaRegStar,
+  FaExclamationTriangle,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { MdEmojiEvents, MdVerified } from 'react-icons/md';
 import { GiAchievement, GiMedalSkull } from 'react-icons/gi';
 import Swal from 'sweetalert2';
 
 const Achievements = ({ data, setData }) => {
+  const MAX_ACHIEVEMENTS = 3;
+
   const addAchievement = () => {
+    // Check if already at max limit
+    if (data.achievements.length >= MAX_ACHIEVEMENTS) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Maximum Limit Reached',
+        text: `You can only add up to ${MAX_ACHIEVEMENTS} achievements or certifications.`,
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Got it'
+      });
+      return;
+    }
+
     setData('achievements', [
       ...data.achievements,
       {
@@ -33,28 +49,9 @@ const Achievements = ({ data, setData }) => {
   };
 
   const removeAchievement = (index) => {
-    Swal.fire({
-      title: 'Remove Achievement?',
-      text: "Are you sure you want to remove this achievement or certification?",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, remove it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = data.achievements.filter((_, i) => i !== index);
-        setData('achievements', updated);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Removed!',
-          text: 'Achievement has been removed.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-    });
+    // Direct removal without any confirmation
+    const updated = data.achievements.filter((_, i) => i !== index);
+    setData('achievements', updated);
   };
 
   const getAchievementIcon = (title) => {
@@ -70,17 +67,35 @@ const Achievements = ({ data, setData }) => {
     return <FaStar className="h-4 w-4 text-yellow-500" />;
   };
 
+  // Calculate remaining slots
+  const remainingSlots = MAX_ACHIEVEMENTS - data.achievements.length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="border-b border-gray-200 pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <GiAchievement className="h-6 w-6 text-blue-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <GiAchievement className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Achievements & Certifications</h2>
+              <p className="text-sm text-gray-500 mt-1">Showcase your accomplishments</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Achievements & Certifications</h2>
-            <p className="text-sm text-gray-500 mt-1">Showcase your accomplishments</p>
+
+          {/* Limit Indicator */}
+          <div className="text-right">
+            <div className="text-sm font-medium text-gray-600">
+              {data.achievements.length} / {MAX_ACHIEVEMENTS} Achievements
+            </div>
+            <div className="w-32 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                style={{ width: `${(data.achievements.length / MAX_ACHIEVEMENTS) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -93,6 +108,7 @@ const Achievements = ({ data, setData }) => {
           </div>
           <p className="text-gray-500 font-medium">No achievements added yet</p>
           <p className="text-sm text-gray-400 mt-1">Add your certifications, awards, or accomplishments</p>
+          <p className="text-xs text-gray-400 mt-2">Maximum {MAX_ACHIEVEMENTS} achievements allowed</p>
         </div>
       )}
 
@@ -102,6 +118,7 @@ const Achievements = ({ data, setData }) => {
           <button
             onClick={() => removeAchievement(index)}
             className="absolute top-4 right-4 text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            title="Remove achievement"
           >
             <FaTrashAlt className="h-4 w-4" />
           </button>
@@ -170,22 +187,51 @@ const Achievements = ({ data, setData }) => {
         </div>
       ))}
 
-      {/* Add Button */}
+      {/* Add Button - Disabled when max reached */}
       <button
         onClick={addAchievement}
-        className="w-full py-3.5 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+        disabled={data.achievements.length >= MAX_ACHIEVEMENTS}
+        className={`w-full py-3.5 border-2 border-dashed rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-medium ${data.achievements.length >= MAX_ACHIEVEMENTS
+            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+          }`}
       >
         <FaPlus className="h-5 w-5" />
-        Add Achievement / Certification
+        Add Achievement / Certification {data.achievements.length >= MAX_ACHIEVEMENTS && '(Maximum Reached)'}
       </button>
 
+      {/* Warning when approaching limit */}
+      {remainingSlots === 1 && data.achievements.length > 0 && (
+        <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+          <div className="flex items-center justify-center gap-2 text-yellow-800">
+            <FaExclamationTriangle className="h-5 w-5" />
+            <p className="text-sm">
+              You can add {remainingSlots} more achievement (Maximum {MAX_ACHIEVEMENTS})
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info Notice */}
-      {data.achievements.length > 0 && (
+      {data.achievements.length > 0 && data.achievements.length < MAX_ACHIEVEMENTS && (
         <div className="bg-linear-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-100">
           <div className="flex items-center justify-center gap-2">
             <FaTrophy className="h-5 w-5 text-yellow-600" />
             <p className="text-sm text-gray-600">
-              Add all your achievements, certifications, awards, and recognitions to stand out to employers.
+              Add all your achievements, certifications, awards, and recognitions. You can add up to {MAX_ACHIEVEMENTS} entries.
+              {remainingSlots > 0 && ` You can add ${remainingSlots} more.`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Max limit reached notice */}
+      {data.achievements.length === MAX_ACHIEVEMENTS && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+          <div className="flex items-center justify-center gap-2 text-blue-800">
+            <FaCheckCircle className="h-5 w-5" />
+            <p className="text-sm">
+              You've added the maximum of {MAX_ACHIEVEMENTS} achievements and certifications.
             </p>
           </div>
         </div>

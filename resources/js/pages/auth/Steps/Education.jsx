@@ -10,6 +10,8 @@ import {
   FaUniversity,
   FaCalendarAlt,
   FaGraduationCap,
+  FaExclamationTriangle,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { MdSchool } from 'react-icons/md';
 import { GiBookshelf } from 'react-icons/gi';
@@ -20,8 +22,21 @@ import Swal from 'sweetalert2';
 const Education = ({ data, setData }) => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 60 }, (_, i) => currentYear - i);
+  const MAX_EDUCATION = 3;
 
   const addEducation = () => {
+    // Check if already at max limit
+    if (data.education_histories.length >= MAX_EDUCATION) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Maximum Limit Reached',
+        text: `You can only add up to ${MAX_EDUCATION} education entries.`,
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Got it'
+      });
+      return;
+    }
+
     setData('education_histories', [
       ...data.education_histories,
       {
@@ -40,48 +55,47 @@ const Education = ({ data, setData }) => {
   };
 
   const removeEducation = (index) => {
-    Swal.fire({
-      title: 'Remove Education?',
-      text: "Are you sure you want to remove this education entry?",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, remove it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = data.education_histories.filter((_, i) => i !== index);
-        setData('education_histories', updated);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Removed!',
-          text: 'Education entry has been removed.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-    });
+    // Direct removal without any confirmation
+    const updated = data.education_histories.filter((_, i) => i !== index);
+    setData('education_histories', updated);
   };
 
   const getDegreeIcon = (degree) => {
     if (degree?.toLowerCase().includes('bachelor')) return <FaBookOpen className="h-4 w-4 text-green-500" />;
     if (degree?.toLowerCase().includes('master')) return <FaAward className="h-4 w-4 text-purple-500" />;
-    if (degree?.toLowerCase().includes('phd')) return <FaGraduationCap className="h-4 w-4 text-gold-500" />;
+    if (degree?.toLowerCase().includes('phd')) return <FaGraduationCap className="h-4 w-4 text-amber-500" />;
     return <FaBook className="h-4 w-4 text-blue-500" />;
   };
+
+  // Calculate remaining slots
+  const remainingSlots = MAX_EDUCATION - data.education_histories.length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="border-b border-gray-200 pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <MdSchool className="h-6 w-6 text-blue-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MdSchool className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Education</h2>
+              <p className="text-sm text-gray-500 mt-1">Tell us about your academic background</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Education</h2>
-            <p className="text-sm text-gray-500 mt-1">Tell us about your academic background</p>
+
+          {/* Limit Indicator */}
+          <div className="text-right">
+            <div className="text-sm font-medium text-gray-600">
+              {data.education_histories.length} / {MAX_EDUCATION} Education
+            </div>
+            <div className="w-32 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                style={{ width: `${(data.education_histories.length / MAX_EDUCATION) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -94,6 +108,7 @@ const Education = ({ data, setData }) => {
           </div>
           <p className="text-gray-500 font-medium">No education added yet</p>
           <p className="text-sm text-gray-400 mt-1">Click the button below to add your education</p>
+          <p className="text-xs text-gray-400 mt-2">Maximum {MAX_EDUCATION} education entries allowed</p>
         </div>
       )}
 
@@ -103,6 +118,7 @@ const Education = ({ data, setData }) => {
           <button
             onClick={() => removeEducation(index)}
             className="absolute top-4 right-4 text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            title="Remove education"
           >
             <FaTrashAlt className="h-4 w-4" />
           </button>
@@ -185,22 +201,51 @@ const Education = ({ data, setData }) => {
         </div>
       ))}
 
-      {/* Add Button */}
+      {/* Add Button - Disabled when max reached */}
       <button
         onClick={addEducation}
-        className="w-full py-3.5 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+        disabled={data.education_histories.length >= MAX_EDUCATION}
+        className={`w-full py-3.5 border-2 border-dashed rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-medium ${data.education_histories.length >= MAX_EDUCATION
+            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+          }`}
       >
         <FaPlus className="h-5 w-5" />
-        Add Education
+        Add Education {data.education_histories.length >= MAX_EDUCATION && '(Maximum Reached)'}
       </button>
 
+      {/* Warning when approaching limit */}
+      {remainingSlots === 1 && data.education_histories.length > 0 && (
+        <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+          <div className="flex items-center justify-center gap-2 text-yellow-800">
+            <FaExclamationTriangle className="h-5 w-5" />
+            <p className="text-sm">
+              You can add {remainingSlots} more education entry (Maximum {MAX_EDUCATION})
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info Notice */}
-      {data.education_histories.length > 0 && (
+      {data.education_histories.length > 0 && data.education_histories.length < MAX_EDUCATION && (
         <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
           <div className="flex items-center justify-center gap-2">
             <FaGraduationCap className="h-5 w-5 text-blue-500" />
             <p className="text-sm text-gray-600">
-              Add all your educational qualifications from highest to lowest level.
+              Add all your educational qualifications from highest to lowest level. You can add up to {MAX_EDUCATION} entries.
+              {remainingSlots > 0 && ` You can add ${remainingSlots} more.`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Max limit reached notice */}
+      {data.education_histories.length === MAX_EDUCATION && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+          <div className="flex items-center justify-center gap-2 text-blue-800">
+            <FaCheckCircle className="h-5 w-5" />
+            <p className="text-sm">
+              You've added the maximum of {MAX_EDUCATION} education entries.
             </p>
           </div>
         </div>

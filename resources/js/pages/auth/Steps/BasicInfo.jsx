@@ -17,7 +17,7 @@ import {
   FaCheckCircle
 } from 'react-icons/fa';
 import { MdOutlineBloodtype } from 'react-icons/md';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const BasicInfo = ({ data, setData }) => {
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Bomby'];
@@ -25,6 +25,45 @@ const BasicInfo = ({ data, setData }) => {
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Phone prefix
+  const PHONE_PREFIX = '+880';
+
+  // Format phone number on mount / when data.phone changes externally
+  useEffect(() => {
+    if (data.phone && !data.phone.startsWith(PHONE_PREFIX)) {
+      // If phone exists but doesn't have prefix, add it
+      const cleaned = data.phone.replace(/\D/g, '');
+      setData('phone', `${PHONE_PREFIX}${cleaned}`);
+    } else if (!data.phone) {
+      // If no phone, set default prefix
+      setData('phone', PHONE_PREFIX);
+    }
+  }, []); // Run only once on mount
+
+  // Handle phone input changes while keeping the prefix
+  const handlePhoneChange = (e) => {
+    let rawValue = e.target.value;
+
+    // Ensure the prefix is always present at the beginning
+    if (!rawValue.startsWith(PHONE_PREFIX)) {
+      rawValue = PHONE_PREFIX;
+    }
+
+    // Extract the part after the prefix
+    let afterPrefix = rawValue.substring(PHONE_PREFIX.length);
+    // Remove all non-digit characters
+    afterPrefix = afterPrefix.replace(/\D/g, '');
+
+    // Optional: limit number of digits after prefix (e.g., max 10)
+    if (afterPrefix.length > 10) {
+      afterPrefix = afterPrefix.slice(0, 10);
+    }
+
+    // Combine prefix + clean digits
+    const newPhone = `${PHONE_PREFIX}${afterPrefix}`;
+    setData('phone', newPhone);
+  };
 
   // Handle drag events
   const handleDrag = (e) => {
@@ -121,8 +160,8 @@ const BasicInfo = ({ data, setData }) => {
             {!previewUrl ? (
               <div
                 className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 cursor-pointer ${dragActive
-                    ? 'border-blue-500 bg-blue-50 scale-105'
-                    : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400'
+                  ? 'border-blue-500 bg-blue-50 scale-105'
+                  : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400'
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -260,9 +299,9 @@ const BasicInfo = ({ data, setData }) => {
                 <input
                   type="tel"
                   value={data.phone}
-                  onChange={(e) => setData('phone', e.target.value)}
+                  onChange={handlePhoneChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  placeholder="+880 1XXX XXXXXX"
+                  placeholder="+880 1XX XXX XXXX"
                 />
               </div>
             </div>

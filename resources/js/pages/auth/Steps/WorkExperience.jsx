@@ -7,7 +7,8 @@ import {
   FaBuilding,
   FaCalendarAlt,
   FaTrashAlt,
-  FaCheckCircle
+  FaCheckCircle,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import { GiSuitcase } from 'react-icons/gi';
 import { MdWork, MdBusinessCenter } from 'react-icons/md';
@@ -18,8 +19,21 @@ import Swal from 'sweetalert2';
 const WorkExperience = ({ data, setData }) => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 60 }, (_, i) => currentYear - i);
+  const MAX_EXPERIENCES = 3;
 
   const addJobHistory = () => {
+    // Check if already at max limit
+    if (data.job_histories.length >= MAX_EXPERIENCES) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Maximum Limit Reached',
+        text: `You can only add up to ${MAX_EXPERIENCES} work experiences.`,
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Got it'
+      });
+      return;
+    }
+
     setData('job_histories', [
       ...data.job_histories,
       {
@@ -43,41 +57,40 @@ const WorkExperience = ({ data, setData }) => {
   };
 
   const removeJobHistory = (index) => {
-    Swal.fire({
-      title: 'Remove Experience?',
-      text: "Are you sure you want to remove this work experience?",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, remove it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = data.job_histories.filter((_, i) => i !== index);
-        setData('job_histories', updated);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Removed!',
-          text: 'Work experience has been removed.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
-    });
+    // Direct removal without any confirmation
+    const updated = data.job_histories.filter((_, i) => i !== index);
+    setData('job_histories', updated);
   };
+
+  // Calculate remaining slots
+  const remainingSlots = MAX_EXPERIENCES - data.job_histories.length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="border-b border-gray-200 pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <MdWork className="h-6 w-6 text-blue-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MdWork className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Work Experience</h2>
+              <p className="text-sm text-gray-500 mt-1">Tell us about your professional background</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Work Experience</h2>
-            <p className="text-sm text-gray-500 mt-1">Tell us about your professional background</p>
+
+          {/* Limit Indicator */}
+          <div className="text-right">
+            <div className="text-sm font-medium text-gray-600">
+              {data.job_histories.length} / {MAX_EXPERIENCES} Experiences
+            </div>
+            <div className="w-32 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                style={{ width: `${(data.job_histories.length / MAX_EXPERIENCES) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -90,6 +103,7 @@ const WorkExperience = ({ data, setData }) => {
           </div>
           <p className="text-gray-500 font-medium">No work experience added yet</p>
           <p className="text-sm text-gray-400 mt-1">Click the button below to add your experience</p>
+          <p className="text-xs text-gray-400 mt-2">Maximum {MAX_EXPERIENCES} experiences allowed</p>
         </div>
       )}
 
@@ -99,6 +113,7 @@ const WorkExperience = ({ data, setData }) => {
           <button
             onClick={() => removeJobHistory(index)}
             className="absolute top-4 right-4 text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            title="Remove experience"
           >
             <FaTrashAlt className="h-4 w-4" />
           </button>
@@ -207,22 +222,51 @@ const WorkExperience = ({ data, setData }) => {
         </div>
       ))}
 
-      {/* Add Button */}
+      {/* Add Button - Disabled when max reached */}
       <button
         onClick={addJobHistory}
-        className="w-full py-3.5 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+        disabled={data.job_histories.length >= MAX_EXPERIENCES}
+        className={`w-full py-3.5 border-2 border-dashed rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-medium ${data.job_histories.length >= MAX_EXPERIENCES
+          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+          : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+          }`}
       >
         <FaPlus className="h-5 w-5" />
-        Add Work Experience
+        Add Work Experience {data.job_histories.length >= MAX_EXPERIENCES && '(Maximum Reached)'}
       </button>
 
+      {/* Warning when approaching limit */}
+      {remainingSlots === 1 && data.job_histories.length > 0 && (
+        <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+          <div className="flex items-center justify-center gap-2 text-yellow-800">
+            <FaExclamationTriangle className="h-5 w-5" />
+            <p className="text-sm">
+              You can add {remainingSlots} more work experience (Maximum {MAX_EXPERIENCES})
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info Notice */}
-      {data.job_histories.length > 0 && (
+      {data.job_histories.length > 0 && data.job_histories.length < MAX_EXPERIENCES && (
         <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
           <div className="flex items-center justify-center gap-2">
             <FaBriefcase className="h-5 w-5 text-blue-500" />
             <p className="text-sm text-gray-600">
-              Add all your relevant work experiences. You can add multiple entries and mark your current job.
+              Add all your relevant work experiences. You can add up to {MAX_EXPERIENCES} experiences.
+              {remainingSlots > 0 && ` You can add ${remainingSlots} more.`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Max limit reached notice */}
+      {data.job_histories.length === MAX_EXPERIENCES && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+          <div className="flex items-center justify-center gap-2 text-blue-800">
+            <FaCheckCircle className="h-5 w-5" />
+            <p className="text-sm">
+              You've added the maximum of {MAX_EXPERIENCES} work experiences.
             </p>
           </div>
         </div>
