@@ -3,15 +3,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StatusTimeline extends Model
 {
     use HasFactory;
 
     /**
-     * Fillable fields
+     * Mass assignable fields
      */
     protected $fillable = [
         'application_id',
@@ -20,16 +21,21 @@ class StatusTimeline extends Model
     ];
 
     /**
-     * Cast fields
+     * Attribute casting
      */
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
-    public function application()
+    /**
+     * Application this status update belongs to
+     */
+    public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
     }

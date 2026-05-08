@@ -3,16 +3,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ApplicantProfile extends Model
 {
     use HasFactory, SoftDeletes;
 
     /**
-     * Fillable fields - add any field from migration here
+     * Fillable fields
      */
     protected $fillable = [
         'user_id',
@@ -30,32 +34,45 @@ class ApplicantProfile extends Model
     ];
 
     /**
-     * Cast fields - JSON fields, dates, etc.
+     * Cast fields
      */
     protected $casts = [
         'birth_date' => 'date',
-        'social_links' => 'array',      
+        'social_links' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
 
     /**
-     * Appended attributes (virtual fields)
+     * Appended attributes
      */
-    protected $appends = ['full_name'];
+    protected $appends = [
+        'full_name',
+    ];
 
     /**
-     * Blood type options - easy to modify
+     * Blood type options
      */
-    public static $bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    public static array $bloodTypes = [
+        'A+',
+        'A-',
+        'B+',
+        'B-',
+        'AB+',
+        'AB-',
+        'O+',
+        'O-',
+    ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     /**
-     * User relation - inverse
+     * User relation
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -63,7 +80,7 @@ class ApplicantProfile extends Model
     /**
      * Applications relation
      */
-    public function applications()
+    public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
     }
@@ -71,77 +88,92 @@ class ApplicantProfile extends Model
     /**
      * CVs/Resumes relation
      */
-    public function cvs()
+    public function cvs(): HasMany
     {
-        return $this->hasMany(ApplicantCv::class)->orderBy('order_position');
+        return $this->hasMany(ApplicantCv::class)
+            ->orderBy('order_position');
     }
 
     /**
-     * Primary CV relation (for quick access)
+     * Primary CV relation
      */
-    public function primaryCv()
+    public function primaryCv(): HasOne
     {
-        return $this->hasOne(ApplicantCv::class)->where('is_primary', true);
+        return $this->hasOne(ApplicantCv::class)
+            ->where('is_primary', true);
     }
 
     /**
      * Work history relation
      */
-    public function jobHistories()
+    public function jobHistories(): HasMany
     {
-        return $this->hasMany(JobHistory::class)->orderBy('starting_year', 'desc');
+        return $this->hasMany(JobHistory::class)
+            ->orderBy('starting_year', 'desc');
     }
 
     /**
      * Current job relation
      */
-    public function currentJob()
+    public function currentJob(): HasOne
     {
-        return $this->hasOne(JobHistory::class)->where('is_current', true);
+        return $this->hasOne(JobHistory::class)
+            ->where('is_current', true);
     }
 
     /**
      * Education history relation
      */
-    public function educationHistories()
+    public function educationHistories(): HasMany
     {
-        return $this->hasMany(EducationHistory::class)->orderBy('passing_year', 'desc');
+        return $this->hasMany(EducationHistory::class)
+            ->orderBy('passing_year', 'desc');
     }
 
     /**
-     * Achievements/Certifications relation
+     * Achievements relation
      */
-    public function achievements()
+    public function achievements(): HasMany
     {
         return $this->hasMany(Achievement::class);
     }
 
-    /* ========== ACCESSORS ========== */
+    /* ==========================================
+     | ACCESSORS
+     |========================================== */
 
     /**
      * Get full name attribute
      */
-    public function getFullNameAttribute()
+    public function getFullNameAttribute(): string
     {
-        return $this->first_name . ' ' . $this->last_name;
+        return trim(
+            $this->first_name . ' ' . $this->last_name
+        );
     }
 
-    /* ========== SCOPES ========== */
+    /* ==========================================
+     | SCOPES
+     |========================================== */
 
     /**
-     * Scope for completed profiles
+     * Scope completed profiles
      */
-    public function scopeComplete($query)
-    {
+    public function scopeComplete(
+        Builder $query
+    ): Builder {
+
         return $query->whereNotNull('phone');
     }
 
-    /* ========== HELPER METHODS ========== */
+    /* ==========================================
+     | HELPER METHODS
+     |========================================== */
 
     /**
      * Check if profile is complete
      */
-    public function isComplete()
+    public function isComplete(): bool
     {
         return !empty($this->phone);
     }
@@ -149,17 +181,27 @@ class ApplicantProfile extends Model
     /**
      * Get profile completion percentage
      */
-    public function completionPercentage()
+    public function completionPercentage(): int
     {
-        $fields = ['first_name', 'last_name', 'phone', 'experience_years', 'current_job_title'];
+        $fields = [
+            'first_name',
+            'last_name',
+            'phone',
+            'experience_years',
+            'current_job_title',
+        ];
+
         $filled = 0;
 
         foreach ($fields as $field) {
+
             if (!empty($this->$field)) {
                 $filled++;
             }
         }
 
-        return round(($filled / count($fields)) * 100);
+        return (int) round(
+            ($filled / count($fields)) * 100
+        );
     }
 }

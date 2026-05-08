@@ -3,16 +3,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ApplicantCv extends Model
 {
     use HasFactory;
 
-    const MAX_CVS_PER_PROFILE = 3;
+    public const MAX_CVS_PER_PROFILE = 3;
 
     /**
      * Fillable fields
@@ -36,103 +37,154 @@ class ApplicantCv extends Model
         'updated_at' => 'datetime',
     ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     public function applicantProfile()
     {
         return $this->belongsTo(ApplicantProfile::class);
     }
 
-    /* ========== BOOT METHOD ========== */
+    /* ==========================================
+     | MODEL EVENTS
+     |========================================== */
 
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
+        /**
+         * Before creating
+         */
+        static::creating(function (ApplicantCv $cv): void {
 
-        // Before creating
-        static::creating(function ($cv) {
             // Count only active CVs
-            if (self::hasReachedMaxEntries($cv->applicant_profile_id, true) && $cv->status === 'active') {
+            if (
+                self::hasReachedMaxEntries(
+                    $cv->applicant_profile_id,
+                    true
+                ) &&
+                $cv->status === 'active'
+            ) {
                 throw ValidationException::withMessages([
                     'cv' => sprintf(
                         'Maximum %d active CVs allowed per profile.',
                         self::MAX_CVS_PER_PROFILE
-                    )
+                    ),
                 ]);
             }
 
-            // If marked primary, unset others (consider only active CVs)
-            if ($cv->is_primary && $cv->status === 'active') {
-                static::where('applicant_profile_id', $cv->applicant_profile_id)
+            // If primary, unset other primary CVs
+            if (
+                $cv->is_primary &&
+                $cv->status === 'active'
+            ) {
+                self::where(
+                    'applicant_profile_id',
+                    $cv->applicant_profile_id
+                )
                     ->where('status', 'active')
-                    ->update(['is_primary' => false]);
+                    ->update([
+                        'is_primary' => false,
+                    ]);
             }
         });
 
-        // Before updating
-        static::updating(function ($cv) {
-            if ($cv->is_primary && $cv->getOriginal('is_primary') !== true && $cv->status === 'active') {
-                static::where('applicant_profile_id', $cv->applicant_profile_id)
+        /**
+         * Before updating
+         */
+        static::updating(function (ApplicantCv $cv): void {
+
+            if (
+                $cv->is_primary &&
+                $cv->getOriginal('is_primary') !== true &&
+                $cv->status === 'active'
+            ) {
+                self::where(
+                    'applicant_profile_id',
+                    $cv->applicant_profile_id
+                )
                     ->where('id', '!=', $cv->id)
                     ->where('status', 'active')
-                    ->update(['is_primary' => false]);
+                    ->update([
+                        'is_primary' => false,
+                    ]);
             }
         });
 
-        // Before deleting
-        static::deleting(function ($cv) {
+        /**
+         * Before deleting
+         */
+        static::deleting(function (ApplicantCv $cv): void {
+
             if ($cv->is_primary) {
-                $anotherCv = static::where('applicant_profile_id', $cv->applicant_profile_id)
+
+                $anotherCv = self::where(
+                    'applicant_profile_id',
+                    $cv->applicant_profile_id
+                )
                     ->where('id', '!=', $cv->id)
                     ->where('status', 'active')
                     ->first();
 
                 if ($anotherCv) {
-                    $anotherCv->update(['is_primary' => true]);
+                    $anotherCv->update([
+                        'is_primary' => true,
+                    ]);
                 }
             }
         });
     }
 
-    /* ========== HELPERS ========== */
+    /* ==========================================
+     | ACCESSORS
+     |========================================== */
 
     /**
-     * Get full URL for CV
+     * Get full CV URL
      */
-    public function getUrlAttribute()
+    public function getUrlAttribute(): string
     {
         return asset('storage/' . $this->cv_path);
     }
 
+    /* ==========================================
+     | HELPERS
+     |========================================== */
+
     /**
-     * Check if user has reached the max number of CVs
-     * @param bool $onlyActive Count only active CVs
+     * Check if profile reached max CV limit
      */
-    public static function hasReachedMaxEntries($applicantProfileId, bool $onlyActive = false)
+    public static function hasReachedMaxEntries(int $applicantProfileId, bool $onlyActive = false): bool
     {
+
         $query = self::where('applicant_profile_id', $applicantProfileId);
+
         if ($onlyActive) {
             $query->where('status', 'active');
         }
+
         return $query->count() >= self::MAX_CVS_PER_PROFILE;
     }
 
     /**
-     * Get remaining slots for a profile
+     * Get remaining CV slots
      */
-    public static function getRemainingSlots($applicantProfileId)
+    public static function getRemainingSlots(int $applicantProfileId): int
     {
+
         $currentCount = self::where('applicant_profile_id', $applicantProfileId)
             ->where('status', 'active')
             ->count();
+
         return max(0, self::MAX_CVS_PER_PROFILE - $currentCount);
     }
 
     /**
-     * Get primary CV (active only)
+     * Get primary active CV
      */
-    public static function getPrimaryCv($applicantProfileId)
+    public static function getPrimaryCv(int $applicantProfileId): ?self
     {
+
         return self::where('applicant_profile_id', $applicantProfileId)
             ->where('is_primary', true)
             ->where('status', 'active')
@@ -140,16 +192,19 @@ class ApplicantCv extends Model
     }
 
     /**
-     * Set a specific CV as primary (only active CVs)
+     * Set current CV as primary
      */
-    public function setAsPrimary()
+    public function setAsPrimary(): self
     {
         self::where('applicant_profile_id', $this->applicant_profile_id)
             ->where('status', 'active')
-            ->update(['is_primary' => false]);
+            ->update([
+                'is_primary' => false,
+            ]);
 
         $this->is_primary = true;
-        $this->status = 'active'; // ensure active
+        $this->status = 'active';
+
         $this->save();
 
         return $this;
@@ -158,8 +213,9 @@ class ApplicantCv extends Model
     /**
      * Reorder CVs after deletion
      */
-    public static function reorderCvs($applicantProfileId)
+    public static function reorderCvs(int $applicantProfileId): void
     {
+
         $cvs = self::where('applicant_profile_id', $applicantProfileId)
             ->orderBy('order_position')
             ->orderBy('created_at')
@@ -169,15 +225,53 @@ class ApplicantCv extends Model
             return;
         }
 
-        DB::transaction(function () use ($applicantProfileId, $cvs) {
-            // Shift positions out of the unique range to avoid collisions
-            self::where('applicant_profile_id', $applicantProfileId)
-                ->update(['order_position' => DB::raw('order_position + 1000')]);
+        DB::transaction(function () use ($applicantProfileId, $cvs): void {
+
+            // Shift positions temporarily
+            self::where('applicant_profile_id', $applicantProfileId)->update([
+                'order_position' => DB::raw(
+                    'order_position + 1000'
+                ),
+            ]);
 
             foreach ($cvs as $index => $cv) {
+
                 self::where('id', $cv->id)
-                    ->update(['order_position' => $index]);
+                    ->update([
+                        'order_position' => $index,
+                    ]);
             }
         });
+    }
+
+    /* ==========================================
+     | SCOPES
+     |========================================== */
+
+    /**
+     * Scope active CVs
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope primary CV
+     */
+    public function scopePrimary(Builder $query): Builder
+    {
+
+        return $query->where('is_primary', true);
+    }
+
+    /**
+     * Scope ordered CVs
+     */
+    public function scopeOrdered(Builder $query): Builder
+    {
+
+        return $query->orderBy('order_position');
     }
 }

@@ -7,6 +7,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class User extends Authenticatable
 {
@@ -58,7 +60,7 @@ class User extends Authenticatable
     const ROLE_JOB_SEEKER = 'job_seeker';
 
     // All roles in one place for easy access
-    public static $roles = [
+    public static array $roles = [
         self::ROLE_ADMIN,
         self::ROLE_EMPLOYER,
         self::ROLE_JOB_SEEKER,
@@ -102,50 +104,229 @@ class User extends Authenticatable
         return $this->hasMany(JobView::class);
     }
 
-    /* ========== HELPER METHODS ========== */
+    /* ========== RBAC RELATIONSHIPS ========== */
 
     /**
-     * Check if user is admin
+     * Roles assigned to this user
      */
-    public function isAdmin()
+    public function roles()
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->belongsToMany(Role::class, 'user_roles')
+            ->withPivot('assigned_by', 'assigned_at', 'expires_at', 'is_active')
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->withTimestamps();
     }
 
     /**
-     * Check if user is employer
+     * All role assignments (including expired/inactive)
      */
-    public function isEmployer()
+    public function allRoleAssignments()
     {
-        return $this->role === self::ROLE_EMPLOYER;
+        return $this->belongsToMany(Role::class, 'user_roles')
+            ->withPivot('assigned_by', 'assigned_at', 'expires_at', 'is_active')
+            ->withTimestamps();
     }
 
     /**
-     * Check if user is job seeker
+     * User role pivot model relation
      */
-    public function isJobSeeker()
+    public function roleAssignments()
     {
-        return $this->role === self::ROLE_JOB_SEEKER;
+        return $this->hasMany(UserRole::class);
     }
+
+    /**
+     * Roles assigned by this user
+     */
+    public function assignedRoles()
+    {
+        return $this->hasMany(UserRole::class, 'assigned_by');
+    }
+
+    /* ========== RBAC HELPER METHODS ========== */
 
     /**
      * Check if user has a specific role
-     * Usage: $user->hasRole('admin')
      */
-    public function hasRole($role)
+    public function hasRole(string $roleSlug): bool
     {
-        return $this->role === $role;
+        return $this->roles()->where('slug', $roleSlug)->exists();
     }
 
     /**
-     * Update user role (with validation)
+     * Check if user has any of the given roles
      */
-    public function updateRole($role)
+    public function hasAnyRole(array $roleSlugs): bool
     {
-        if (in_array($role, self::$roles)) {
-            $this->update(['role' => $role]);
+        return $this->roles()->whereIn('slug', $roleSlugs)->exists();
+    }
+
+    /**
+     * Check if user has all of the given roles
+     */
+    public function hasAllRoles(array $roleSlugs): bool
+    {
+        $userRoleSlugs = $this->roles()->pluck('slug')->toArray();
+
+        return count(array_intersect($roleSlugs, $userRoleSlugs)) === count($roleSlugs);
+    }
+
+    /**
+     * Check if user has a specific permission
+     */
+    public function hasPermission(string $permissionSlug): bool
+    {
+        $hasPermission = $this->roles()
+            ->join('role_permissions', 'roles.id', '=', 'role_permissions.role_id')
+            ->join('permissions', 'role_permissions.permission_id', '=', 'permissions.id')
+            ->where('permissions.slug', $permissionSlug)
+            ->where('role_permissions.granted', true)
+            ->exists();
+
+        if ($hasPermission) {
             return true;
         }
+
+        return $this->checkLegacyPermission($permissionSlug);
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission(array $permissionSlugs): bool
+    {
+        foreach ($permissionSlugs as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
         return false;
+    }
+
+    /**
+     * Check if user has all of the given permissions
+     */
+    public function hasAllPermissions(array $permissionSlugs): bool
+    {
+        foreach ($permissionSlugs as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get module access level for a user
+     */
+    public function getModuleAccess(string $module): string
+    {
+        $accessLevel = $this->roles()
+            ->join('role_module_access', 'roles.id', '=', 'role_module_access.role_id')
+            ->where('role_module_access.module', $module)
+            ->orderByRaw("FIELD(access_level, 'manage', 'write', 'read', 'no_access')")
+            ->value('access_level');
+
+        return $accessLevel ?? 'no_access';
+    }
+
+    /**
+     * Check if user can access a module at the required level
+     */
+    public function canAccessModule(string $module, string $requiredLevel = 'read'): bool
+    {
+        $levels = ['no_access' => 0, 'read' => 1, 'write' => 2, 'manage' => 3];
+
+        $userLevel = $levels[$this->getModuleAccess($module)] ?? 0;
+        $required = $levels[$requiredLevel] ?? 0;
+
+        return $userLevel >= $required;
+    }
+
+    /**
+     * Assign a role to the user
+     */
+    public function assignRole(string $roleSlug, ?int $assignedBy = null): bool
+    {
+        $role = Role::where('slug', $roleSlug)->first();
+
+        if (!$role) {
+            return false;
+        }
+
+        $this->roles()->attach($role->id, [
+            'assigned_by' => $assignedBy ?? Auth::id(),
+            'assigned_at' => now(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Assign multiple roles to the user
+     */
+    public function assignRoles(array $roleSlugs, ?int $assignedBy = null): bool
+    {
+        foreach ($roleSlugs as $roleSlug) {
+            $this->assignRole($roleSlug, $assignedBy);
+        }
+
+        return true;
+    }
+
+    /**
+     * Sync roles (replace all current roles with new ones)
+     */
+    public function syncRoles(array $roleSlugs): void
+    {
+        $roleIds = Role::whereIn('slug', $roleSlugs)->pluck('id')->toArray();
+        $this->roles()->sync($roleIds);
+    }
+
+    /**
+     * Remove a role from the user
+     */
+    public function removeRole(string $roleSlug): bool
+    {
+        $role = Role::where('slug', $roleSlug)->first();
+
+        if (!$role) {
+            return false;
+        }
+
+        $this->roles()->detach($role->id);
+
+        return true;
+    }
+
+    /* ========== LEGACY + HELPERS ========== */
+
+    protected function checkLegacyPermission(string $permissionSlug): bool
+    {
+        $legacyPermissions = [
+            'admin' => [
+                'profile.view.any',
+                'profile.edit.any',
+                'job.create',
+            ],
+            'employer' => [
+                'job.create',
+                'job.edit.own',
+            ],
+            'job_seeker' => [
+                'job.view.any',
+                'application.apply',
+            ],
+        ];
+
+        return in_array($permissionSlug, $legacyPermissions[$this->role] ?? []);
     }
 }

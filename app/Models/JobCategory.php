@@ -3,9 +3,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class JobCategory extends Model
 {
@@ -30,38 +32,57 @@ class JobCategory extends Model
         'deleted_at' => 'datetime',
     ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     /**
      * Job listings in this category
      */
-    public function jobListings()
+    public function jobListings(): HasMany
     {
-        return $this->hasMany(JobListing::class, 'category_id');
+        return $this->hasMany(
+            JobListing::class,
+            'category_id'
+        );
     }
 
     /**
      * Active job listings only
      */
-    public function activeJobListings()
+    public function activeJobListings(): HasMany
     {
         return $this->jobListings()->active();
     }
 
-    /* ========== SCOPES ========== */
-
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /* ========== HELPER METHODS ========== */
+    /* ==========================================
+     | SCOPES
+     |========================================== */
 
     /**
-     * Get job count in this category
+     * Active categories only
      */
-    public function getJobCountAttribute()
+    public function scopeActive(
+        Builder $query
+    ): Builder {
+
+        return $query->where(
+            'is_active',
+            true
+        );
+    }
+
+    /* ==========================================
+     | ACCESSORS
+     |========================================== */
+
+    /**
+     * Job count in this category
+     */
+    public function getJobCountAttribute(): int
     {
-        return $this->jobListings()->active()->count();
+        return $this->jobListings()
+            ->active()
+            ->count();
     }
 }

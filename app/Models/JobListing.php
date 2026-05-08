@@ -3,17 +3,21 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class JobListing extends Model
 {
     use HasFactory, SoftDeletes;
 
     /**
-     * Fillable fields - add any new job field here
+     * Mass assignable fields for job creation/update
      */
     protected $fillable = [
         'title',
@@ -43,7 +47,7 @@ class JobListing extends Model
     ];
 
     /**
-     * Cast fields
+     * Attribute casting for proper data handling
      */
     protected $casts = [
         'salary_min' => 'decimal:2',
@@ -66,121 +70,140 @@ class JobListing extends Model
     ];
 
     /**
-     * Job type options - easy to add more
+     * Allowed job types in system
      */
-    public static $jobTypes = ['full-time', 'part-time', 'contract', 'internship', 'remote', 'hybrid'];
+    public static array $jobTypes = [
+        'full-time',
+        'part-time',
+        'contract',
+        'internship',
+        'remote',
+        'hybrid'
+    ];
 
     /**
-     * Experience level options
+     * Allowed experience levels
      */
-    public static $experienceLevels = ['entry', 'junior', 'mid-level', 'senior', 'lead', 'executive'];
+    public static array $experienceLevels = [
+        'entry',
+        'junior',
+        'mid-level',
+        'senior',
+        'lead',
+        'executive'
+    ];
 
     /**
-     * Boot method - auto-generate slug
+     * Auto-generate slug when creating job
      */
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
-        static::creating(function ($job) {
+        static::creating(function (JobListing $job): void {
             if (empty($job->slug)) {
                 $job->slug = Str::slug($job->title . '-' . uniqid());
             }
         });
     }
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     /**
-     * Employer relation (who posted this job)
+     * Employer who posted the job
      */
-    public function employer()
+    public function employer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
-     * Category relation
+     * Job category
      */
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(JobCategory::class, 'category_id');
     }
 
     /**
-     * Locations relation (many-to-many)
+     * Multiple job locations (many-to-many)
      */
-    public function locations()
+    public function locations(): BelongsToMany
     {
         return $this->belongsToMany(Location::class, 'job_listing_location')
             ->withTimestamps();
     }
 
     /**
-     * Applications received for this job
+     * Applications submitted for this job
      */
-    public function applications()
+    public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
     }
 
     /**
-     * Views tracking
+     * Job view tracking records
      */
-    public function views()
+    public function views(): HasMany
     {
         return $this->hasMany(JobView::class);
     }
 
-    /* ========== SCOPES ========== */
+    /* ==========================================
+     | SCOPES
+     |========================================== */
 
     /**
-     * Scope for active jobs (not expired)
+     * Only active and non-expired jobs
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_active', true)
+        return $query
+            ->where('is_active', true)
             ->where('application_deadline', '>=', now());
     }
 
     /**
-     * Scope for published jobs
+     * Only published jobs
      */
-    public function scopePublished($query)
+    public function scopePublished(Builder $query): Builder
     {
         return $query->where('publish_at', '<=', now());
     }
 
     /**
-     * Scope by employer
+     * Filter by employer
      */
-    public function scopeByEmployer($query, $userId)
+    public function scopeByEmployer(Builder $query, int $userId): Builder
     {
         return $query->where('user_id', $userId);
     }
 
     /**
-     * Scope by category
+     * Filter by category
      */
-    public function scopeByCategory($query, $categoryId)
+    public function scopeByCategory(Builder $query, int $categoryId): Builder
     {
         return $query->where('category_id', $categoryId);
     }
 
     /**
-     * Scope by job type
+     * Filter by job type
      */
-    public function scopeByJobType($query, $jobType)
+    public function scopeByJobType(Builder $query, string $jobType): Builder
     {
         return $query->where('job_type', $jobType);
     }
 
-    /* ========== HELPER METHODS ========== */
+    /* ==========================================
+     | ACCESSORS & HELPERS
+     |========================================== */
 
     /**
-     * Get formatted salary range
+     * Human-readable salary range display
      */
-    public function getSalaryRangeAttribute()
+    public function getSalaryRangeAttribute(): string
     {
         if ($this->as_per_companies_policy) {
             return 'As per company policy';
@@ -191,7 +214,8 @@ class JobListing extends Model
         }
 
         if ($this->salary_min && $this->salary_max) {
-            return number_format($this->salary_min) . ' - ' . number_format($this->salary_max) . ' BDT';
+            return number_format($this->salary_min) . ' - ' .
+                number_format($this->salary_max) . ' BDT';
         }
 
         if ($this->salary_min) {
@@ -202,9 +226,9 @@ class JobListing extends Model
     }
 
     /**
-     * Increment view counter
+     * Increase view count for analytics
      */
-    public function incrementViews()
+    public function incrementViews(): void
     {
         $this->increment('views_count');
     }
@@ -212,23 +236,23 @@ class JobListing extends Model
     /**
      * Check if job is expired
      */
-    public function isExpired()
+    public function isExpired(): bool
     {
         return $this->application_deadline < now();
     }
 
     /**
-     * Check if application is allowed
+     * Check if applications are allowed
      */
-    public function canApply()
+    public function canApply(): bool
     {
         return $this->is_active && !$this->isExpired();
     }
 
     /**
-     * Get application count
+     * Total number of applications
      */
-    public function getApplicationCountAttribute()
+    public function getApplicationCountAttribute(): int
     {
         return $this->applications()->count();
     }

@@ -4,15 +4,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Location extends Model
 {
     use HasFactory, SoftDeletes;
 
     /**
-     * Fillable fields
+     * Mass assignable fields
      */
     protected $fillable = [
         'name',
@@ -21,7 +23,7 @@ class Location extends Model
     ];
 
     /**
-     * Cast fields
+     * Attribute casting
      */
     protected $casts = [
         'is_active' => 'boolean',
@@ -30,20 +32,27 @@ class Location extends Model
         'deleted_at' => 'datetime',
     ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     /**
-     * Job listings at this location (many-to-many)
+     * Jobs available at this location (many-to-many)
      */
-    public function jobListings()
+    public function jobListings(): BelongsToMany
     {
         return $this->belongsToMany(JobListing::class, 'job_listing_location')
             ->withTimestamps();
     }
 
-    /* ========== SCOPES ========== */
+    /* ==========================================
+     | SCOPES
+     |========================================== */
 
-    public function scopeActive($query)
+    /**
+     * Only active locations
+     */
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }

@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class BaseModel
- * 
+ *
  * Base model with common functionality for all models
- * 
+ *
  * @package App\Models
  */
 abstract class BaseModel extends Model
@@ -36,10 +36,10 @@ abstract class BaseModel extends Model
      *
      * @return void
      */
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
-        
+
         // Add global scopes or event listeners here if needed
     }
 
@@ -50,6 +50,6 @@ abstract class BaseModel extends Model
      */
     public static function getTableName(): string
     {
-        return (new static)->getTable();
+        return (new static())->getTable();
     }
 }

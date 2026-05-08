@@ -3,11 +3,14 @@
 
 namespace App\Models;
 
-use App\Notifications\ApplicationStatusUpdated;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Notifications\ApplicationStatusUpdated;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Application extends Model
 {
@@ -55,42 +58,46 @@ class Application extends Model
         'deleted_at' => 'datetime',
     ];
 
-    /**
-     * Status constants
-     */
-    const STATUS_PENDING = 'pending';
-    const STATUS_SHORTLISTED = 'shortlisted';
-    const STATUS_REJECTED = 'rejected';
-    const STATUS_HIRED = 'hired';
+    /* ==========================================
+     | STATUS CONSTANTS
+     |========================================== */
 
-    public static $statuses = [
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SHORTLISTED = 'shortlisted';
+    public const STATUS_REJECTED = 'rejected';
+    public const STATUS_HIRED = 'hired';
+
+    public static array $statuses = [
         self::STATUS_PENDING,
         self::STATUS_SHORTLISTED,
         self::STATUS_REJECTED,
         self::STATUS_HIRED,
     ];
 
-    /**
-     * ATS calculation status
-     */
-    const ATS_PENDING = 'pending';
-    const ATS_PROCESSING = 'processing';
-    const ATS_COMPLETED = 'completed';
-    const ATS_FAILED = 'failed';
+    /* ==========================================
+     | ATS STATUS CONSTANTS
+     |========================================== */
 
-    public static $atsStatuses = [
+    public const ATS_PENDING = 'pending';
+    public const ATS_PROCESSING = 'processing';
+    public const ATS_COMPLETED = 'completed';
+    public const ATS_FAILED = 'failed';
+
+    public static array $atsStatuses = [
         self::ATS_PENDING,
         self::ATS_PROCESSING,
         self::ATS_COMPLETED,
         self::ATS_FAILED,
     ];
 
-    /* ========== RELATIONSHIPS ========== */
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
 
     /**
-     * Applicant (user) relation
+     * Applicant relation
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -98,7 +105,7 @@ class Application extends Model
     /**
      * Job listing relation
      */
-    public function jobListing()
+    public function jobListing(): BelongsTo
     {
         return $this->belongsTo(JobListing::class);
     }
@@ -106,7 +113,7 @@ class Application extends Model
     /**
      * Applicant profile relation
      */
-    public function applicantProfile()
+    public function applicantProfile(): BelongsTo
     {
         return $this->belongsTo(ApplicantProfile::class);
     }
@@ -114,76 +121,176 @@ class Application extends Model
     /**
      * Status timeline relation
      */
-    public function statusTimelines()
+    public function statusTimelines(): HasMany
     {
-        return $this->hasMany(StatusTimeline::class)->orderBy('created_at');
+        return $this->hasMany(StatusTimeline::class)
+            ->orderBy('created_at');
     }
 
-    /* ========== SCOPES ========== */
+    /* ==========================================
+     | SCOPES
+     |========================================== */
 
-    public function scopePending($query)
-    {
-        return $query->where('status', self::STATUS_PENDING);
+    public function scopePending(
+        Builder $query
+    ): Builder {
+
+        return $query->where(
+            'status',
+            self::STATUS_PENDING
+        );
     }
 
-    public function scopeShortlisted($query)
-    {
-        return $query->where('status', self::STATUS_SHORTLISTED);
+    public function scopeShortlisted(
+        Builder $query
+    ): Builder {
+
+        return $query->where(
+            'status',
+            self::STATUS_SHORTLISTED
+        );
     }
 
-    public function scopeRejected($query)
-    {
-        return $query->where('status', self::STATUS_REJECTED);
+    public function scopeRejected(
+        Builder $query
+    ): Builder {
+
+        return $query->where(
+            'status',
+            self::STATUS_REJECTED
+        );
     }
 
-    public function scopeHired($query)
-    {
-        return $query->where('status', self::STATUS_HIRED);
+    public function scopeHired(
+        Builder $query
+    ): Builder {
+
+        return $query->where(
+            'status',
+            self::STATUS_HIRED
+        );
     }
 
-    public function scopeByJob($query, $jobId)
-    {
-        return $query->where('job_listing_id', $jobId);
+    public function scopeByJob(
+        Builder $query,
+        int $jobId
+    ): Builder {
+
+        return $query->where(
+            'job_listing_id',
+            $jobId
+        );
     }
 
-    public function scopeByEmployer($query, $employerId)
-    {
-        return $query->whereHas('jobListing', function ($q) use ($employerId) {
-            $q->where('user_id', $employerId);
-        });
-    }
+    public function scopeByEmployer(
+        Builder $query,
+        int $employerId
+    ): Builder {
 
-    /* ========== HELPER METHODS ========== */
+        return $query->whereHas(
+            'jobListing',
+            function (Builder $q) use ($employerId): void {
+                $q->where(
+                    'user_id',
+                    $employerId
+                );
+            }
+        );
+    }
 
     /**
-     * Update application status with timeline tracking
+     * Scope minimum ATS score
      */
-    public function updateStatus($newStatus, $notes = null)
-    {
+    public function scopeMinAtsScore(
+        Builder $query,
+        int|float $minScore
+    ): Builder {
+
+        return $query->where(
+            function (Builder $q) use ($minScore): void {
+
+                $q->whereRaw(
+                    'JSON_EXTRACT(ats_score, "$.percentage") >= ?',
+                    [$minScore]
+                )->orWhereRaw(
+                    'ats_score >= ?',
+                    [$minScore]
+                );
+            }
+        );
+    }
+
+    /**
+     * Scope ATS score range
+     */
+    public function scopeAtsScoreBetween(
+        Builder $query,
+        int|float $min,
+        int|float $max
+    ): Builder {
+
+        return $query->where(
+            function (Builder $q) use ($min, $max): void {
+
+                $q->whereRaw(
+                    'JSON_EXTRACT(ats_score, "$.percentage") BETWEEN ? AND ?',
+                    [$min, $max]
+                )->orWhereRaw(
+                    'ats_score BETWEEN ? AND ?',
+                    [$min, $max]
+                );
+            }
+        );
+    }
+
+    /* ==========================================
+     | HELPER METHODS
+     |========================================== */
+
+    /**
+     * Update application status
+     */
+    public function updateStatus(
+        string $newStatus,
+        ?string $notes = null
+    ): bool {
+
         $oldStatus = $this->status;
 
-        $this->update([
+        $updated = $this->update([
             'status' => $newStatus,
-            'employer_notes' => $notes
+            'employer_notes' => $notes,
         ]);
 
-        // Log to timeline
+        if (!$updated) {
+            return false;
+        }
+
         $this->statusTimelines()->create([
             'status' => $newStatus,
             'notes' => $notes,
         ]);
 
-        $this->loadMissing('jobListing', 'user');
+        $this->loadMissing([
+            'jobListing',
+            'user',
+        ]);
 
         if ($this->user) {
-            $this->user->notify(new ApplicationStatusUpdated($this, $oldStatus, $notes));
+            $this->user->notify(
+                new ApplicationStatusUpdated(
+                    $this,
+                    $oldStatus,
+                    $notes
+                )
+            );
         }
 
         return true;
     }
 
     /**
-     * Get the actual resume path for ATS parsing
+     * Get actual resume path
      */
     public function getActualResumePath(): ?string
     {
@@ -191,9 +298,13 @@ class Application extends Model
             return $this->resume_path;
         }
 
-        $profile = $this->relationLoaded('applicantProfile')
+        $profile = $this->relationLoaded(
+            'applicantProfile'
+        )
             ? $this->applicantProfile
-            : $this->applicantProfile()->with('primaryCv')->first();
+            : $this->applicantProfile()
+            ->with('primaryCv')
+            ->first();
 
         if ($profile && $profile->primaryCv) {
             return $profile->primaryCv->cv_path;
@@ -203,19 +314,30 @@ class Application extends Model
     }
 
     /**
-     * Check if ATS calculation is completed
+     * Check if ATS completed
      */
-    public function isAtsCompleted()
+    public function isAtsCompleted(): bool
     {
-        return $this->ats_calculation_status === self::ATS_COMPLETED;
+        return $this->ats_calculation_status
+            === self::ATS_COMPLETED;
     }
 
     /**
-     * Check if ATS calculation is stuck (no update for a while)
+     * Check if ATS calculation stuck
      */
-    public function isAtsCalculationStuck(int $minutes = 30): bool
-    {
-        if (!in_array($this->ats_calculation_status, [self::ATS_PENDING, self::ATS_PROCESSING])) {
+    public function isAtsCalculationStuck(
+        int $minutes = 30
+    ): bool {
+
+        if (
+            !in_array(
+                $this->ats_calculation_status,
+                [
+                    self::ATS_PENDING,
+                    self::ATS_PROCESSING,
+                ]
+            )
+        ) {
             return false;
         }
 
@@ -229,57 +351,63 @@ class Application extends Model
     }
 
     /**
-     * Calculate ATS score inline using ATSService
+     * Calculate ATS score
      */
     public function calculateATSScore(): bool
     {
         try {
-            /** @var \App\Services\ATSService $atsService */
-            $atsService = app(\App\Services\ATSService::class);
 
-            $this->loadMissing('jobListing', 'applicantProfile');
+            /** @var \App\Services\ATSService $atsService */
+            $atsService = app(
+                \App\Services\ATSService::class
+            );
+
+            $this->loadMissing([
+                'jobListing',
+                'applicantProfile',
+            ]);
 
             if (!$this->jobListing) {
-                throw new \Exception('Job listing not found for ATS calculation');
+                throw new \Exception(
+                    'Job listing not found for ATS calculation'
+                );
             }
 
             $this->update([
                 'ats_calculation_status' => self::ATS_PROCESSING,
             ]);
 
-            $result = $atsService->calculateScore($this, $this->jobListing);
+            $result = $atsService->calculateScore(
+                $this,
+                $this->jobListing
+            );
 
             $this->update([
                 'ats_score' => $result,
-                'matched_keywords' => $result['matched_keywords'] ?? [],
-                'missing_keywords' => $result['missing_keywords'] ?? [],
-                'ats_calculation_status' => self::ATS_COMPLETED,
+                'matched_keywords' =>
+                $result['matched_keywords'] ?? [],
+                'missing_keywords' =>
+                $result['missing_keywords'] ?? [],
+                'ats_calculation_status' =>
+                self::ATS_COMPLETED,
                 'ats_last_attempted_at' => now(),
                 'ats_attempt_count' => ($this->ats_attempt_count ?? 0) + 1,
             ]);
 
             return true;
         } catch (\Throwable $e) {
+
             $this->update([
                 'ats_calculation_status' => self::ATS_FAILED,
+
                 'ats_score' => [
                     'percentage' => 0,
                     'error' => $e->getMessage(),
                     'status' => 'failed',
-                    'analysis' => [
-                        'level' => 'Error',
-                        'message' => 'We are having trouble calculating the ATS score. Please try again later.',
-                        'color' => 'red',
-                        'matched_count' => 0,
-                        'missing_count' => 0,
-                        'top_matched' => [],
-                        'top_missing' => [],
-                        'suggestions' => [
-                            'Please try uploading a different resume format (PDF, DOC, or DOCX).'
-                        ]
-                    ]
                 ],
+
                 'ats_last_attempted_at' => now(),
+
                 'ats_attempt_count' => ($this->ats_attempt_count ?? 0) + 1,
             ]);
 
@@ -288,7 +416,7 @@ class Application extends Model
     }
 
     /**
-     * Recalculate ATS score inline
+     * Recalculate ATS score
      */
     public function recalculateAtsScoreInline(): bool
     {
@@ -304,67 +432,63 @@ class Application extends Model
     }
 
     /**
-     * Check if application can be updated
+     * Check if application editable
      */
-    public function canBeUpdated()
+    public function canBeUpdated(): bool
     {
-        return !in_array($this->status, [self::STATUS_HIRED, self::STATUS_REJECTED]);
+        return !in_array(
+            $this->status,
+            [
+                self::STATUS_HIRED,
+                self::STATUS_REJECTED,
+            ]
+        );
     }
+
+    /* ==========================================
+     | ACCESSORS
+     |========================================== */
 
     /**
      * Get resume URL
      */
-    public function getResumeUrlAttribute()
+    public function getResumeUrlAttribute(): ?string
     {
-        return $this->resume_path ? asset('storage/' . $this->resume_path) : null;
+        return $this->resume_path
+            ? asset('storage/' . $this->resume_path)
+            : null;
     }
 
-    // In app/Models/Application.php
-
     /**
-     * Get the ATS score percentage
+     * Get ATS percentage
      */
-    public function getAtsScorePercentageAttribute()
+    public function getAtsScorePercentageAttribute(): int|float|null
     {
         if (!$this->ats_score) {
             return null;
         }
 
         if (is_array($this->ats_score)) {
-            return $this->ats_score['percentage'] ?? $this->ats_score['total'] ?? null;
+            return $this->ats_score['percentage']
+                ?? $this->ats_score['total']
+                ?? null;
         }
 
         if (is_numeric($this->ats_score)) {
             return $this->ats_score;
         }
 
-        $decoded = json_decode($this->ats_score, true);
+        $decoded = json_decode(
+            $this->ats_score,
+            true
+        );
+
         if ($decoded) {
-            return $decoded['percentage'] ?? $decoded['total'] ?? null;
+            return $decoded['percentage']
+                ?? $decoded['total']
+                ?? null;
         }
 
         return null;
-    }
-
-    /**
-     * Scope for filtering by minimum ATS score
-     */
-    public function scopeMinAtsScore($query, $minScore)
-    {
-        return $query->where(function ($q) use ($minScore) {
-            $q->whereRaw('JSON_EXTRACT(ats_score, "$.percentage") >= ?', [$minScore])
-                ->orWhereRaw('ats_score >= ?', [$minScore]);
-        });
-    }
-
-    /**
-     * Scope for filtering by ATS score range
-     */
-    public function scopeAtsScoreBetween($query, $min, $max)
-    {
-        return $query->where(function ($q) use ($min, $max) {
-            $q->whereBetweenRaw('JSON_EXTRACT(ats_score, "$.percentage")', [$min, $max])
-                ->orWhereBetweenRaw('ats_score', [$min, $max]);
-        });
     }
 }
