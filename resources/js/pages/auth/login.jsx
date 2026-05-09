@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle, Eye, EyeOff, Briefcase, User, Star, Mail, Lock, ArrowRight } from 'lucide-react';
+import {
+  LoaderCircle, Eye, EyeOff, Briefcase, User, Star, Mail, Lock, ArrowRight,
+  Shield, ShieldCheck, ChevronUp, ChevronDown
+} from 'lucide-react';
 
 export default function Login({ status, canResetPassword, googleAuthEnabled }) {
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -13,6 +16,7 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
 
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [currentDemoIndex, setCurrentDemoIndex] = useState(0);
 
   const submit = (e) => {
     e.preventDefault();
@@ -27,24 +31,87 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       password: password,
       remember: data.remember,
     });
+    // Optional: focus on password field after filling
+    const passwordInput = document.getElementById('password');
+    if (passwordInput) passwordInput.focus();
   };
 
   const demoAccounts = [
     {
-      role: 'Employer',
-      email: 'employer@gmail.com',
-      password: 'Employer1205',
+      role: 'Super Admin',
+      email: 'superadmin@jobportal.com',
+      password: 'password',
+      icon: ShieldCheck,
+      description: 'Full system access with all permissions',
+      badge: 'Highest Level',
+      badgeColor: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+      borderColor: 'purple',
+      bgGradient: 'from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20',
+      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      buttonBg: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
+      buttonBorder: 'border-purple-200 dark:border-purple-800',
+      buttonText: 'text-purple-700 dark:text-purple-300',
+    },
+    {
+      role: 'Admin',
+      email: 'admin@jobportal.com',
+      password: 'password',
+      icon: Shield,
+      description: 'Administrative access to manage platform',
+      badge: 'Admin Level',
+      badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+      borderColor: 'blue',
+      bgGradient: 'from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      buttonBg: 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50',
+      buttonBorder: 'border-blue-200 dark:border-blue-800',
+      buttonText: 'text-blue-700 dark:text-blue-300',
+    },
+    {
+      role: 'Employer / HR Manager',
+      email: 'hrmanager@company.com',
+      password: 'password',
       icon: Briefcase,
-      description: 'Post jobs and find talent',
+      description: 'Post jobs, manage applications, and find talent',
+      badge: 'Employer',
+      badgeColor: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      borderColor: 'green',
+      bgGradient: 'from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20',
+      iconBg: 'bg-green-100 dark:bg-green-900/30',
+      iconColor: 'text-green-600 dark:text-green-400',
+      buttonBg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50',
+      buttonBorder: 'border-green-200 dark:border-green-800',
+      buttonText: 'text-green-700 dark:text-green-300',
     },
     {
       role: 'Job Seeker',
-      email: 'seeker@gmail.com',
-      password: 'Seeker1205',
+      email: 'jobseeker@gmail.com',
+      password: 'password',
       icon: User,
-      description: 'Browse jobs and apply',
+      description: 'Browse jobs, apply, and track applications',
+      badge: 'Job Seeker',
+      badgeColor: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+      borderColor: 'orange',
+      bgGradient: 'from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20',
+      iconBg: 'bg-orange-100 dark:bg-orange-900/30',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      buttonBg: 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/50',
+      buttonBorder: 'border-orange-200 dark:border-orange-800',
+      buttonText: 'text-orange-700 dark:text-orange-300',
     },
   ];
+
+  const currentAccount = demoAccounts[currentDemoIndex];
+
+  const goToPrevious = () => {
+    setCurrentDemoIndex((prev) => (prev === 0 ? demoAccounts.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentDemoIndex((prev) => (prev === demoAccounts.length - 1 ? 0 : prev + 1));
+  };
 
   return (
     <>
@@ -139,11 +206,7 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                         className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC] transition-colors"
                         tabIndex={-1}
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     {errors.password && (
@@ -247,75 +310,105 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
               )}
             </div>
 
-            {/* Right side - Demo Accounts */}
-            <div className="relative -mb-px aspect-335/376 w-full shrink-0 overflow-hidden rounded-t-lg bg-[#fff2f2] lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-109.5 lg:rounded-t-none lg:rounded-r-lg dark:bg-[#1D0002]">
-              <div className="p-6 lg:p-12 flex flex-col justify-center h-full">
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-3">
+            {/* Right side - Demo Accounts Carousel */}
+            <div className="relative -mb-px aspect-335/376 w-full shrink-0 overflow-hidden rounded-t-lg lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-96 lg:rounded-t-none lg:rounded-r-lg">
+              <div className={`absolute inset-0 bg-linear-to-br ${currentAccount.bgGradient}`} />
+
+              <div className="relative p-6 lg:p-8 flex flex-col justify-center h-full">
+                <div className="mb-6 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
                     <Star className="h-5 w-5 text-[#F53003] dark:text-[#F61500]" />
                     <h3 className="text-lg font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">Demo Accounts</h3>
                   </div>
                   <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    Explore the platform instantly with pre-configured demo accounts
+                    Try with pre-configured accounts
                   </p>
                 </div>
 
-                <div className="grid gap-4">
-                  {demoAccounts.map((account, index) => {
-                    const Icon = account.icon;
-                    return (
-                      <div
-                        key={index}
-                        className="group rounded-sm border border-[#19140035] bg-white p-5 shadow-sm hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#161615] dark:hover:border-[#62605b] transition-all duration-200"
-                      >
-                        <div className="flex items-start gap-3 mb-4">
-                          <div className="w-10 h-10 bg-[#FDFDFC] rounded-full flex items-center justify-center border border-[#e3e3e0] dark:bg-[#0a0a0a] dark:border-[#3E3E3A] group-hover:border-[#1b1b18] dark:group-hover:border-[#EDEDEC] transition-all duration-200">
-                            <Icon className="h-5 w-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC] mb-1">
-                              {account.role} Demo
-                            </h4>
-                            <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                              {account.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 mb-4 p-3 rounded-sm bg-[#FDFDFC] dark:bg-[#0a0a0a] border border-[#e3e3e0] dark:border-[#3E3E3A]">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Mail className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
-                            <span className="text-[#706f6c] dark:text-[#A1A09A]">Email:</span>
-                            <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC] truncate">
-                              {account.email}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <Lock className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
-                            <span className="text-[#706f6c] dark:text-[#A1A09A]">Password:</span>
-                            <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
-                              {account.password}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => fillDemoAccount(account.email, account.password)}
-                          className="w-full rounded-sm border border-[#19140035] px-4 py-2 text-sm font-medium text-[#1b1b18] hover:border-[#1915014a] hover:bg-[#FDFDFC] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b] dark:hover:bg-[#0a0a0a] transition-all duration-200 group flex items-center justify-center gap-2"
-                        >
-                          <span>Use {account.role} Account</span>
-                          <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-1" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                {/* Carousel Navigation - Up/Down Buttons */}
+                <div className="flex justify-center mb-6">
+                  <button
+                    onClick={goToPrevious}
+                    className="p-2 rounded-full bg-white/80 hover:bg-white dark:bg-black/30 dark:hover:bg-black/50 transition-all duration-200 shadow-md hover:shadow-lg"
+                    title="Previous account"
+                  >
+                    <ChevronUp className="h-5 w-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                  </button>
+                  <div className="mx-4 px-3 py-1 rounded-full bg-white/50 dark:bg-black/30 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                    {currentDemoIndex + 1} / {demoAccounts.length}
+                  </div>
+                  <button
+                    onClick={goToNext}
+                    className="p-2 rounded-full bg-white/80 hover:bg-white dark:bg-black/30 dark:hover:bg-black/50 transition-all duration-200 shadow-md hover:shadow-lg"
+                    title="Next account"
+                  >
+                    <ChevronDown className="h-5 w-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                  </button>
                 </div>
 
-                <div className="mt-6 p-4 rounded-sm bg-[#FDFDFC] dark:bg-[#0a0a0a] border border-[#e3e3e0] dark:border-[#3E3E3A]">
+                {/* Current Demo Account Card */}
+                <div className="transition-all duration-300 transform animate-fade-in">
+                  <div className={`rounded-xl border shadow-lg overflow-hidden ${currentAccount.buttonBorder} bg-white dark:bg-[#161615]`}>
+                    <div className="p-5">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${currentAccount.iconBg} transition-all duration-200`}>
+                          <currentAccount.icon className={`h-6 w-6 ${currentAccount.iconColor}`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-lg text-[#1b1b18] dark:text-[#EDEDEC]">
+                              {currentAccount.role}
+                            </h4>
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${currentAccount.badgeColor}`}>
+                              {currentAccount.badge}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#706f6c] dark:text-[#A1A09A] mt-1">
+                            {currentAccount.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-5 p-3 rounded-lg bg-[#FDFDFC] dark:bg-[#0a0a0a] border border-[#e3e3e0] dark:border-[#3E3E3A]">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Mail className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
+                          <span className="text-[#706f6c] dark:text-[#A1A09A]">Email:</span>
+                          <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC] truncate text-xs break-all">
+                            {currentAccount.email}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Lock className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
+                          <span className="text-[#706f6c] dark:text-[#A1A09A]">Password:</span>
+                          <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC] text-xs">
+                            {currentAccount.password}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => fillDemoAccount(currentAccount.email, currentAccount.password)}
+                        className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${currentAccount.buttonBg} ${currentAccount.buttonBorder} ${currentAccount.buttonText} hover:shadow-md group`}
+                      >
+                        <span>Use {currentAccount.role.split(' ')[0]} Account</span>
+                        <ArrowRight className="h-3 w-3 transition-all duration-200 group-hover:translate-x-1" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-3 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-sm">
                   <p className="text-xs text-[#706f6c] dark:text-[#A1A09A] text-center">
                     <span className="inline-block mr-1">💡</span>
-                    Click any demo account button to auto-fill the login form
+                    Use <strong className="font-mono">↑</strong> and <strong className="font-mono">↓</strong> buttons to cycle through accounts
+                  </p>
+                </div>
+
+                {/* User count info */}
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                    👥 2 Admins + 1 Employer + 50+ Job Seekers
                   </p>
                 </div>
               </div>
@@ -326,6 +419,23 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
         </div>
         <div className="hidden h-14.5 lg:block"></div>
       </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 }

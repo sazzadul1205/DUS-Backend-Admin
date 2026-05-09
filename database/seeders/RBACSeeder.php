@@ -188,12 +188,14 @@ class RBACSeeder extends Seeder
 
     // Get role IDs after upsert
     $superAdminRoleId = DB::table('roles')->where('slug', 'super-admin')->value('id');
+    $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
     $employerAdminRoleId = DB::table('roles')->where('slug', 'employer-admin')->value('id');
     $jobSeekerRoleId = DB::table('roles')->where('slug', 'job-seeker')->value('id');
 
     // Clear existing role_permissions for these roles to avoid duplicates
     DB::table('role_permissions')->whereIn('role_id', [
       $superAdminRoleId,
+      $adminRoleId,
       $employerAdminRoleId,
       $jobSeekerRoleId
     ])->delete();
@@ -204,6 +206,17 @@ class RBACSeeder extends Seeder
     foreach ($allPermissionIds as $permissionId) {
       DB::table('role_permissions')->insert([
         'role_id' => $superAdminRoleId,
+        'permission_id' => $permissionId,
+        'granted' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+      ]);
+    }
+
+    // Admin permissions (same as Super Admin - full access)
+    foreach ($allPermissionIds as $permissionId) {
+      DB::table('role_permissions')->insert([
+        'role_id' => $adminRoleId,
         'permission_id' => $permissionId,
         'granted' => true,
         'created_at' => now(),
@@ -277,6 +290,7 @@ class RBACSeeder extends Seeder
     // Clear existing role_module_access
     DB::table('role_module_access')->whereIn('role_id', [
       $superAdminRoleId,
+      $adminRoleId,
       $employerAdminRoleId,
       $jobSeekerRoleId
     ])->delete();
@@ -294,6 +308,18 @@ class RBACSeeder extends Seeder
       ['role_id' => $superAdminRoleId, 'module' => 'report', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'cv', 'access_level' => 'manage'],
+
+      // Admin - Full access to everything (same as Super Admin)
+      ['role_id' => $adminRoleId, 'module' => 'profile', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'job', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'application', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'category', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'location', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'user', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'role', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'report', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'cv', 'access_level' => 'manage'],
 
       // Employer Admin - Write access to job and application modules
       ['role_id' => $employerAdminRoleId, 'module' => 'profile', 'access_level' => 'write'],

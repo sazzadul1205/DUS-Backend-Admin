@@ -39,6 +39,24 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $user = $request->user();
 
+        $roles = [];
+        $permissions = [];
+
+        if ($user) {
+            $roles = $user->roles()
+                ->get(['roles.id', 'roles.name', 'roles.slug'])
+                ->toArray();
+
+            $permissions = $user->roles()
+                ->join('role_permissions', 'roles.id', '=', 'role_permissions.role_id')
+                ->join('permissions', 'role_permissions.permission_id', '=', 'permissions.id')
+                ->where('role_permissions.granted', true)
+                ->pluck('permissions.slug')
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+
         return array_merge(parent::share($request), [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -52,6 +70,8 @@ class HandleInertiaRequests extends Middleware
                     'google_id' => $user->google_id,
                     'email_verified_at' => $user->email_verified_at,
                     'created_at' => $user->created_at,
+                    'roles' => $roles,
+                    'permissions' => $permissions,
                 ] : null,
             ],
             'notifications' => $user ? [

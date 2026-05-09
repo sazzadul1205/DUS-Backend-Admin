@@ -25,21 +25,15 @@ import {
   FiClock,
   FiCheckCircle,
   FiXCircle,
-  FiTrendingUp,
-  FiGrid,
-  FiList,
-  FiPieChart,
-  FiActivity,
-  FiBookmark,
-  FiTarget,
   FiAward,
+  FiList,
+  FiShield,
+  FiKey,
+  FiTrash2,
 } from 'react-icons/fi';
 import {
   MdCategory,
   MdWorkOutline,
-  MdDashboard,
-  MdPersonOutline,
-  MdBusinessCenter,
 } from "react-icons/md";
 import { FaSearchLocation } from "react-icons/fa";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
@@ -49,11 +43,32 @@ const Sidebar = () => {
   const { auth } = props;
   const notificationMeta = props.notifications || { unread_count: 0, recent: [] };
 
-  // Get user role
+  // Get user and their roles/permissions
   const user = auth?.user;
   const userName = user?.name || 'User';
-  const userRole = user?.role || 'job_seeker';
   const userEmail = user?.email || '';
+
+  // Get user's roles from the authenticated user
+  const userRoles = user?.roles || [];
+  const userPermissions = user?.permissions || [];
+
+  // Check if user has specific role
+  const hasRole = (roleSlug) => {
+    return userRoles.some(role => role.slug === roleSlug);
+  };
+
+  // Check if user has specific permission
+  const hasPermission = (permissionSlug) => {
+    return userPermissions.includes(permissionSlug);
+  };
+
+  // Determine primary role for UI theming
+  const primaryRole = useMemo(() => {
+    if (hasRole('super-admin') || hasRole('admin')) return 'admin';
+    if (hasRole('employer-admin') || hasRole('hr-manager') || hasRole('recruiter')) return 'employer';
+    if (hasRole('job-seeker')) return 'job_seeker';
+    return 'job_seeker';
+  }, [userRoles]);
 
   // State to track open menus
   const [openMenus, setOpenMenus] = useState({
@@ -61,6 +76,11 @@ const Sidebar = () => {
     applications: false,
     employerJobs: false,
     employerApps: false,
+    adminJobs: false,
+    adminApps: false,
+    adminUsers: false,
+    adminRoles: false,
+    adminReports: false,
   });
 
   // State for collapsed sidebar
@@ -74,12 +94,24 @@ const Sidebar = () => {
     if (url.includes('/listing') || url.includes('/locations') || url.includes('/categories')) {
       newOpenMenus.jobs = true;
       newOpenMenus.employerJobs = true;
+      newOpenMenus.adminJobs = true;
     }
 
     // Applications section
     if (url.includes('/applications') || url.includes('/apply')) {
       newOpenMenus.applications = true;
       newOpenMenus.employerApps = true;
+      newOpenMenus.adminApps = true;
+    }
+
+    // Users section
+    if (url.includes('/users')) {
+      newOpenMenus.adminUsers = true;
+    }
+
+    // Roles section
+    if (url.includes('/roles')) {
+      newOpenMenus.adminRoles = true;
     }
 
     setOpenMenus(newOpenMenus);
@@ -174,258 +206,513 @@ const Sidebar = () => {
     });
   };
 
-  // Job Seeker Menu Items
-  const jobSeekerItems = useMemo(() => [
-    {
-      name: 'Dashboard',
-      routeName: 'dashboard',
-      icon: FiHome,
-      description: 'Overview & stats',
-    },
-    {
-      name: 'Browse Jobs',
-      routeName: 'backend.public-jobs.index',
-      icon: FiSearch,
-      description: 'Find your next role',
-    },
-    {
-      name: 'My Profile',
-      routeName: 'backend.applicant.profile.show',
-      routeParams: { id: user?.id },
-      activeAliases: user?.id ? [`/backend/applicant/profile/${user.id}`] : [],
-      icon: FiUser,
-      description: 'View & edit profile',
-    },
-    {
-      name: 'My Applications',
-      routeName: 'backend.apply.index',
-      icon: FiFileText,
-      description: 'Track applications',
-    },
-    {
+  // ==========================================
+  // JOB SEEKER MENU (Role: job-seeker)
+  // ==========================================
+  const jobSeekerItems = useMemo(() => {
+    const items = [];
+
+    // Dashboard - available to all job seekers
+    if (hasPermission('dashboard.job_seeker') || hasPermission('dashboard.admin') || hasPermission('dashboard.employer')) {
+      items.push({
+        name: 'Dashboard',
+        routeName: 'dashboard',
+        icon: FiHome,
+        description: 'Overview & stats',
+      });
+    }
+
+    // Browse Jobs
+    if (hasPermission('job.view.any')) {
+      items.push({
+        name: 'Browse Jobs',
+        routeName: 'backend.public-jobs.index',
+        icon: FiSearch,
+        description: 'Find your next role',
+      });
+    }
+
+    // My Profile
+    if (hasPermission('profile.view.own') || hasPermission('profile.edit.own')) {
+      items.push({
+        name: 'My Profile',
+        routeName: 'backend.applicant.profile.show',
+        routeParams: { id: user?.id },
+        activeAliases: user?.id ? [`/backend/applicant/profile/${user.id}`] : [],
+        icon: FiUser,
+        description: 'View & edit profile',
+      });
+    }
+
+    // My Applications
+    if (hasPermission('application.view.own')) {
+      items.push({
+        name: 'My Applications',
+        routeName: 'backend.apply.index',
+        icon: FiFileText,
+        description: 'Track applications',
+      });
+    }
+
+    // CV Management (if user has permission)
+    if (hasPermission('cv.upload') || hasPermission('cv.view')) {
+      items.push({
+        name: 'My CVs',
+        routeName: 'backend.applicant.profile.show',
+        routeParams: { id: user?.id },
+        icon: FiDownload,
+        description: 'Manage your CVs',
+      });
+    }
+
+    // Notifications
+    items.push({
       name: 'Notifications',
       routeName: 'backend.notifications.index',
       icon: FiBell,
       badgeCount: notificationMeta.unread_count,
       description: 'Updates & alerts',
-    },
-  ], [user?.id, notificationMeta.unread_count]);
+    });
 
-  // Employer Menu Items - IMPROVED with dropdowns
-  const employerItems = useMemo(() => [
-    {
-      name: 'Dashboard',
-      routeName: 'dashboard',
-      icon: FiHome,
-      description: 'Overview & analytics',
-    },
-    {
-      name: 'Job Listings',
-      icon: FiBriefcase,
-      isDropdown: true,
-      dropdownKey: 'employerJobs',
-      description: 'Manage job posts',
-      subItems: [
-        {
+    return items;
+  }, [user?.id, notificationMeta.unread_count]);
+
+  // ==========================================
+  // EMPLOYER MENU (Roles: employer-admin, hr-manager, recruiter)
+  // ==========================================
+  const employerItems = useMemo(() => {
+    const items = [];
+
+    // Dashboard
+    if (hasPermission('dashboard.employer') || hasPermission('dashboard.admin')) {
+      items.push({
+        name: 'Dashboard',
+        routeName: 'dashboard',
+        icon: FiHome,
+        description: 'Overview & analytics',
+      });
+    }
+
+    // Job Listings Dropdown
+    if (hasPermission('job.create') || hasPermission('job.view.own') || hasPermission('job.edit.own')) {
+      const jobSubItems = [];
+
+      if (hasPermission('job.view.own') || hasPermission('job.view.any')) {
+        jobSubItems.push({
           name: 'All Jobs',
           routeName: 'backend.listing.index',
           activeExclude: ['/backend/listing/create'],
           icon: FiList,
           description: 'View all listings',
-        },
-        {
+        });
+      }
+
+      if (hasPermission('job.create')) {
+        jobSubItems.push({
           name: 'Create New Job',
           routeName: 'backend.listing.create',
           icon: FiPlusCircle,
           description: 'Post a new job',
-        },
-        {
+          highlight: true,
+        });
+      }
+
+      if (hasPermission('job.view.own')) {
+        jobSubItems.push({
           name: 'Active Jobs',
           routeName: 'backend.listing.index',
           routeParams: { status: 'active' },
           icon: FiCheckCircle,
-        },
-        {
+        });
+        jobSubItems.push({
           name: 'Inactive Jobs',
           routeName: 'backend.listing.index',
           routeParams: { status: 'inactive' },
           icon: FiClock,
-        },
-      ],
-    },
-    {
-      name: 'Applications',
-      icon: FiFileText,
-      isDropdown: true,
-      dropdownKey: 'employerApps',
-      description: 'Review candidates',
-      subItems: [
-        {
+        });
+      }
+
+      if (jobSubItems.length > 0) {
+        items.push({
+          name: 'Job Listings',
+          icon: FiBriefcase,
+          isDropdown: true,
+          dropdownKey: 'employerJobs',
+          description: 'Manage job posts',
+          subItems: jobSubItems,
+        });
+      }
+    }
+
+    // Applications Dropdown
+    if (hasPermission('application.view.for_own_jobs') || hasPermission('application.view.any')) {
+      const appSubItems = [];
+
+      if (hasPermission('application.view.for_own_jobs') || hasPermission('application.view.any')) {
+        appSubItems.push({
           name: 'All Applications',
           routeName: 'backend.applications.index',
           icon: FiUsers,
           description: 'View all candidates',
-        },
-        {
+        });
+      }
+
+      if (hasPermission('application.view.for_own_jobs')) {
+        appSubItems.push({
           name: 'Pending',
           routeName: 'backend.applications.index',
           routeParams: { status: 'pending' },
           icon: FiClock,
           badgeColor: 'bg-yellow-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Shortlisted',
           routeName: 'backend.applications.index',
           routeParams: { status: 'shortlisted' },
           icon: FiStar,
           badgeColor: 'bg-green-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Rejected',
           routeName: 'backend.applications.index',
           routeParams: { status: 'rejected' },
           icon: FiXCircle,
           badgeColor: 'bg-red-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Hired',
           routeName: 'backend.applications.index',
           routeParams: { status: 'hired' },
           icon: FiAward,
           badgeColor: 'bg-purple-500',
-        },
-      ],
-    },
-    {
-      name: 'Company Profile',
-      routeName: 'backend.employer.profile.edit',
-      icon: HiOutlineBuildingOffice2,
-      description: 'Company settings',
-    },
-    {
+        });
+      }
+
+      if (appSubItems.length > 0) {
+        items.push({
+          name: 'Applications',
+          icon: FiFileText,
+          isDropdown: true,
+          dropdownKey: 'employerApps',
+          description: 'Review candidates',
+          subItems: appSubItems,
+        });
+      }
+    }
+
+    // Company Profile
+    if (hasPermission('profile.edit.own')) {
+      items.push({
+        name: 'Company Profile',
+        routeName: 'backend.employer.profile.edit',
+        icon: HiOutlineBuildingOffice2,
+        description: 'Company settings',
+      });
+    }
+
+    // Notifications
+    items.push({
       name: 'Notifications',
       routeName: 'backend.notifications.index',
       icon: FiBell,
       badgeCount: notificationMeta.unread_count,
       description: 'Updates & alerts',
-    },
-  ], [notificationMeta.unread_count]);
+    });
 
-  // Admin Menu Items
-  const adminItems = useMemo(() => [
-    {
-      name: 'Dashboard',
-      routeName: 'dashboard',
-      icon: FiHome,
-      description: 'System overview',
-    },
-    {
-      name: 'Jobs Management',
-      icon: FiBriefcase,
-      isDropdown: true,
-      dropdownKey: 'jobs',
-      description: 'Manage all jobs',
-      subItems: [
-        {
+    return items;
+  }, [notificationMeta.unread_count]);
+
+  // ==========================================
+  // ADMIN MENU (Roles: super-admin, admin)
+  // ==========================================
+  const adminItems = useMemo(() => {
+    const items = [];
+
+    // Dashboard
+    if (hasPermission('dashboard.admin')) {
+      items.push({
+        name: 'Dashboard',
+        routeName: 'dashboard',
+        icon: FiHome,
+        description: 'System overview',
+      });
+    }
+
+    // Jobs Management Dropdown
+    if (hasPermission('job.view.any') || hasPermission('job.create') || hasPermission('category.view') || hasPermission('location.view')) {
+      const jobSubItems = [];
+
+      if (hasPermission('job.view.any')) {
+        jobSubItems.push({
           name: 'All Jobs',
           routeName: 'backend.listing.index',
           activeExclude: ['/backend/listing/create'],
           icon: FiList,
-        },
-        {
+        });
+      }
+
+      if (hasPermission('job.create')) {
+        jobSubItems.push({
           name: 'Create New Job',
           routeName: 'backend.listing.create',
           icon: FiPlusCircle,
           highlight: true,
-        },
-        {
+        });
+      }
+
+      if (hasPermission('location.view')) {
+        jobSubItems.push({
           name: 'Locations',
           routeName: 'backend.locations.index',
           icon: FaSearchLocation,
-        },
-        {
+        });
+      }
+
+      if (hasPermission('category.view')) {
+        jobSubItems.push({
           name: 'Categories',
           routeName: 'backend.categories.index',
           icon: MdCategory,
-        },
-        {
+        });
+      }
+
+      if (hasPermission('report.jobs')) {
+        jobSubItems.push({
           name: 'Job Statistics',
           routeName: 'backend.listing.index',
           routeParams: { view: 'stats' },
           icon: FiBarChart2,
-        },
-      ],
-    },
-    {
-      name: 'Applications',
-      icon: FiFileText,
-      isDropdown: true,
-      dropdownKey: 'applications',
-      description: 'All applications',
-      subItems: [
-        {
+        });
+      }
+
+      if (jobSubItems.length > 0) {
+        items.push({
+          name: 'Jobs Management',
+          icon: FiBriefcase,
+          isDropdown: true,
+          dropdownKey: 'adminJobs',
+          description: 'Manage all jobs',
+          subItems: jobSubItems,
+        });
+      }
+    }
+
+    // Applications Dropdown
+    if (hasPermission('application.view.any') || hasPermission('application.shortlist') || hasPermission('application.reject')) {
+      const appSubItems = [];
+
+      if (hasPermission('application.view.any')) {
+        appSubItems.push({
           name: 'All Applications',
           routeName: 'backend.applications.index',
           icon: FiUsers,
-        },
-        {
+        });
+      }
+
+      if (hasPermission('application.view.any')) {
+        appSubItems.push({
           name: 'Pending',
           routeName: 'backend.applications.index',
           routeParams: { status: 'pending' },
           icon: FiClock,
           badgeColor: 'bg-yellow-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Shortlisted',
           routeName: 'backend.applications.index',
           routeParams: { status: 'shortlisted' },
           icon: FiStar,
           badgeColor: 'bg-green-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Rejected',
           routeName: 'backend.applications.index',
           routeParams: { status: 'rejected' },
           icon: FiXCircle,
           badgeColor: 'bg-red-500',
-        },
-        {
+        });
+        appSubItems.push({
           name: 'Hired',
           routeName: 'backend.applications.index',
           routeParams: { status: 'hired' },
           icon: FiAward,
           badgeColor: 'bg-purple-500',
-        },
-      ],
-    },
-    {
-      name: 'Users Management',
-      routeName: 'admin.users.index',
-      icon: FiUsers,
-      description: 'Manage users',
-    },
-    {
+        });
+      }
+
+      if (hasPermission('report.applications')) {
+        appSubItems.push({
+          name: 'Reports',
+          routeName: 'backend.applications.index',
+          routeParams: { view: 'reports' },
+          icon: FiBarChart2,
+        });
+      }
+
+      if (appSubItems.length > 0) {
+        items.push({
+          name: 'Applications',
+          icon: FiFileText,
+          isDropdown: true,
+          dropdownKey: 'adminApps',
+          description: 'All applications',
+          subItems: appSubItems,
+        });
+      }
+    }
+
+    // Users Management Dropdown
+    if (hasPermission('user.view') || hasPermission('user.create') || hasPermission('user.edit')) {
+      const userSubItems = [];
+
+      if (hasPermission('user.view')) {
+        userSubItems.push({
+          name: 'All Users',
+          routeName: 'admin.users.index',
+          icon: FiUsers,
+        });
+      }
+
+      if (hasPermission('user.create')) {
+        userSubItems.push({
+          name: 'Create User',
+          routeName: 'admin.users.create',
+          icon: FiPlusCircle,
+        });
+      }
+
+      if (userSubItems.length > 0) {
+        items.push({
+          name: 'Users Management',
+          icon: FiUsers,
+          isDropdown: true,
+          dropdownKey: 'adminUsers',
+          description: 'Manage platform users',
+          subItems: userSubItems,
+        });
+      }
+    }
+
+    // Roles & Permissions Dropdown
+    if (hasPermission('role.view') || hasPermission('role.create') || hasPermission('role.edit') || hasPermission('role.delete')) {
+      const roleSubItems = [];
+
+      if (hasPermission('role.view')) {
+        roleSubItems.push({
+          name: 'All Roles',
+          routeName: 'backend.roles.index',
+          icon: FiKey,
+        });
+      }
+
+      if (hasPermission('role.create')) {
+        roleSubItems.push({
+          name: 'Create Role',
+          routeName: 'backend.roles.create',
+          icon: FiPlusCircle,
+        });
+      }
+
+      // Trashed roles (if user can view deleted)
+      if (hasPermission('role.view')) {
+        roleSubItems.push({
+          name: 'Trashed Roles',
+          routeName: 'backend.roles.trashed',
+          icon: FiTrash2,
+        });
+      }
+
+      if (roleSubItems.length > 0) {
+        items.push({
+          name: 'Roles & Permissions',
+          icon: FiShield,
+          isDropdown: true,
+          dropdownKey: 'adminRoles',
+          description: 'Manage roles & permissions',
+          subItems: roleSubItems,
+        });
+      }
+    }
+
+    // Reports Dropdown
+    if (hasPermission('report.jobs') || hasPermission('report.applications') || hasPermission('report.users') || hasPermission('report.export')) {
+      const reportSubItems = [];
+
+      if (hasPermission('report.jobs')) {
+        reportSubItems.push({
+          name: 'Job Reports',
+          routeName: 'admin.reports.jobs',
+          icon: FiBarChart2,
+        });
+      }
+
+      if (hasPermission('report.applications')) {
+        reportSubItems.push({
+          name: 'Application Reports',
+          routeName: 'admin.reports.applications',
+          icon: FiFileText,
+        });
+      }
+
+      if (hasPermission('report.users')) {
+        reportSubItems.push({
+          name: 'User Reports',
+          routeName: 'admin.reports.users',
+          icon: FiUsers,
+        });
+      }
+
+      if (reportSubItems.length > 0) {
+        items.push({
+          name: 'Reports',
+          icon: FiBarChart2,
+          isDropdown: true,
+          dropdownKey: 'adminReports',
+          description: 'Analytics & reports',
+          subItems: reportSubItems,
+        });
+      }
+    }
+
+    // Notifications
+    items.push({
       name: 'Notifications',
       routeName: 'backend.notifications.index',
       icon: FiBell,
       badgeCount: notificationMeta.unread_count,
       description: 'System alerts',
-    },
-    {
-      name: 'Settings',
-      routeName: 'admin.settings',
-      icon: FiSettings,
-      description: 'System configuration',
-    },
-  ], [notificationMeta.unread_count]);
+    });
 
-  // Get menu items based on user role
+    // Settings (if user has permission)
+    if (hasPermission('profile.edit.any')) {
+      items.push({
+        name: 'Settings',
+        routeName: 'admin.settings',
+        icon: FiSettings,
+        description: 'System configuration',
+      });
+    }
+
+    return items;
+  }, [notificationMeta.unread_count]);
+
+  // Get menu items based on user's roles
   const menuItems = useMemo(() => {
-    if (userRole === 'job_seeker') return jobSeekerItems;
-    if (userRole === 'employer') return employerItems;
-    if (userRole === 'admin') return adminItems;
-    return [];
-  }, [userRole, jobSeekerItems, employerItems, adminItems]);
+    // Super Admin and Admin get admin menu
+    if (hasRole('super-admin') || hasRole('admin')) {
+      return adminItems;
+    }
+    // Employer roles get employer menu
+    if (hasRole('employer-admin') || hasRole('hr-manager') || hasRole('recruiter')) {
+      return employerItems;
+    }
+    // Job Seeker role
+    if (hasRole('job-seeker')) {
+      return jobSeekerItems;
+    }
+    // Default fallback
+    return jobSeekerItems;
+  }, [hasRole, adminItems, employerItems, jobSeekerItems]);
 
   // Get role-based color scheme
   const roleColors = {
@@ -458,7 +745,18 @@ const Sidebar = () => {
     },
   };
 
-  const colors = roleColors[userRole] || roleColors.job_seeker;
+  const colors = roleColors[primaryRole] || roleColors.job_seeker;
+
+  // Get user's primary role name for display
+  const getPrimaryRoleName = () => {
+    if (hasRole('super-admin')) return 'Super Administrator';
+    if (hasRole('admin')) return 'Administrator';
+    if (hasRole('employer-admin')) return 'Employer Admin';
+    if (hasRole('hr-manager')) return 'HR Manager';
+    if (hasRole('recruiter')) return 'Recruiter';
+    if (hasRole('job-seeker')) return 'Job Seeker';
+    return 'User';
+  };
 
   // Render sub menu item
   const renderSubMenuItem = (subItem) => {
@@ -476,6 +774,7 @@ const Sidebar = () => {
             ? `${colors.active} font-medium border-l-3 ${colors.border}`
             : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
           }
+          ${subItem.highlight ? 'bg-linear-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30' : ''}
         `}
       >
         {subItem.icon && (
@@ -599,7 +898,7 @@ const Sidebar = () => {
         {!isCollapsed && (
           <div className="px-4 mb-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {userRole === 'admin' ? 'Administration' : userRole === 'employer' ? 'Employer Portal' : 'Job Seeker'}
+              {primaryRole === 'admin' ? 'Administration' : primaryRole === 'employer' ? 'Employer Portal' : 'Job Seeker'}
             </p>
           </div>
         )}
@@ -608,6 +907,17 @@ const Sidebar = () => {
           {menuItems.map((item) => renderMenuItem(item))}
         </div>
 
+        {/* Show roles info when collapsed */}
+        {isCollapsed && userRoles.length > 0 && (
+          <div className="mt-4 flex justify-center">
+            <div className="relative group">
+              <div className={`w-2 h-2 rounded-full ${colors.bg} cursor-help`}></div>
+              <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50">
+                {userRoles.map(r => r.name).join(', ')}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* User Section */}
@@ -623,10 +933,16 @@ const Sidebar = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{userName}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 capitalize flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${colors.bg}`}></span>
-                  {userRole === 'admin' ? 'Administrator' : userRole === 'employer' ? 'Employer' : 'Job Seeker'}
+                  {getPrimaryRoleName()}
                 </p>
+                {/* Show additional roles */}
+                {userRoles.length > 1 && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                    +{userRoles.slice(1).map(r => r.name).join(', ')}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -642,10 +958,15 @@ const Sidebar = () => {
           </>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div className={`w-10 h-10 rounded-full bg-linear-to-br ${colors.light} ${colors.dark} flex items-center justify-center shadow-md`}>
+            <div className={`w-10 h-10 rounded-full bg-linear-to-br ${colors.light} ${colors.dark} flex items-center justify-center shadow-md relative group`}>
               <span className="text-white font-semibold text-sm">
                 {userName.charAt(0).toUpperCase()}
               </span>
+              {/* Tooltip on hover */}
+              <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50">
+                {userName}<br />
+                {getPrimaryRoleName()}
+              </div>
             </div>
             <Link
               href={route('logout')}
