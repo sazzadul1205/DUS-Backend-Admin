@@ -8,14 +8,14 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 import { FaArrowLeft, FaBriefcase, FaEdit } from 'react-icons/fa';
 
 // Step Components
-import { StepIndicator } from '../../../components/JobListingSteps/StepIndicator';
-import { StepNavigation } from '../../../components/JobListingSteps/StepNavigation';
-import { BasicInfoStep } from '../../../components/JobListingSteps/BasicInfoStep';
-import { RequirementsStep } from '../../../components/JobListingSteps/RequirementsStep';
-import { LocationStep } from '../../../components/JobListingSteps/LocationStep';
-import { CompensationStep } from '../../../components/JobListingSteps/CompensationStep';
-import { PublishingStep } from '../../../components/JobListingSteps/PublishingStep';
 import { ReviewStep } from '../../../components/JobListingSteps/ReviewStep';
+import { LocationStep } from '../../../components/JobListingSteps/LocationStep';
+import { StepIndicator } from '../../../components/JobListingSteps/StepIndicator';
+import { BasicInfoStep } from '../../../components/JobListingSteps/BasicInfoStep';
+import { PublishingStep } from '../../../components/JobListingSteps/PublishingStep';
+import { StepNavigation } from '../../../components/JobListingSteps/StepNavigation';
+import { RequirementsStep } from '../../../components/JobListingSteps/RequirementsStep';
+import { CompensationStep } from '../../../components/JobListingSteps/CompensationStep';
 
 // SweetAlert
 import Swal from 'sweetalert2';

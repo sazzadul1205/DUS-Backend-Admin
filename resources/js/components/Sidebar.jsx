@@ -78,8 +78,6 @@ const Sidebar = () => {
     employerApps: false,
     adminJobs: false,
     adminApps: false,
-    adminUsers: false,
-    adminRoles: false,
     adminReports: false,
   });
 
@@ -102,16 +100,6 @@ const Sidebar = () => {
       newOpenMenus.applications = true;
       newOpenMenus.employerApps = true;
       newOpenMenus.adminApps = true;
-    }
-
-    // Users section
-    if (url.includes('/users')) {
-      newOpenMenus.adminUsers = true;
-    }
-
-    // Roles section
-    if (url.includes('/roles')) {
-      newOpenMenus.adminRoles = true;
     }
 
     setOpenMenus(newOpenMenus);
@@ -562,36 +550,14 @@ const Sidebar = () => {
       }
     }
 
-    // Users Management Dropdown
+    // Single Users Management Link (no dropdown)
     if (hasPermission('user.view') || hasPermission('user.create') || hasPermission('user.edit')) {
-      const userSubItems = [];
-
-      if (hasPermission('user.view')) {
-        userSubItems.push({
-          name: 'All Users',
-          routeName: 'admin.users.index',
-          icon: FiUsers,
-        });
-      }
-
-      if (hasPermission('user.create')) {
-        userSubItems.push({
-          name: 'Create User',
-          routeName: 'admin.users.create',
-          icon: FiPlusCircle,
-        });
-      }
-
-      if (userSubItems.length > 0) {
-        items.push({
-          name: 'Users Management',
-          icon: FiUsers,
-          isDropdown: true,
-          dropdownKey: 'adminUsers',
-          description: 'Manage platform users',
-          subItems: userSubItems,
-        });
-      }
+      items.push({
+        name: 'Users Management',
+        routeName: 'backend.users.index',
+        icon: FiUsers,
+        description: 'Manage platform users',
+      });
     }
 
     // Roles & Permissions Dropdown
@@ -833,7 +799,7 @@ const Sidebar = () => {
       );
     }
 
-    // For non-dropdown items
+    // For non-dropdown items (like Users Management)
     const isMenuItemActive = item.routeName
       ? isRouteActive(item.routeName, item.routeParams || {}, item.activeAliases || [], { exact: item.exact, excludePaths: item.activeExclude })
       : isPathActive(item.href);

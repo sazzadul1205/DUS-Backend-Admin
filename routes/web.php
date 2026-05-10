@@ -22,6 +22,7 @@ use App\Http\Controllers\Backend\JobCategoryController;
 use App\Http\Controllers\Backend\ApplicationsController;
 use App\Http\Controllers\Backend\NotificationController;
 use App\Http\Controllers\Backend\RoleController;
+use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 
@@ -216,10 +217,10 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Apply To Job Routes
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Apply To Job Routes
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('apply')->name('apply.')->group(function () {
             Route::get('/', [ApplyController::class, 'index'])->name('index');
@@ -236,10 +237,10 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Applicant Profile Routes
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Applicant Profile Routes
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('applicant')->name('applicant.')->group(function () {
             Route::delete('/profile/{applicantProfile}', [ApplicantProfileController::class, 'destroy'])->name('profile.destroy');
@@ -256,10 +257,10 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Employer Profile Routes
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Employer Profile Routes
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('employer')->name('employer.')->group(function () {
             // Profile routes
@@ -270,10 +271,10 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Applications Management (Enhanced with Bulk Actions & CV Downloads)
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Applications Management (Enhanced with Bulk Actions & CV Downloads)
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('applications')->name('applications.')->group(function () {
             Route::get('/', [ApplicationsController::class, 'index'])->name('index');
@@ -293,10 +294,33 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Notifications Management
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Users Management
+        |--------------------------------------------------------------------------
+        */
+
+        Route::prefix('users')->name('users.')->group(function () {
+            // Main CRUD
+            Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::post('/', [UserController::class, 'store'])->name('store');
+            Route::put('/{id}', [UserController::class, 'update'])->name('update');
+            Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy');
+
+            // Soft delete & restore
+            Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore');
+            Route::post('/{id}/verify', [UserController::class, 'verify'])->name('users.verify');
+            Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('force-delete');
+
+            // Bulk operations
+            Route::post('/bulk/delete', [UserController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/bulk/restore', [UserController::class, 'bulkRestore'])->name('bulk-restore');
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notifications Management
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [NotificationController::class, 'index'])->name('index');
