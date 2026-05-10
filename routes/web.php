@@ -110,30 +110,40 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Locations Management
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Locations Management
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('locations')->name('locations.')->group(function () {
-            // Custom routes first
-            Route::patch('{location}/toggle', [LocationController::class, 'toggleActive'])->name('toggle');
-            Route::patch('{location}/restore', [LocationController::class, 'restore'])->name('restore');
-            Route::delete('{location}/force-delete', [LocationController::class, 'forceDelete'])->name('force-delete');
-            Route::get('active', [LocationController::class, 'getActiveLocations'])->name('active');
-
-            // Resource routes
+            // Main CRUD
             Route::get('/', [LocationController::class, 'index'])->name('index');
             Route::post('/', [LocationController::class, 'store'])->name('store');
-            Route::put('{location}', [LocationController::class, 'update'])->name('update');
-            Route::delete('{location}', [LocationController::class, 'destroy'])->name('destroy');
+            Route::put('/{location}', [LocationController::class, 'update'])->name('update');
+            Route::delete('/{location}', [LocationController::class, 'destroy'])->name('destroy');
+
+            // Status toggles
+            Route::patch('/{location}/toggle', [LocationController::class, 'toggleActive'])->name('toggle');
+
+            // Soft delete & restore
+            Route::patch('/{id}/restore', [LocationController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force-delete', [LocationController::class, 'forceDelete'])->name('force-delete');
+
+            // Bulk operations
+            Route::post('/bulk/activate', [LocationController::class, 'bulkActivate'])->name('bulk-activate');
+            Route::post('/bulk/deactivate', [LocationController::class, 'bulkDeactivate'])->name('bulk-deactivate');
+            Route::post('/bulk/delete', [LocationController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/bulk/restore', [LocationController::class, 'bulkRestore'])->name('bulk-restore');
+
+            // Utilities
+            Route::get('/active', [LocationController::class, 'getActiveLocations'])->name('active');
         });
 
         /*
-    |--------------------------------------------------------------------------
-    | Job Categories Management
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Job Categories Management
+        |--------------------------------------------------------------------------
+        */
 
         Route::prefix('categories')->name('categories.')->group(function () {
             // Custom routes first

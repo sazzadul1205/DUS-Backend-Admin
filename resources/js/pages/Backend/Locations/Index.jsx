@@ -1,33 +1,499 @@
-// resources/js/pages/Locations/Index.jsx
+// resources/js/pages/Backend/Locations/Index.jsx
 
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { useState, useMemo, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 
 // Icons
-import { FaPlus, FaEdit, FaTrash, FaMapMarkerAlt, FaTimes, FaSpinner, FaUndo } from 'react-icons/fa';
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaSpinner,
+  FaMapMarkerAlt,
+  FaTimes,
+  FaUndo,
+  FaFilter,
+  FaSearch,
+  FaChevronDown,
+  FaChevronUp,
+  FaCheckCircle,
+  FaBan,
+  FaCheckDouble,
+  FaChevronLeft,
+  FaChevronRight,
+  FaEye,
+  FaBuilding,
+  FaExclamationTriangle,
+} from 'react-icons/fa';
 
-// Layouts
+// Layout
 import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 
 // SweetAlert2
 import Swal from 'sweetalert2';
 
-export default function LocationsIndex({ locations }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function LocationsIndex({ locations: initialLocations, filters: initialFilters = {} }) {
+  const { flash } = usePage().props;
+
+  // States
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [restoringId, setRestoringId] = useState(null);
+  const [forceDeletingId, setForceDeletingId] = useState(null);
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
+  // Pagination state
+  const [locations, setLocations] = useState(initialLocations);
+  const [currentPage, setCurrentPage] = useState(initialLocations?.current_page || 1);
+
+  // Filter states
+  const [filters, setFilters] = useState({
+    search: initialFilters.search || '',
+    status: initialFilters.status || 'all',
+  });
+
+  // Form data for modal
   const [formData, setFormData] = useState({
     name: '',
     address: '',
     is_active: true,
   });
 
+  // Get locations array from paginated response
+  const locationItems = useMemo(() => {
+    if (Array.isArray(locations)) return locations;
+    if (locations && Array.isArray(locations.data)) return locations.data;
+    return [];
+  }, [locations]);
+
+  // Pagination info
+  const pagination = useMemo(() => {
+    if (locations && typeof locations === 'object' && 'current_page' in locations) {
+      return {
+        currentPage: locations.current_page,
+        lastPage: locations.last_page,
+        perPage: locations.per_page,
+        total: locations.total,
+        from: locations.from,
+        to: locations.to,
+        links: locations.links || [],
+      };
+    }
+    return null;
+  }, [locations]);
+
+  // Apply filters
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      router.get(route('backend.locations.index'), {
+        ...filters,
+        page: 1,
+      }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onSuccess: (page) => {
+          setLocations(page.props.locations);
+          setCurrentPage(1);
+        },
+      });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [filters]);
+
+  // Keep local locations in sync
+  useEffect(() => {
+    setLocations(initialLocations);
+    setCurrentPage(initialLocations?.current_page || 1);
+  }, [initialLocations]);
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    if (page === pagination?.currentPage) return;
+    if (page < 1 || page > pagination?.lastPage) return;
+
+    router.get(route('backend.locations.index'), {
+      ...filters,
+      page: page,
+    }, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+      onSuccess: (page) => {
+        setLocations(page.props.locations);
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+    });
+  };
+
+  // Filtered locations
+  const filteredLocations = useMemo(() => {
+    let filtered = [...locationItems];
+
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(loc =>
+        loc.name.toLowerCase().includes(searchLower) ||
+        (loc.address && loc.address.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (filters.status !== 'all') {
+      if (filters.status === 'active') {
+        filtered = filtered.filter(loc => loc.is_active && !loc.deleted_at);
+      } else if (filters.status === 'inactive') {
+        filtered = filtered.filter(loc => !loc.is_active && !loc.deleted_at);
+      } else if (filters.status === 'deleted') {
+        filtered = filtered.filter(loc => loc.deleted_at);
+      }
+    }
+
+    // Sort: active first, then inactive, then deleted
+    return filtered.sort((a, b) => {
+      const aIsTrashed = a.deleted_at !== null;
+      const bIsTrashed = b.deleted_at !== null;
+
+      if (aIsTrashed && !bIsTrashed) return 1;
+      if (!aIsTrashed && bIsTrashed) return -1;
+
+      if (!aIsTrashed && !bIsTrashed) {
+        if (a.is_active && !b.is_active) return -1;
+        if (!a.is_active && b.is_active) return 1;
+        return a.name.localeCompare(b.name);
+      }
+
+      return new Date(b.deleted_at) - new Date(a.deleted_at);
+    });
+  }, [locationItems, filters]);
+
+  // Stats
+  const activeCount = locationItems.filter(loc => !loc.deleted_at && loc.is_active).length;
+  const inactiveCount = locationItems.filter(loc => !loc.deleted_at && !loc.is_active).length;
+  const deletedCount = locationItems.filter(loc => loc.deleted_at).length;
+
+  // Handle filter change
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Reset filters
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      status: 'all',
+    });
+  };
+
+  // Check if any filter is active
+  const hasActiveFilters = () => {
+    return filters.search !== '' || filters.status !== 'all';
+  };
+
+  // Bulk selection handlers
+  const handleSelectAll = () => {
+    const nonDeletedLocations = filteredLocations.filter(loc => !loc.deleted_at);
+    if (selectedLocations.length === nonDeletedLocations.length) {
+      setSelectedLocations([]);
+    } else {
+      setSelectedLocations(nonDeletedLocations.map(loc => loc.id));
+    }
+  };
+
+  const handleSelectLocation = (locationId) => {
+    setSelectedLocations(prev =>
+      prev.includes(locationId)
+        ? prev.filter(id => id !== locationId)
+        : [...prev, locationId]
+    );
+  };
+
+  // Bulk activate
+  const handleBulkActivate = () => {
+    if (selectedLocations.length === 0) {
+      Swal.fire('No Selection', 'Please select at least one location.', 'warning');
+      return;
+    }
+
+    Swal.fire({
+      title: 'Activate Locations',
+      text: `Are you sure you want to activate ${selectedLocations.length} location(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, activate',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsBulkProcessing(true);
+
+        router.post(route('backend.locations.bulk-activate'), {
+          location_ids: selectedLocations
+        }, {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Activated!',
+              text: `${selectedLocations.length} location(s) have been activated.`,
+              timer: 1500,
+              showConfirmButton: false
+            });
+            setSelectedLocations([]);
+            setIsBulkProcessing(false);
+            router.reload();
+          },
+          onError: (error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: error?.message || 'Failed to activate locations.',
+            });
+            setIsBulkProcessing(false);
+          }
+        });
+      }
+    });
+  };
+
+  // Bulk deactivate
+  const handleBulkDeactivate = () => {
+    if (selectedLocations.length === 0) {
+      Swal.fire('No Selection', 'Please select at least one location.', 'warning');
+      return;
+    }
+
+    Swal.fire({
+      title: 'Deactivate Locations',
+      text: `Are you sure you want to deactivate ${selectedLocations.length} location(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#f59e0b',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, deactivate',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsBulkProcessing(true);
+
+        router.post(route('backend.locations.bulk-deactivate'), {
+          location_ids: selectedLocations
+        }, {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Deactivated!',
+              text: `${selectedLocations.length} location(s) have been deactivated.`,
+              timer: 1500,
+              showConfirmButton: false
+            });
+            setSelectedLocations([]);
+            setIsBulkProcessing(false);
+            router.reload();
+          },
+          onError: (error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: error?.message || 'Failed to deactivate locations.',
+            });
+            setIsBulkProcessing(false);
+          }
+        });
+      }
+    });
+  };
+
+  // Bulk delete
+  const handleBulkDelete = () => {
+    if (selectedLocations.length === 0) {
+      Swal.fire('No Selection', 'Please select at least one location.', 'warning');
+      return;
+    }
+
+    Swal.fire({
+      title: 'Delete Locations',
+      text: `Are you sure you want to delete ${selectedLocations.length} location(s)? This will move them to trash.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsBulkProcessing(true);
+
+        router.post(route('backend.locations.bulk-delete'), {
+          location_ids: selectedLocations
+        }, {
+          preserveScroll: true,
+          onSuccess: (page) => {
+            if (page.props.flash?.error) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Cannot Delete',
+                text: page.props.flash.error,
+                confirmButtonColor: '#2563eb',
+              });
+            } else {
+              Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: `${selectedLocations.length} location(s) have been moved to trash.`,
+                timer: 1500,
+                showConfirmButton: false
+              });
+              setSelectedLocations([]);
+              router.reload();
+            }
+            setIsBulkProcessing(false);
+          },
+          onError: (error) => {
+            let errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete locations.';
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: errorMessage,
+              confirmButtonColor: '#2563eb',
+            });
+            setIsBulkProcessing(false);
+          }
+        });
+      }
+    });
+  };
+
+  // Bulk force delete (permanently delete multiple locations)
+  const handleBulkForceDelete = () => {
+    if (selectedLocations.length === 0) {
+      Swal.fire('No Selection', 'Please select at least one location.', 'warning');
+      return;
+    }
+
+    // Check if selected locations are all trashed
+    const trashedSelected = selectedLocations.filter(id => {
+      const location = locationItems.find(loc => loc.id === id);
+      return location && location.deleted_at;
+    });
+
+    if (trashedSelected.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Deleted Locations',
+        text: 'Please select locations that are already in trash to permanently delete them.',
+        confirmButtonColor: '#2563eb',
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Permanently Delete Locations',
+      html: `Are you sure you want to <strong>permanently delete</strong> ${trashedSelected.length} location(s)?<br/><br/>This action <strong>cannot be undone</strong> and will remove these locations from the database completely.`,
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, permanently delete',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsBulkProcessing(true);
+
+        // Send requests for each selected trashed location
+        const deletePromises = trashedSelected.map(id => {
+          return router.delete(route('backend.locations.force-delete', id), {
+            preserveScroll: true,
+            onError: () => { }
+          });
+        });
+
+        Promise.all(deletePromises).then(() => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: `${trashedSelected.length} location(s) have been permanently deleted.`,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          setSelectedLocations([]);
+          setIsBulkProcessing(false);
+          router.reload();
+        }).catch(() => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: 'Failed to permanently delete some locations.',
+          });
+          setIsBulkProcessing(false);
+          router.reload();
+        });
+      }
+    });
+  };
+
+  // Bulk restore
+  const handleBulkRestore = () => {
+    if (selectedLocations.length === 0) {
+      Swal.fire('No Selection', 'Please select at least one location.', 'warning');
+      return;
+    }
+
+    Swal.fire({
+      title: 'Restore Locations',
+      text: `Are you sure you want to restore ${selectedLocations.length} location(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, restore',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsBulkProcessing(true);
+
+        router.post(route('backend.locations.bulk-restore'), {
+          location_ids: selectedLocations
+        }, {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Restored!',
+              text: `${selectedLocations.length} location(s) have been restored.`,
+              timer: 1500,
+              showConfirmButton: false
+            });
+            setSelectedLocations([]);
+            setIsBulkProcessing(false);
+            router.reload();
+          },
+          onError: (error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: error?.message || 'Failed to restore locations.',
+            });
+            setIsBulkProcessing(false);
+          }
+        });
+      }
+    });
+  };
+
+  // Modal handlers
   const handleOpenCreate = () => {
     setEditingLocation(null);
     setFormData({ name: '', address: '', is_active: true });
-    setIsOpen(true);
+    setIsModalOpen(true);
   };
 
   const handleOpenEdit = (location) => {
@@ -37,11 +503,11 @@ export default function LocationsIndex({ locations }) {
       address: location.address || '',
       is_active: location.is_active,
     });
-    setIsOpen(true);
+    setIsModalOpen(true);
   };
 
-  const handleClose = () => {
-    setIsOpen(false);
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
     setEditingLocation(null);
   };
 
@@ -52,72 +518,216 @@ export default function LocationsIndex({ locations }) {
     if (editingLocation) {
       router.put(route('backend.locations.update', editingLocation.id), formData, {
         onSuccess: () => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Updated!',
+            text: 'Location updated successfully.',
+            timer: 1500,
+            showConfirmButton: false,
+          });
           setIsSubmitting(false);
-          handleClose();
+          handleCloseModal();
+          router.reload();
         },
-        onError: () => {
+        onError: (error) => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: error?.message || 'Failed to update location.',
+          });
           setIsSubmitting(false);
         },
       });
     } else {
       router.post(route('backend.locations.store'), formData, {
         onSuccess: () => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Created!',
+            text: 'Location created successfully.',
+            timer: 1500,
+            showConfirmButton: false,
+          });
           setIsSubmitting(false);
-          handleClose();
+          handleCloseModal();
+          router.reload();
         },
-        onError: () => {
+        onError: (error) => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: error?.message || 'Failed to create location.',
+          });
           setIsSubmitting(false);
         },
       });
     }
   };
 
-  const handleDelete = (id) => {
+  // Single location actions
+  const handleDelete = (id, name) => {
     Swal.fire({
-      title: 'Are you sure?',
-      text: "This action cannot be undone!",
+      title: 'Delete Location?',
+      text: `Are you sure you want to delete "${name}"? This will move it to trash.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete',
       cancelButtonText: 'Cancel',
-      reverseButtons: true,
     }).then((result) => {
       if (result.isConfirmed) {
         setDeletingId(id);
 
         router.delete(route('backend.locations.destroy', id), {
-          onSuccess: () => {
-            Swal.fire({
-              icon: 'success',
-              title: 'Deleted!',
-              text: 'Location has been deleted.',
-              timer: 1500,
-              showConfirmButton: false,
-            });
+          preserveScroll: true,
+          onSuccess: (page) => {
+            if (page.props.flash?.error) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Cannot Delete',
+                text: page.props.flash.error,
+                confirmButtonColor: '#2563eb',
+              });
+            } else {
+              Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: 'Location has been moved to trash.',
+                timer: 1500,
+                showConfirmButton: false,
+              });
+              router.reload();
+            }
           },
-          onError: () => {
+          onError: (errors) => {
+            let errorMessage = 'Failed to delete location.';
+            if (errors?.response?.data?.message) {
+              errorMessage = errors.response.data.message;
+            } else if (errors?.response?.data?.error) {
+              errorMessage = errors.response.data.error;
+            } else if (errors?.message) {
+              errorMessage = errors.message;
+            }
             Swal.fire({
               icon: 'error',
-              title: 'Failed!',
-              text: 'Something went wrong.',
+              title: 'Delete Failed',
+              text: errorMessage,
+              confirmButtonColor: '#2563eb',
             });
           },
-          onFinish: () => {
-            setDeletingId(null);
-          },
+          onFinish: () => setDeletingId(null),
         });
       }
     });
   };
 
-  const handleToggleActive = (location) => {
+  // Force delete (permanently delete a trashed location)
+  const handleForceDelete = (id, name) => {
     Swal.fire({
-      title: 'Are you sure?',
-      text: `This will ${location.is_active ? 'deactivate' : 'activate'} this location.`,
+      title: 'Permanently Delete Location?',
+      html: `Are you sure you want to <strong>permanently delete</strong> "${name}"?<br/><br/>This action <strong>cannot be undone</strong> and will remove this location from the database completely.`,
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, permanently delete',
+      cancelButtonText: 'Cancel',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setForceDeletingId(id);
+
+        router.delete(route('backend.locations.force-delete', id), {
+          preserveScroll: true,
+          onSuccess: (page) => {
+            if (page.props.flash?.error) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Cannot Delete',
+                text: page.props.flash.error,
+                confirmButtonColor: '#2563eb',
+              });
+            } else {
+              Swal.fire({
+                icon: 'success',
+                title: 'Permanently Deleted!',
+                text: `"${name}" has been permanently deleted from the database.`,
+                timer: 1500,
+                showConfirmButton: false,
+              });
+              router.reload();
+            }
+          },
+          onError: (errors) => {
+            let errorMessage = 'Failed to permanently delete location.';
+            if (errors?.response?.data?.message) {
+              errorMessage = errors.response.data.message;
+            } else if (errors?.response?.data?.error) {
+              errorMessage = errors.response.data.error;
+            } else if (errors?.message) {
+              errorMessage = errors.message;
+            }
+            Swal.fire({
+              icon: 'error',
+              title: 'Delete Failed',
+              text: errorMessage,
+              confirmButtonColor: '#2563eb',
+            });
+          },
+          onFinish: () => setForceDeletingId(null),
+        });
+      }
+    });
+  };
+
+  const handleRestore = (id, name) => {
+    Swal.fire({
+      title: 'Restore Location?',
+      text: `Are you sure you want to restore "${name}"?`,
       icon: 'question',
       showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, restore',
+      cancelButtonText: 'Cancel',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setRestoringId(id);
+
+        router.patch(route('backend.locations.restore', id), {}, {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Restored!',
+              text: 'Location has been restored successfully.',
+              timer: 1500,
+              showConfirmButton: false,
+            });
+            router.reload();
+          },
+          onError: (errors) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Restore Failed',
+              text: errors?.message || 'Failed to restore location.',
+              confirmButtonColor: '#2563eb',
+            });
+          },
+          onFinish: () => setRestoringId(null),
+        });
+      }
+    });
+  };
+
+  const handleToggle = (location) => {
+    Swal.fire({
+      title: location.is_active ? 'Deactivate Location?' : 'Activate Location?',
+      text: `This will ${location.is_active ? 'deactivate' : 'activate'} "${location.name}".`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, continue',
     }).then((result) => {
       if (result.isConfirmed) {
@@ -125,187 +735,551 @@ export default function LocationsIndex({ locations }) {
 
         router.patch(route('backend.locations.toggle', location.id), {}, {
           preserveScroll: true,
+          onSuccess: () => {
+            router.reload();
+            Swal.fire({
+              icon: 'success',
+              title: 'Updated!',
+              text: `Location has been ${!location.is_active ? 'activated' : 'deactivated'}.`,
+              timer: 1500,
+              showConfirmButton: false,
+            });
+          },
+          onError: (error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: error?.message || 'Failed to update location status.',
+              confirmButtonColor: '#2563eb',
+            });
+          },
           onFinish: () => setTogglingId(null),
         });
       }
     });
   };
 
-  const handleRestore = (id) => {
-    Swal.fire({
-      title: 'Restore location?',
-      text: 'This will restore the location.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, restore it',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        router.patch(route('backend.locations.restore', id), {}, {
-          onSuccess: () => {
-            Swal.fire({
-              icon: 'success',
-              title: 'Restored!',
-              timer: 1500,
-              showConfirmButton: false,
-            });
-          },
-        });
-      }
-    });
+  // Pagination component
+  const Pagination = () => {
+    if (!pagination || pagination.lastPage <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(pagination.lastPage, startPage + maxVisible - 1);
+
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="text-sm text-gray-500">
+          Showing <span className="font-medium">{pagination.from || 0}</span> to{' '}
+          <span className="font-medium">{pagination.to || 0}</span> of{' '}
+          <span className="font-medium">{pagination.total}</span> results
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handlePageChange(pagination.currentPage - 1)}
+            disabled={pagination.currentPage === 1}
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+          >
+            <FaChevronLeft size={12} />
+            Previous
+          </button>
+
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => handlePageChange(1)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2 text-gray-400">...</span>}
+            </>
+          )}
+
+          {pages.map(page => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition ${page === pagination.currentPage
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          {endPage < pagination.lastPage && (
+            <>
+              {endPage < pagination.lastPage - 1 && <span className="px-2 text-gray-400">...</span>}
+              <button
+                onClick={() => handlePageChange(pagination.lastPage)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+              >
+                {pagination.lastPage}
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => handlePageChange(pagination.currentPage + 1)}
+            disabled={pagination.currentPage === pagination.lastPage}
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === pagination.lastPage
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+          >
+            Next
+            <FaChevronRight size={12} />
+          </button>
+        </div>
+      </div>
+    );
   };
+
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: flash.success,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: flash.error,
+        confirmButtonColor: '#2563eb',
+      });
+    }
+  }, [flash]);
 
   return (
     <AuthenticatedLayout>
       <Head title="Locations" />
 
       <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6 animate-fade-in">
-            <h1 className="text-3xl font-bold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              Locations
-            </h1>
-            <button
-              onClick={handleOpenCreate}
-              className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-            >
-              <FaPlus size={16} />
-              Add Location
-            </button>
+        <div className="mx-auto">
+          {/* HEADER */}
+          <div className="flex justify-between items-start mb-6 animate-fade-in">
+            <div>
+              <h1 className="text-3xl font-bold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Locations
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Manage job locations across the system
+              </p>
+              <div className="flex gap-3 mt-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  Active: {activeCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  Inactive: {inactiveCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                  Deleted: {deletedCount}
+                </span>
+                {hasActiveFilters() && (
+                  <span className="inline-flex items-center gap-1 text-xs text-blue-600">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Filtered
+                  </span>
+                )}
+                {pagination && (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                    Total: {pagination.total}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 ${showFilters || hasActiveFilters()
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                <FaFilter size={14} />
+                Filters
+                {hasActiveFilters() && (
+                  <span className="ml-1 bg-white text-blue-600 rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                    {Object.values(filters).filter(v => v !== 'all' && v !== '').length}
+                  </span>
+                )}
+                {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+              </button>
+
+              <button
+                onClick={handleOpenCreate}
+                className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
+              >
+                <FaPlus size={16} />
+                Add Location
+              </button>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-linear-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Address
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {locations.map((location, index) => (
-                  <tr
-                    key={location.id}
-                    className="hover:bg-gray-50 transition-all duration-200 animate-fade-in"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <FaMapMarkerAlt className="text-blue-600" size={14} />
-                        </div>
-                        <span className={`font-medium ${location.deleted_at ? 'line-through text-gray-400' : 'text-gray-900'
-                          }`}>
-                          {location.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className={`text-sm max-w-xs truncate ${location.deleted_at ? 'line-through text-gray-400' : 'text-gray-500'
-                        }`}>
-                        {location.address || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleActive(location)}
-                        disabled={togglingId === location.id}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 transform hover:scale-105 ${location.is_active
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          } ${togglingId === location.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {togglingId === location.id ? (
-                          <FaSpinner className="inline animate-spin mr-1" size={12} />
-                        ) : null}
-                        {location.is_active ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-2">
-
-                        {location.deleted_at ? (
-                          // 🔄 RESTORE BUTTON
-                          <button
-                            onClick={() => handleRestore(location.id)}
-                            className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-all duration-200"
-                          >
-                            <FaUndo size={18} />
-                          </button>
-                        ) : (
-                          <>
-                            {/* ✏️ EDIT */}
-                            <button
-                              onClick={() => handleOpenEdit(location)}
-                              className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                            >
-                              <FaEdit size={18} />
-                            </button>
-
-                            {/* 🗑 DELETE */}
-                            <button
-                              onClick={() => handleDelete(location.id)}
-                              disabled={deletingId === location.id}
-                              className={`p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 ${deletingId === location.id ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                            >
-                              {deletingId === location.id ? (
-                                <FaSpinner className="animate-spin" size={18} />
-                              ) : (
-                                <FaTrash size={18} />
-                              )}
-                            </button>
-                          </>
-                        )}
-
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {locations.length === 0 && (
-              <div className="text-center py-16 animate-fade-in">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaMapMarkerAlt className="h-10 w-10 text-gray-400" />
+          {/* BULK ACTIONS BAR */}
+          {selectedLocations.length > 0 && (
+            <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-4 mb-6 animate-fade-in border border-blue-200">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <FaCheckDouble className="text-blue-600" size={20} />
+                  <span className="font-semibold text-gray-900">
+                    {selectedLocations.length} location(s) selected
+                  </span>
                 </div>
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No locations</h3>
-                <p className="mt-1 text-sm text-gray-500">Get started by creating a new location.</p>
-                <div className="mt-6">
+                <div className="flex gap-2 flex-wrap">
                   <button
-                    onClick={handleOpenCreate}
-                    className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105"
+                    onClick={handleBulkActivate}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
                   >
-                    <FaPlus className="mr-2" size={16} />
-                    Add Location
+                    <FaCheckCircle size={14} />
+                    Activate All
+                  </button>
+                  <button
+                    onClick={handleBulkDeactivate}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FaBan size={14} />
+                    Deactivate All
+                  </button>
+                  <button
+                    onClick={handleBulkRestore}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FaUndo size={14} />
+                    Restore All
+                  </button>
+                  <button
+                    onClick={handleBulkForceDelete}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FaExclamationTriangle size={14} />
+                    Permanently Delete
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FaTrash size={14} />
+                    Delete All
+                  </button>
+                  <button
+                    onClick={() => setSelectedLocations([])}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200"
+                  >
+                    Clear Selection
                   </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
+
+          {/* FILTERS PANEL */}
+          {showFilters && (
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Filter Locations</h3>
+                <button
+                  onClick={resetFilters}
+                  className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
+                >
+                  <FaTimes size={12} />
+                  Reset all
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                    <input
+                      type="text"
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                      placeholder="Search by name or address..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="deleted">Deleted</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TABLE CARD */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-linear-to-r from-gray-50 to-gray-100">
+                  <tr>
+                    <th className="px-4 py-4 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedLocations.length === filteredLocations.filter(loc => !loc.deleted_at).length && filteredLocations.filter(loc => !loc.deleted_at).length > 0}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        disabled={filteredLocations.filter(loc => !loc.deleted_at).length === 0}
+                      />
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Location Details
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Address
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredLocations.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="text-center py-16">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FaMapMarkerAlt className="h-10 w-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900">No locations found</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {hasActiveFilters() ? 'Try adjusting your filters.' : 'Get started by adding a new location.'}
+                        </p>
+                        {hasActiveFilters() && (
+                          <div className="mt-6">
+                            <button
+                              onClick={resetFilters}
+                              className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+                            >
+                              <FaTimes className="mr-2" size={16} />
+                              Clear Filters
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+
+                  {filteredLocations.map((location, index) => {
+                    const trashed = location.deleted_at !== null;
+
+                    return (
+                      <tr
+                        key={location.id}
+                        className={`hover:bg-gray-50 transition-all duration-200 animate-fade-in ${trashed ? 'bg-gray-50 opacity-75' : ''} ${selectedLocations.includes(location.id) ? 'bg-blue-50' : ''}`}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <td className="px-4 py-4">
+                          {!trashed && (
+                            <input
+                              type="checkbox"
+                              checked={selectedLocations.includes(location.id)}
+                              onChange={() => handleSelectLocation(location.id)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                          )}
+                        </td>
+
+                        {/* LOCATION DETAILS */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${trashed ? 'bg-gray-300' : location.is_active ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                              <FaMapMarkerAlt className={trashed ? 'text-gray-500' : location.is_active ? 'text-green-600' : 'text-yellow-600'} size={18} />
+                            </div>
+                            <div>
+                              <div className={`font-semibold ${trashed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                {location.name}
+                              </div>
+                              {!trashed && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  ID: #{location.id}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* ADDRESS */}
+                        <td className="px-6 py-4">
+                          <div className={`text-sm max-w-md ${trashed ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {location.address || <span className="text-gray-400 italic">No address provided</span>}
+                          </div>
+                        </td>
+
+                        {/* STATUS */}
+                        <td className="px-6 py-4">
+                          {!trashed ? (
+                            <button
+                              onClick={() => handleToggle(location)}
+                              disabled={togglingId === location.id}
+                              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${location.is_active
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                } ${togglingId === location.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              {togglingId === location.id ? (
+                                <FaSpinner className="animate-spin" size={12} />
+                              ) : location.is_active ? (
+                                <FaCheckCircle size={12} />
+                              ) : (
+                                <FaBan size={12} />
+                              )}
+                              {location.is_active ? 'Active' : 'Inactive'}
+                            </button>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-500 flex items-center gap-2">
+                              <FaTrash size={12} />
+                              Deleted
+                            </span>
+                          )}
+                          {trashed && location.deleted_at && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              Deleted: {new Date(location.deleted_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end gap-2">
+                            {!trashed && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEdit(location)}
+                                  className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                  title="Edit Location"
+                                >
+                                  <FaEdit size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(location.id, location.name)}
+                                  disabled={deletingId === location.id}
+                                  className={`p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 ${deletingId === location.id ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                  title="Delete Location"
+                                >
+                                  {deletingId === location.id ? (
+                                    <FaSpinner className="animate-spin" size={18} />
+                                  ) : (
+                                    <FaTrash size={18} />
+                                  )}
+                                </button>
+                              </>
+                            )}
+
+                            {trashed && (
+                              <>
+                                <button
+                                  onClick={() => handleRestore(location.id, location.name)}
+                                  disabled={restoringId === location.id}
+                                  className={`p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-all duration-200 ${restoringId === location.id ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                  title="Restore Location"
+                                >
+                                  {restoringId === location.id ? (
+                                    <FaSpinner className="animate-spin" size={18} />
+                                  ) : (
+                                    <FaUndo size={18} />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleForceDelete(location.id, location.name)}
+                                  disabled={forceDeletingId === location.id}
+                                  className={`p-2 text-red-700 hover:text-red-900 hover:bg-red-100 rounded-lg transition-all duration-200 ${forceDeletingId === location.id ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                  title="Permanently Delete (Cannot be undone)"
+                                >
+                                  {forceDeletingId === location.id ? (
+                                    <FaSpinner className="animate-spin" size={18} />
+                                  ) : (
+                                    <FaExclamationTriangle size={18} />
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* PAGINATION */}
+            <Pagination />
           </div>
         </div>
       </div>
 
-      {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in text-black">
+      {/* MODAL - Create/Edit Location */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 animate-slide-up">
             <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-semibold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                {editingLocation ? 'Edit Location' : 'Add Location'}
-              </h2>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
+                  <FaMapMarkerAlt className="text-white" size={18} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {editingLocation ? 'Edit Location' : 'Add Location'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {editingLocation ? 'Update location information' : 'Create a new job location'}
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={handleClose}
+                onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors duration-200 hover:rotate-90 transform"
               >
                 <FaTimes size={20} />
@@ -314,60 +1288,74 @@ export default function LocationsIndex({ locations }) {
 
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-5">
+                {/* Name Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name <span className="text-red-500">*</span>
+                    Location Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    placeholder="e.g., Dhaka, Gulshan, Banani"
                     required
                     autoFocus
                   />
                 </div>
 
+                {/* Address Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address
+                    Address <span className="text-gray-400 text-xs">(Optional)</span>
                   </label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     rows="3"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+                    placeholder="Full address, building name, area details..."
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Enter the complete address for this location
+                  </p>
                 </div>
 
-                <div className="flex items-center">
+                {/* Status Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${formData.is_active ? 'bg-green-100' : 'bg-gray-200'}`}>
+                      {formData.is_active ? <FaCheckCircle className="text-green-600" size={14} /> : <FaBan className="text-gray-500" size={14} />}
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">Active Location</span>
+                      <p className="text-xs text-gray-500">Inactive locations won't appear in job listings</p>
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={formData.is_active}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-all duration-200"
+                    className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-all duration-200"
                   />
-                  <label className="ml-2 block text-sm text-gray-900">
-                    Active
-                  </label>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
                 <button
                   type="button"
-                  onClick={handleClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-all duration-200"
+                  onClick={handleCloseModal}
+                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition-all duration-200 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2 font-medium shadow-md"
                 >
                   {isSubmitting && <FaSpinner className="animate-spin" size={16} />}
-                  {editingLocation ? (isSubmitting ? 'Updating...' : 'Update') : (isSubmitting ? 'Creating...' : 'Create')}
+                  {editingLocation ? (isSubmitting ? 'Updating...' : 'Update Location') : (isSubmitting ? 'Creating...' : 'Create Location')}
                 </button>
               </div>
             </form>
@@ -375,7 +1363,7 @@ export default function LocationsIndex({ locations }) {
         </div>
       )}
 
-       <style>{`
+      <style>{`
         @keyframes fade-in {
           from {
             opacity: 0;

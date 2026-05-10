@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Location extends Model
 {
@@ -39,7 +38,7 @@ class Location extends Model
     /**
      * Jobs available at this location (many-to-many)
      */
-    public function jobListings(): BelongsToMany
+    public function jobListings()
     {
         return $this->belongsToMany(JobListing::class, 'job_listing_location')
             ->withTimestamps();
