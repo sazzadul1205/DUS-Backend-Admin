@@ -28,16 +28,10 @@ return new class extends Migration
             $table->string('google_id')->nullable()->unique();
             $table->string('google_avatar')->nullable();
 
-            // Additional fields
-            $table->enum('role', ['admin', 'employer', 'job_seeker'])->default('job_seeker');
-
             // Remember token and timestamps
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
-
-            // Add index for role
-            $table->index('role');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

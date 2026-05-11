@@ -1,5 +1,5 @@
 <?php
-// database/migrations/2026_04_04_000003_create_achievements_table.php
+// database/migrations/2026_04_04_064804_create_achievements_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -16,6 +16,9 @@ return new class extends Migration
             $table->text('achievement_details');
             $table->timestamps();
             $table->softDeletes();
+
+            // Unique Index
+            $table->index('applicant_profile_id');
         });
     }
 

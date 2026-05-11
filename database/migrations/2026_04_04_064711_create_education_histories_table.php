@@ -18,6 +18,8 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            // Unique Index
+            $table->index('applicant_profile_id');
             $table->index('passing_year');
         });
     }

@@ -1,5 +1,5 @@
 <?php
-// database/migrations/2026_04_04_000004_create_status_timelines_table.php
+// database/migrations/2026_04_04_064825_create_status_timelines_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,6 +15,9 @@ return new class extends Migration
             $table->string('status');
             $table->text('notes')->nullable();
             $table->timestamps();
+
+            // ADD MISSING INDEX
+            $table->index('application_id');
         });
     }
 
