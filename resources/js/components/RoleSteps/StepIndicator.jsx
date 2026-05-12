@@ -25,7 +25,7 @@ export const StepIndicator = ({ currentStep, steps }) => {
           {/* Progress Bar Background */}
           <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 rounded-full">
             <div
-              className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 bg-gradient-to-r from-purple-500 to-indigo-500"
+              className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 bg-linear-to-r from-purple-500 to-indigo-500"
               style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
             />
           </div>
@@ -44,9 +44,9 @@ export const StepIndicator = ({ currentStep, steps }) => {
                     className={`
                       relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
                       ${isCompleted
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg'
+                        ? 'bg-linear-to-r from-green-500 to-green-600 text-white shadow-lg'
                         : isActive
-                          ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white ring-4 ring-purple-200 shadow-md'
+                          ? 'bg-linear-to-r from-purple-500 to-purple-600 text-white ring-4 ring-purple-200 shadow-md'
                           : 'bg-white border-2 border-gray-300 text-gray-400'
                       }
                     `}
@@ -94,9 +94,9 @@ export const StepIndicator = ({ currentStep, steps }) => {
                     className={`
                       w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
                       ${isCompleted
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                        ? 'bg-linear-to-r from-green-500 to-green-600 text-white'
                         : isActive
-                          ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white ring-2 ring-purple-200'
+                          ? 'bg-linear-to-r from-purple-500 to-purple-600 text-white ring-2 ring-purple-200'
                           : 'bg-white border-2 border-gray-300 text-gray-400'
                       }
                     `}
