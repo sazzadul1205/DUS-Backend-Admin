@@ -31,7 +31,6 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       password: password,
       remember: data.remember,
     });
-    // Optional: focus on password field after filling
     const passwordInput = document.getElementById('password');
     if (passwordInput) passwordInput.focus();
   };
@@ -44,14 +43,14 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       icon: ShieldCheck,
       description: 'Full system access with all permissions',
       badge: 'Highest Level',
-      badgeColor: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+      badgeColor: 'bg-purple-100 text-purple-700',
       borderColor: 'purple',
-      bgGradient: 'from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20',
-      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
-      iconColor: 'text-purple-600 dark:text-purple-400',
-      buttonBg: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
-      buttonBorder: 'border-purple-200 dark:border-purple-800',
-      buttonText: 'text-purple-700 dark:text-purple-300',
+      bgGradient: 'from-purple-50 to-purple-100',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+      buttonBg: 'bg-purple-50 hover:bg-purple-100',
+      buttonBorder: 'border-purple-200',
+      buttonText: 'text-purple-700',
     },
     {
       role: 'Admin',
@@ -60,14 +59,14 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       icon: Shield,
       description: 'Administrative access to manage platform',
       badge: 'Admin Level',
-      badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+      badgeColor: 'bg-blue-100 text-blue-700',
       borderColor: 'blue',
-      bgGradient: 'from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20',
-      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      buttonBg: 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50',
-      buttonBorder: 'border-blue-200 dark:border-blue-800',
-      buttonText: 'text-blue-700 dark:text-blue-300',
+      bgGradient: 'from-blue-50 to-blue-100',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      buttonBg: 'bg-blue-50 hover:bg-blue-100',
+      buttonBorder: 'border-blue-200',
+      buttonText: 'text-blue-700',
     },
     {
       role: 'Employer / HR Manager',
@@ -76,14 +75,14 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       icon: Briefcase,
       description: 'Post jobs, manage applications, and find talent',
       badge: 'Employer',
-      badgeColor: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      badgeColor: 'bg-green-100 text-green-700',
       borderColor: 'green',
-      bgGradient: 'from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20',
-      iconBg: 'bg-green-100 dark:bg-green-900/30',
-      iconColor: 'text-green-600 dark:text-green-400',
-      buttonBg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50',
-      buttonBorder: 'border-green-200 dark:border-green-800',
-      buttonText: 'text-green-700 dark:text-green-300',
+      bgGradient: 'from-green-50 to-green-100',
+      iconBg: 'bg-green-100',
+      iconColor: 'text-green-600',
+      buttonBg: 'bg-green-50 hover:bg-green-100',
+      buttonBorder: 'border-green-200',
+      buttonText: 'text-green-700',
     },
     {
       role: 'Job Seeker',
@@ -92,14 +91,14 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
       icon: User,
       description: 'Browse jobs, apply, and track applications',
       badge: 'Job Seeker',
-      badgeColor: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+      badgeColor: 'bg-orange-100 text-orange-700',
       borderColor: 'orange',
-      bgGradient: 'from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20',
-      iconBg: 'bg-orange-100 dark:bg-orange-900/30',
-      iconColor: 'text-orange-600 dark:text-orange-400',
-      buttonBg: 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/50',
-      buttonBorder: 'border-orange-200 dark:border-orange-800',
-      buttonText: 'text-orange-700 dark:text-orange-300',
+      bgGradient: 'from-orange-50 to-orange-100',
+      iconBg: 'bg-orange-100',
+      iconColor: 'text-orange-600',
+      buttonBg: 'bg-orange-50 hover:bg-orange-100',
+      buttonBorder: 'border-orange-200',
+      buttonText: 'text-orange-700',
     },
   ];
 
@@ -116,24 +115,24 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
   return (
     <>
       <Head title="Log in" />
-      <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
+      <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8">
         <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
           <main className="flex w-full max-w-83.75 flex-col lg:max-w-4xl lg:flex-row">
             {/* Left side - Login Form */}
-            <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]">
+            <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20">
               {/* Logo */}
               <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-[#1b1b18] rounded-lg flex items-center justify-center dark:bg-[#EDEDEC]">
-                  <span className="text-white font-bold text-xl dark:text-[#1b1b18]">JM</span>
+                <div className="w-10 h-10 bg-[#1b1b18] rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">JM</span>
                 </div>
                 <div>
                   <h1 className="text-xl font-semibold leading-tight">Job Match</h1>
-                  <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">Find your perfect match</p>
+                  <p className="text-xs text-[#706f6c]">Find your perfect match</p>
                 </div>
               </div>
 
               <h2 className="mb-1 text-2xl font-semibold">Welcome back</h2>
-              <p className="mb-8 text-[#706f6c] dark:text-[#A1A09A]">
+              <p className="mb-8 text-[#706f6c]">
                 Enter your email and password below to log in
               </p>
 
@@ -142,10 +141,10 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                   {/* Email Field */}
                   <div className="grid gap-2">
                     <label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[#706f6c] dark:text-[#A1A09A]" />
+                      <Mail className="h-4 w-4 text-[#706f6c]" />
                       Email address
                     </label>
-                    <div className={`relative transition-all duration-200 ${focusedField === 'email' ? 'ring-1 ring-[#1b1b18] dark:ring-[#EDEDEC]' : ''}`}>
+                    <div className={`relative transition-all duration-200 ${focusedField === 'email' ? 'ring-1 ring-[#1b1b18]' : ''}`}>
                       <input
                         id="email"
                         type="email"
@@ -158,11 +157,11 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                         onFocus={() => setFocusedField('email')}
                         onBlur={() => setFocusedField(null)}
                         placeholder="email@example.com"
-                        className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 text-sm focus:outline-none dark:border-[#3E3E3A] dark:bg-[#0a0a0a] dark:text-[#EDEDEC] placeholder:text-[#706f6c] dark:placeholder:text-[#A1A09A]"
+                        className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 text-sm focus:outline-none placeholder:text-[#706f6c]"
                       />
                     </div>
                     {errors.email && (
-                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <p className="text-xs text-red-600 flex items-center gap-1">
                         <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>
                         {errors.email}
                       </p>
@@ -173,20 +172,20 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                   <div className="grid gap-2">
                     <div className="flex items-center justify-between">
                       <label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="h-4 w-4 text-[#706f6c] dark:text-[#A1A09A]" />
+                        <Lock className="h-4 w-4 text-[#706f6c]" />
                         Password
                       </label>
                       {canResetPassword && (
                         <a
                           href={route('password.request')}
-                          className="text-xs text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC] underline-offset-4 hover:underline"
+                          className="text-xs text-[#706f6c] hover:text-[#1b1b18] underline-offset-4 hover:underline"
                           tabIndex={5}
                         >
                           Forgot password?
                         </a>
                       )}
                     </div>
-                    <div className={`relative transition-all duration-200 ${focusedField === 'password' ? 'ring-1 ring-[#1b1b18] dark:ring-[#EDEDEC]' : ''}`}>
+                    <div className={`relative transition-all duration-200 ${focusedField === 'password' ? 'ring-1 ring-[#1b1b18]' : ''}`}>
                       <input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
@@ -198,19 +197,19 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                         onFocus={() => setFocusedField('password')}
                         onBlur={() => setFocusedField(null)}
                         placeholder="Enter your password"
-                        className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 pr-10 text-sm focus:outline-none dark:border-[#3E3E3A] dark:bg-[#0a0a0a] dark:text-[#EDEDEC] placeholder:text-[#706f6c] dark:placeholder:text-[#A1A09A]"
+                        className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 pr-10 text-sm focus:outline-none placeholder:text-[#706f6c]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC] transition-colors"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#706f6c] hover:text-[#1b1b18] transition-colors"
                         tabIndex={-1}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <p className="text-xs text-red-600 flex items-center gap-1">
                         <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>
                         {errors.password}
                       </p>
@@ -225,9 +224,9 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                       tabIndex={3}
                       checked={data.remember}
                       onChange={(e) => setData('remember', e.target.checked)}
-                      className="h-4 w-4 rounded-sm border-[#19140035] text-[#1b1b18] focus:ring-[#1b1b18] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]"
+                      className="h-4 w-4 rounded-sm border-[#19140035] text-[#1b1b18] focus:ring-[#1b1b18]"
                     />
-                    <label htmlFor="remember" className="text-sm text-[#706f6c] dark:text-[#A1A09A] cursor-pointer select-none">
+                    <label htmlFor="remember" className="text-sm text-[#706f6c] cursor-pointer select-none">
                       Remember me
                     </label>
                   </div>
@@ -236,7 +235,7 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                   <button
                     type="submit"
                     disabled={processing}
-                    className="group relative inline-flex w-full items-center justify-center gap-2 rounded-sm border border-black bg-[#1b1b18] px-5 py-2.5 text-sm font-medium leading-normal text-white hover:border-black hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:border-white dark:hover:bg-white transition-all duration-200"
+                    className="group relative inline-flex w-full items-center justify-center gap-2 rounded-sm border border-black bg-[#1b1b18] px-5 py-2.5 text-sm font-medium leading-normal text-white hover:border-black hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     tabIndex={4}
                   >
                     {processing ? (
@@ -258,17 +257,17 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                   <div className="grid gap-4">
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-[#e3e3e0] dark:border-[#3E3E3A]"></div>
+                        <div className="w-full border-t border-[#e3e3e0]"></div>
                       </div>
                       <div className="relative flex justify-center text-xs">
-                        <span className="bg-white px-3 text-[#706f6c] dark:bg-[#161615] dark:text-[#A1A09A]">
+                        <span className="bg-white px-3 text-[#706f6c]">
                           or continue with
                         </span>
                       </div>
                     </div>
                     <a
                       href={route('auth.google.redirect')}
-                      className="flex items-center justify-center gap-3 rounded-sm border border-[#19140035] px-5 py-2.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b] transition-all duration-200 group"
+                      className="flex items-center justify-center gap-3 rounded-sm border border-[#19140035] px-5 py-2.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] transition-all duration-200 group"
                     >
                       <svg className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -282,18 +281,18 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                 )}
 
                 {errors.google && (
-                  <p className="text-xs text-red-600 dark:text-red-400 text-center flex items-center justify-center gap-1">
+                  <p className="text-xs text-red-600 text-center flex items-center justify-center gap-1">
                     <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>
                     {errors.google}
                   </p>
                 )}
 
                 {/* Sign up link */}
-                <div className="text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                <div className="text-center text-sm text-[#706f6c]">
                   Don't have an account?{' '}
                   <a
                     href={route('register')}
-                    className="font-medium text-[#1b1b18] hover:underline dark:text-[#EDEDEC] underline-offset-4"
+                    className="font-medium text-[#1b1b18] hover:underline underline-offset-4"
                     tabIndex={5}
                   >
                     Sign up
@@ -303,7 +302,7 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
 
               {/* Status Message */}
               {status && (
-                <div className="mt-6 rounded-sm border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400 flex items-center gap-2">
+                <div className="mt-6 rounded-sm border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700 flex items-center gap-2">
                   <span className="shrink-0 w-1.5 h-1.5 bg-green-600 rounded-full"></span>
                   {status}
                 </div>
@@ -317,10 +316,10 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
               <div className="relative p-6 lg:p-8 flex flex-col justify-center h-full">
                 <div className="mb-6 text-center">
                   <div className="flex items-center justify-center gap-2 mb-3">
-                    <Star className="h-5 w-5 text-[#F53003] dark:text-[#F61500]" />
-                    <h3 className="text-lg font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">Demo Accounts</h3>
+                    <Star className="h-5 w-5 text-[#F53003]" />
+                    <h3 className="text-lg font-semibold text-[#1b1b18]">Demo Accounts</h3>
                   </div>
-                  <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                  <p className="text-sm text-[#706f6c]">
                     Try with pre-configured accounts
                   </p>
                 </div>
@@ -329,26 +328,26 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                 <div className="flex justify-center mb-6">
                   <button
                     onClick={goToPrevious}
-                    className="p-2 rounded-full bg-white/80 hover:bg-white dark:bg-black/30 dark:hover:bg-black/50 transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="p-2 rounded-full bg-white/80 hover:bg-white shadow-md hover:shadow-lg transition-all duration-200"
                     title="Previous account"
                   >
-                    <ChevronUp className="h-5 w-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                    <ChevronUp className="h-5 w-5 text-[#1b1b18]" />
                   </button>
-                  <div className="mx-4 px-3 py-1 rounded-full bg-white/50 dark:bg-black/30 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                  <div className="mx-4 px-3 py-1 rounded-full bg-white/50 text-xs font-medium text-[#706f6c]">
                     {currentDemoIndex + 1} / {demoAccounts.length}
                   </div>
                   <button
                     onClick={goToNext}
-                    className="p-2 rounded-full bg-white/80 hover:bg-white dark:bg-black/30 dark:hover:bg-black/50 transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="p-2 rounded-full bg-white/80 hover:bg-white shadow-md hover:shadow-lg transition-all duration-200"
                     title="Next account"
                   >
-                    <ChevronDown className="h-5 w-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                    <ChevronDown className="h-5 w-5 text-[#1b1b18]" />
                   </button>
                 </div>
 
                 {/* Current Demo Account Card */}
                 <div className="transition-all duration-300 transform animate-fade-in">
-                  <div className={`rounded-xl border shadow-lg overflow-hidden ${currentAccount.buttonBorder} bg-white dark:bg-[#161615]`}>
+                  <div className={`rounded-xl border shadow-lg overflow-hidden ${currentAccount.buttonBorder} bg-white`}>
                     <div className="p-5">
                       <div className="flex items-start gap-3 mb-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${currentAccount.iconBg} transition-all duration-200`}>
@@ -356,31 +355,31 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-lg text-[#1b1b18] dark:text-[#EDEDEC]">
+                            <h4 className="font-semibold text-lg text-[#1b1b18]">
                               {currentAccount.role}
                             </h4>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${currentAccount.badgeColor}`}>
                               {currentAccount.badge}
                             </span>
                           </div>
-                          <p className="text-xs text-[#706f6c] dark:text-[#A1A09A] mt-1">
+                          <p className="text-xs text-[#706f6c] mt-1">
                             {currentAccount.description}
                           </p>
                         </div>
                       </div>
 
-                      <div className="space-y-2 mb-5 p-3 rounded-lg bg-[#FDFDFC] dark:bg-[#0a0a0a] border border-[#e3e3e0] dark:border-[#3E3E3A]">
+                      <div className="space-y-2 mb-5 p-3 rounded-lg bg-[#FDFDFC] border border-[#e3e3e0]">
                         <div className="flex items-center gap-2 text-xs">
-                          <Mail className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
-                          <span className="text-[#706f6c] dark:text-[#A1A09A]">Email:</span>
-                          <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC] truncate text-xs break-all">
+                          <Mail className="h-3 w-3 text-[#706f6c] shrink-0" />
+                          <span className="text-[#706f6c]">Email:</span>
+                          <span className="font-mono font-medium text-[#1b1b18] truncate text-xs break-all">
                             {currentAccount.email}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                          <Lock className="h-3 w-3 text-[#706f6c] dark:text-[#A1A09A] shrink-0" />
-                          <span className="text-[#706f6c] dark:text-[#A1A09A]">Password:</span>
-                          <span className="font-mono font-medium text-[#1b1b18] dark:text-[#EDEDEC] text-xs">
+                          <Lock className="h-3 w-3 text-[#706f6c] shrink-0" />
+                          <span className="text-[#706f6c]">Password:</span>
+                          <span className="font-mono font-medium text-[#1b1b18] text-xs">
                             {currentAccount.password}
                           </span>
                         </div>
@@ -398,8 +397,8 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
                   </div>
                 </div>
 
-                <div className="mt-6 p-3 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-sm">
-                  <p className="text-xs text-[#706f6c] dark:text-[#A1A09A] text-center">
+                <div className="mt-6 p-3 rounded-lg bg-white/50 backdrop-blur-sm">
+                  <p className="text-xs text-[#706f6c] text-center">
                     <span className="inline-block mr-1">💡</span>
                     Use <strong className="font-mono">↑</strong> and <strong className="font-mono">↓</strong> buttons to cycle through accounts
                   </p>
@@ -407,13 +406,13 @@ export default function Login({ status, canResetPassword, googleAuthEnabled }) {
 
                 {/* User count info */}
                 <div className="mt-4 text-center">
-                  <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                  <p className="text-xs text-[#706f6c]">
                     👥 2 Admins + 1 Employer + 50+ Job Seekers
                   </p>
                 </div>
               </div>
 
-              <div className="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d] pointer-events-none" />
+              <div className="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg pointer-events-none" />
             </div>
           </main>
         </div>
