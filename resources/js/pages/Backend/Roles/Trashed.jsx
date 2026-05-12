@@ -1,7 +1,7 @@
 // resources/js/pages/Backend/Roles/Trashed.jsx
 
 import { useState, useEffect, useMemo } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 // Icons
 import {

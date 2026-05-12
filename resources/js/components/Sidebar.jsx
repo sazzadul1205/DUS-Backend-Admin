@@ -70,7 +70,7 @@ const Sidebar = () => {
     return 'job_seeker';
   }, [userRoles]);
 
-  // State to track open menus
+  // State to track open menus - expanded to include adminRoles
   const [openMenus, setOpenMenus] = useState({
     jobs: false,
     applications: false,
@@ -78,7 +78,7 @@ const Sidebar = () => {
     employerApps: false,
     adminJobs: false,
     adminApps: false,
-    adminReports: false,
+    adminRoles: false,
   });
 
   // State for collapsed sidebar
@@ -86,23 +86,21 @@ const Sidebar = () => {
 
   // Auto-expand menus based on current URL
   useEffect(() => {
-    const newOpenMenus = { ...openMenus };
+    const shouldOpenJobs = url.includes('/listing') || url.includes('/locations') || url.includes('/categories') || url.includes('/statistics');
+    const shouldOpenApplications = url.includes('/applications') || url.includes('/apply');
+    const shouldOpenRoles = url.includes('/roles');
 
     // Jobs management section
-    if (url.includes('/listing') || url.includes('/locations') || url.includes('/categories') || url.includes('/statistics')) {
-      newOpenMenus.jobs = true;
-      newOpenMenus.employerJobs = true;
-      newOpenMenus.adminJobs = true;
-    }
-
-    // Applications section
-    if (url.includes('/applications') || url.includes('/apply')) {
-      newOpenMenus.applications = true;
-      newOpenMenus.employerApps = true;
-      newOpenMenus.adminApps = true;
-    }
-
-    setOpenMenus(newOpenMenus);
+    setOpenMenus((prev) => ({
+      ...prev,
+      jobs: prev.jobs || shouldOpenJobs,
+      employerJobs: prev.employerJobs || shouldOpenJobs,
+      adminJobs: prev.adminJobs || shouldOpenJobs,
+      applications: prev.applications || shouldOpenApplications,
+      employerApps: prev.employerApps || shouldOpenApplications,
+      adminApps: prev.adminApps || shouldOpenApplications,
+      adminRoles: prev.adminRoles || shouldOpenRoles,
+    }));
   }, [url]);
 
   const toggleMenu = (menu) => {
@@ -128,10 +126,23 @@ const Sidebar = () => {
     if (!value) return '';
     const absolute = typeof value === 'string' ? value : value.toString();
     const pathOnly = absolute.replace(/^https?:\/\/[^/]+/i, '');
-    return pathOnly.replace(/\/$/, '');
+    const withoutQueryOrHash = pathOnly.replace(/[?#].*$/, '');
+    return withoutQueryOrHash.replace(/\/$/, '');
   };
 
-  // Check if route is active
+  // Normalize URL but keep query string (used for filter links like ?status=pending)
+  const normalizeUrlWithQuery = (value) => {
+    if (!value) return '';
+    const absolute = typeof value === 'string' ? value : value.toString();
+    const withoutDomain = absolute.replace(/^https?:\/\/[^/]+/i, '');
+    const withoutHash = withoutDomain.replace(/#.*$/, '');
+    const parts = withoutHash.split('?');
+    const normalizedPath = (parts[0] || '').replace(/\/$/, '');
+    const query = parts.length > 1 ? `?${parts.slice(1).join('?')}` : '';
+    return `${normalizedPath}${query}`;
+  };
+
+  // Check if route is active - FIXED to properly handle exact matching
   const isRouteActive = (routeName, params = {}, aliasPaths = [], options = {}) => {
     try {
       const routeUrl = route(routeName, params);
@@ -146,18 +157,25 @@ const Sidebar = () => {
         .filter(Boolean)
         .map((path) => normalizeUrl(path));
 
-      if (normalizedUrl === normalizedRouteUrl) return true;
-
-      if (normalizedAliases.some((alias) => normalizedUrl === alias || normalizedUrl.startsWith(alias))) {
-        return true;
-      }
-
+      // Check if current URL matches any exclude pattern
       if (normalizedExcludes.some((exclude) => normalizedUrl === exclude || normalizedUrl.startsWith(exclude))) {
         return false;
       }
 
-      if (options?.exact) return false;
+      // For exact match, only return true if URLs are identical
+      if (options?.exact) {
+        return normalizedUrl === normalizedRouteUrl;
+      }
 
+      // Check exact match
+      if (normalizedUrl === normalizedRouteUrl) return true;
+
+      // Check aliases
+      if (normalizedAliases.some((alias) => normalizedUrl === alias || normalizedUrl.startsWith(alias))) {
+        return true;
+      }
+
+      // Check if current URL starts with route URL (for parent routes)
       if (normalizedRouteUrl !== '/' && normalizedUrl.startsWith(normalizedRouteUrl)) {
         return true;
       }
@@ -181,14 +199,22 @@ const Sidebar = () => {
     return false;
   };
 
+  const isPathActiveWithQuery = (path) => {
+    if (!path || path === '#') return false;
+    return normalizeUrlWithQuery(url) === normalizeUrlWithQuery(path);
+  };
+
   // Check if any subitem in a dropdown is active
   const isDropdownActive = (subItems) => {
     return subItems?.some(subItem => {
       if (subItem.href && subItem.href !== '#') {
-        return isPathActive(subItem.href);
+        return subItem.matchQuery ? isPathActiveWithQuery(subItem.href) : isPathActive(subItem.href);
       }
       if (subItem.routeName) {
-        return isRouteActive(subItem.routeName, subItem.routeParams || {}, subItem.activeAliases || [], { exact: subItem.exact, excludePaths: subItem.activeExclude });
+        return isRouteActive(subItem.routeName, subItem.routeParams || {}, subItem.activeAliases || [], {
+          exact: subItem.exact,
+          excludePaths: subItem.activeExclude
+        });
       }
       return false;
     });
@@ -339,7 +365,8 @@ const Sidebar = () => {
       if (hasPermission('application.view.for_own_jobs') || hasPermission('application.view.any')) {
         appSubItems.push({
           name: 'All Applications',
-          routeName: 'backend.applications.index',
+          href: '/backend/applications',
+          matchQuery: true,
           icon: FiUsers,
           description: 'View all candidates',
         });
@@ -348,29 +375,29 @@ const Sidebar = () => {
       if (hasPermission('application.view.for_own_jobs')) {
         appSubItems.push({
           name: 'Pending',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'pending' },
+          href: '/backend/applications?status=pending',
+          matchQuery: true,
           icon: FiClock,
           badgeColor: 'bg-yellow-500',
         });
         appSubItems.push({
           name: 'Shortlisted',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'shortlisted' },
+          href: '/backend/applications?status=shortlisted',
+          matchQuery: true,
           icon: FiStar,
           badgeColor: 'bg-green-500',
         });
         appSubItems.push({
           name: 'Rejected',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'rejected' },
+          href: '/backend/applications?status=rejected',
+          matchQuery: true,
           icon: FiXCircle,
           badgeColor: 'bg-red-500',
         });
         appSubItems.push({
           name: 'Hired',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'hired' },
+          href: '/backend/applications?status=hired',
+          matchQuery: true,
           icon: FiAward,
           badgeColor: 'bg-purple-500',
         });
@@ -493,7 +520,8 @@ const Sidebar = () => {
       if (hasPermission('application.view.any')) {
         appSubItems.push({
           name: 'All Applications',
-          routeName: 'backend.applications.index',
+          href: '/backend/applications',
+          matchQuery: true,
           icon: FiUsers,
         });
       }
@@ -501,40 +529,31 @@ const Sidebar = () => {
       if (hasPermission('application.view.any')) {
         appSubItems.push({
           name: 'Pending',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'pending' },
+          href: '/backend/applications?status=pending',
+          matchQuery: true,
           icon: FiClock,
           badgeColor: 'bg-yellow-500',
         });
         appSubItems.push({
           name: 'Shortlisted',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'shortlisted' },
+          href: '/backend/applications?status=shortlisted',
+          matchQuery: true,
           icon: FiStar,
           badgeColor: 'bg-green-500',
         });
         appSubItems.push({
           name: 'Rejected',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'rejected' },
+          href: '/backend/applications?status=rejected',
+          matchQuery: true,
           icon: FiXCircle,
           badgeColor: 'bg-red-500',
         });
         appSubItems.push({
           name: 'Hired',
-          routeName: 'backend.applications.index',
-          routeParams: { status: 'hired' },
+          href: '/backend/applications?status=hired',
+          matchQuery: true,
           icon: FiAward,
           badgeColor: 'bg-purple-500',
-        });
-      }
-
-      if (hasPermission('report.applications')) {
-        appSubItems.push({
-          name: 'Reports',
-          routeName: 'backend.applications.index',
-          routeParams: { view: 'reports' },
-          icon: FiBarChart2,
         });
       }
 
@@ -560,7 +579,7 @@ const Sidebar = () => {
       });
     }
 
-    // Roles & Permissions Dropdown
+    // Roles & Permissions Dropdown - FIXED with proper exact matching
     if (hasPermission('role.view') || hasPermission('role.create') || hasPermission('role.edit') || hasPermission('role.delete')) {
       const roleSubItems = [];
 
@@ -569,6 +588,7 @@ const Sidebar = () => {
           name: 'All Roles',
           routeName: 'backend.roles.index',
           icon: FiKey,
+          exact: true, // Only highlight when exactly on roles index page
         });
       }
 
@@ -601,45 +621,8 @@ const Sidebar = () => {
       }
     }
 
-    // Reports Dropdown
-    if (hasPermission('report.jobs') || hasPermission('report.applications') || hasPermission('report.users') || hasPermission('report.export')) {
-      const reportSubItems = [];
-
-      if (hasPermission('report.jobs')) {
-        reportSubItems.push({
-          name: 'Job Reports',
-          routeName: 'admin.reports.jobs',
-          icon: FiBarChart2,
-        });
-      }
-
-      if (hasPermission('report.applications')) {
-        reportSubItems.push({
-          name: 'Application Reports',
-          routeName: 'admin.reports.applications',
-          icon: FiFileText,
-        });
-      }
-
-      if (hasPermission('report.users')) {
-        reportSubItems.push({
-          name: 'User Reports',
-          routeName: 'admin.reports.users',
-          icon: FiUsers,
-        });
-      }
-
-      if (reportSubItems.length > 0) {
-        items.push({
-          name: 'Reports',
-          icon: FiBarChart2,
-          isDropdown: true,
-          dropdownKey: 'adminReports',
-          description: 'Analytics & reports',
-          subItems: reportSubItems,
-        });
-      }
-    }
+    // REMOVED: Reports Dropdown
+    // REMOVED: Settings link
 
     // Notifications
     items.push({
@@ -649,16 +632,6 @@ const Sidebar = () => {
       badgeCount: notificationMeta.unread_count,
       description: 'System alerts',
     });
-
-    // Settings (if user has permission)
-    if (hasPermission('profile.edit.any')) {
-      items.push({
-        name: 'Settings',
-        routeName: 'admin.settings',
-        icon: FiSettings,
-        description: 'System configuration',
-      });
-    }
 
     return items;
   }, [notificationMeta.unread_count]);
@@ -728,8 +701,11 @@ const Sidebar = () => {
   // Render sub menu item
   const renderSubMenuItem = (subItem) => {
     const isActiveSub = subItem.routeName
-      ? isRouteActive(subItem.routeName, subItem.routeParams || {}, subItem.activeAliases || [], { exact: subItem.exact, excludePaths: subItem.activeExclude })
-      : isPathActive(subItem.href);
+      ? isRouteActive(subItem.routeName, subItem.routeParams || {}, subItem.activeAliases || [], {
+        exact: subItem.exact,
+        excludePaths: subItem.activeExclude
+      })
+      : (subItem.matchQuery ? isPathActiveWithQuery(subItem.href) : isPathActive(subItem.href));
 
     return (
       <Link
@@ -801,7 +777,10 @@ const Sidebar = () => {
 
     // For non-dropdown items (like Users Management)
     const isMenuItemActive = item.routeName
-      ? isRouteActive(item.routeName, item.routeParams || {}, item.activeAliases || [], { exact: item.exact, excludePaths: item.activeExclude })
+      ? isRouteActive(item.routeName, item.routeParams || {}, item.activeAliases || [], {
+        exact: item.exact,
+        excludePaths: item.activeExclude
+      })
       : isPathActive(item.href);
 
     return (

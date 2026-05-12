@@ -88,7 +88,7 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
     });
   };
 
-  // Strip HTML tags for preview (show plain text in review)
+  // Strip HTML tags for preview (use for comparison only, not for display)
   const stripHtml = (html) => {
     if (!html) return '';
     const tmp = document.createElement('div');
@@ -96,12 +96,10 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // Truncate text
-  const truncate = (text, maxLength = 200) => {
-    if (!text) return '';
-    const plainText = stripHtml(text);
-    if (plainText.length <= maxLength) return plainText;
-    return plainText.substring(0, maxLength) + '...';
+  // Get full HTML content for display
+  const getFullHtmlContent = (html) => {
+    if (!html) return 'Not provided';
+    return html;
   };
 
   // Check if a field has changed (for edit mode)
@@ -194,9 +192,9 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
     </div>
   );
 
-  const InfoRow = ({ label, value, isHtml = false, hasChanged = false }) => (
-    <div className={`py-2 border-b border-gray-100 last:border-0 ${hasChanged ? 'bg-yellow-50 -mx-2 px-2 rounded' : ''}`}>
-      <dt className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+  const InfoRow = ({ label, value, isHtml = false, hasChanged = false, fullHeight = false }) => (
+    <div className={`py-3 border-b border-gray-100 last:border-0 ${hasChanged ? 'bg-yellow-50 -mx-2 px-2 rounded' : ''}`}>
+      <dt className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-2">
         {label}
         {hasChanged && (
           <span className="inline-flex items-center gap-1 text-xs text-yellow-700">
@@ -205,9 +203,12 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
           </span>
         )}
       </dt>
-      <dd className="text-gray-900">
+      <dd className={`text-gray-900 ${fullHeight ? '' : 'max-h-96 overflow-y-auto'}`}>
         {isHtml ? (
-          <div dangerouslySetInnerHTML={{ __html: value }} />
+          <div
+            className="prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: value || '<span class="text-gray-400">Not provided</span>' }}
+          />
         ) : (
           value || <span className="text-gray-400">Not provided</span>
         )}
@@ -354,8 +355,9 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
             />
             <InfoRow
               label="Job Description"
-              value={truncate(formData.description, 150)}
-              isHtml
+              value={getFullHtmlContent(formData.description)}
+              isHtml={true}
+              fullHeight={true}
               hasChanged={isEdit && hasFieldChanged('description', formData.description, originalJob?.description)}
             />
           </dl>
@@ -376,8 +378,9 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
           <dl className="divide-y divide-gray-100">
             <InfoRow
               label="Requirements"
-              value={truncate(formData.requirements, 150)}
-              isHtml
+              value={getFullHtmlContent(formData.requirements)}
+              isHtml={true}
+              fullHeight={true}
               hasChanged={isEdit && hasFieldChanged('requirements', formData.requirements, originalJob?.requirements)}
             />
             <InfoRow
@@ -393,12 +396,17 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
             <InfoRow
               label="Key Responsibilities"
               value={
-                <ul className="list-disc list-inside space-y-1">
-                  {formData.responsibilities?.map((resp, idx) => (
-                    <li key={idx} className="text-gray-900 text-sm">{resp}</li>
-                  ))}
-                </ul>
+                formData.responsibilities?.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {formData.responsibilities.map((resp, idx) => (
+                      <li key={idx} className="text-gray-900 text-sm">{resp}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-gray-400">Not provided</span>
+                )
               }
+              hasChanged={isEdit && hasFieldChanged('responsibilities', formData.responsibilities, originalJob?.responsibilities)}
             />
             <InfoRow
               label="Benefits & Perks"
@@ -522,8 +530,8 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
               label="Status"
               value={
                 <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${formData.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
                   }`}>
                   {formData.is_active ? 'Active' : 'Inactive'}
                 </span>
@@ -565,18 +573,18 @@ export const ReviewStep = ({ formData, locations, categories, onNavigateToStep, 
 
         {/* Completion Status */}
         <div className={`rounded-lg p-4 border ${isEdit && !hasAnyChanges
-            ? 'bg-gray-50 border-gray-200'
-            : 'bg-green-50 border-green-200'
+          ? 'bg-gray-50 border-gray-200'
+          : 'bg-green-50 border-green-200'
           }`}>
           <div className="flex items-start gap-3">
             <FaCheckCircle className={`mt-0.5 ${isEdit && !hasAnyChanges ? 'text-gray-400' : 'text-green-600'}`} size={20} />
             <div>
-              <p className="text-sm font-medium ${isEdit && !hasAnyChanges ? 'text-gray-700' : 'text-green-900'}">
+              <p className={`text-sm font-medium ${isEdit && !hasAnyChanges ? 'text-gray-700' : 'text-green-900'}`}>
                 {isEdit
                   ? (hasAnyChanges ? 'Ready to Update' : 'No Changes to Apply')
                   : 'Ready to Post'}
               </p>
-              <p className="text-xs ${isEdit && !hasAnyChanges ? 'text-gray-600' : 'text-green-700'} mt-1">
+              <p className={`text-xs ${isEdit && !hasAnyChanges ? 'text-gray-600' : 'text-green-700'} mt-1`}>
                 {isEdit
                   ? (hasAnyChanges
                     ? 'Review all changes above and click "Update Job" to apply them.'

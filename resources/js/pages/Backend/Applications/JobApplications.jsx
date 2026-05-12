@@ -1,3 +1,5 @@
+// resources/js/pages/Backend/Applications/JobApplications.jsx
+
 import { useState, useEffect } from 'react';
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
@@ -38,12 +40,24 @@ import {
   FaStar,
   FaTrash,
   FaFileArchive,
+  FaRegBuilding,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaSearch,
 } from 'react-icons/fa';
 
 import Swal from 'sweetalert2';
 
-export default function JobApplications({ job, applications: initialApplications, filters, statusCounts }) {
+export default function JobApplications({
+  job,
+  applications: initialApplications,
+  filters: initialFilters = {},
+  statusCounts: initialStatusCounts = {},
+  filterOptions = {},
+}) {
   const { flash } = usePage().props;
+  const safeInitialFilters = (initialFilters && !Array.isArray(initialFilters)) ? initialFilters : {};
 
   // Use the email modal hook
   const {
@@ -65,16 +79,47 @@ export default function JobApplications({ job, applications: initialApplications
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState({});
   const [pendingDeletes, setPendingDeletes] = useState({});
-  const [localFilters, setLocalFilters] = useState({
-    status: filters.status || '',
-    search: filters.search || '',
-    min_score: filters.min_score || '',
-    sort: filters.sort || 'created_at',
-    direction: filters.direction || 'desc',
+  const [sortField, setSortField] = useState(safeInitialFilters.sort || 'created_at');
+  const [sortDirection, setSortDirection] = useState(safeInitialFilters.direction || 'desc');
+
+  // Comprehensive filter states
+  const [filters, setFilters] = useState({
+    status: safeInitialFilters.status || '',
+    search: safeInitialFilters.search || '',
+    min_ats_score: safeInitialFilters.min_ats_score || '',
+    max_ats_score: safeInitialFilters.max_ats_score || '',
+    min_experience: safeInitialFilters.min_experience || '',
+    max_experience: safeInitialFilters.max_experience || '',
+    min_salary: safeInitialFilters.min_salary || '',
+    max_salary: safeInitialFilters.max_salary || '',
+    education_level: safeInitialFilters.education_level || '',
+    date_from: safeInitialFilters.date_from || '',
+    date_to: safeInitialFilters.date_to || '',
+    date_range: safeInitialFilters.date_range || '',
   });
 
   // Statuses
   const statuses = ['pending', 'shortlisted', 'rejected', 'hired'];
+
+  // Date range options
+  const dateRangeOptions = [
+    { value: '', label: 'Any Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'yesterday', label: 'Yesterday' },
+    { value: 'this_week', label: 'This Week' },
+    { value: 'this_month', label: 'This Month' },
+    { value: 'last_month', label: 'Last Month' },
+  ];
+
+  // Education levels
+  const educationLevels = {
+    high_school: 'High School',
+    associate: 'Associate Degree',
+    bachelor: "Bachelor's Degree",
+    master: "Master's Degree",
+    phd: 'PhD',
+    other: 'Other'
+  };
 
   // Get applications array from paginated response
   const applicationItems = applications?.data || [];
@@ -82,15 +127,6 @@ export default function JobApplications({ job, applications: initialApplications
   // Get selected application objects
   const getSelectedApplicants = () => {
     return applicationItems.filter(app => selectedApps.includes(app.id));
-  };
-
-  // Calculate stats from current applications
-  const stats = {
-    total: applications?.total || 0,
-    pending: applicationItems.filter(app => app.status === 'pending').length,
-    shortlisted: applicationItems.filter(app => app.status === 'shortlisted').length,
-    rejected: applicationItems.filter(app => app.status === 'rejected').length,
-    hired: applicationItems.filter(app => app.status === 'hired').length,
   };
 
   // Pagination info
@@ -103,25 +139,28 @@ export default function JobApplications({ job, applications: initialApplications
     to: applications.to,
   } : null;
 
-  // Handle filter change
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setLocalFilters(prev => ({ ...prev, [name]: value }));
+  // Build query params
+  const buildQueryParams = (pageNumber = 1, additionalParams = {}) => {
+    const params = {
+      page: pageNumber,
+      sort: sortField,
+      direction: sortDirection,
+      ...additionalParams
+    };
+
+    // Add all filters that have values
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== '' && filters[key] !== null && filters[key] !== undefined) {
+        params[key] = filters[key];
+      }
+    });
+
+    return params;
   };
 
   // Apply filters
   const applyFilters = () => {
-    const filterParams = {};
-    Object.keys(localFilters).forEach(key => {
-      if (localFilters[key] !== '' && localFilters[key] !== null && localFilters[key] !== undefined) {
-        filterParams[key] = localFilters[key];
-      }
-    });
-
-    router.get(route('backend.applications.job', job.id), {
-      ...filterParams,
-      page: 1,
-    }, {
+    router.get(route('backend.applications.job', job.id), buildQueryParams(1), {
       preserveState: true,
       preserveScroll: true,
       replace: true,
@@ -137,14 +176,24 @@ export default function JobApplications({ job, applications: initialApplications
 
   // Reset filters
   const resetFilters = () => {
-    setLocalFilters({
+    setFilters({
       status: '',
       search: '',
-      min_score: '',
-      sort: 'created_at',
-      direction: 'desc',
+      min_ats_score: '',
+      max_ats_score: '',
+      min_experience: '',
+      max_experience: '',
+      min_salary: '',
+      max_salary: '',
+      education_level: '',
+      date_from: '',
+      date_to: '',
+      date_range: '',
     });
-    router.get(route('backend.applications.job', job.id), {}, {
+    setSortField('created_at');
+    setSortDirection('desc');
+
+    router.get(route('backend.applications.job', job.id), { page: 1 }, {
       preserveState: true,
       preserveScroll: true,
       replace: true,
@@ -158,30 +207,18 @@ export default function JobApplications({ job, applications: initialApplications
     });
   };
 
-  // Handle sort change
-  const handleSortChange = (field) => {
-    const newDirection = localFilters.sort === field && localFilters.direction === 'asc' ? 'desc' : 'asc';
-    setLocalFilters(prev => ({ ...prev, sort: field, direction: newDirection }));
+  // Handle sort
+  const handleSort = (field) => {
+    const newDirection = sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
+    setSortField(field);
+    setSortDirection(newDirection);
 
-    const filterParams = {};
-    Object.keys(localFilters).forEach(key => {
-      if (key !== 'sort' && key !== 'direction' && localFilters[key] !== '' && localFilters[key] !== null && localFilters[key] !== undefined) {
-        filterParams[key] = localFilters[key];
-      }
-    });
-    filterParams.sort = field;
-    filterParams.direction = newDirection;
-
-    router.get(route('backend.applications.job', job.id), {
-      ...filterParams,
-      page: 1,
-    }, {
+    router.get(route('backend.applications.job', job.id), buildQueryParams(1, { sort: field, direction: newDirection }), {
       preserveState: true,
       preserveScroll: true,
       replace: true,
       onSuccess: (page) => {
         setApplications(page.props.applications);
-        setShowFilters(false);
         setSelectedApps([]);
         setPendingUpdates({});
         setPendingDeletes({});
@@ -194,17 +231,7 @@ export default function JobApplications({ job, applications: initialApplications
     if (page === pagination?.currentPage) return;
     if (page < 1 || page > pagination?.lastPage) return;
 
-    const filterParams = {};
-    Object.keys(localFilters).forEach(key => {
-      if (localFilters[key] !== '' && localFilters[key] !== null && localFilters[key] !== undefined) {
-        filterParams[key] = localFilters[key];
-      }
-    });
-
-    router.get(route('backend.applications.job', job.id), {
-      ...filterParams,
-      page: page,
-    }, {
+    router.get(route('backend.applications.job', job.id), buildQueryParams(page), {
       preserveState: true,
       preserveScroll: true,
       replace: true,
@@ -219,27 +246,33 @@ export default function JobApplications({ job, applications: initialApplications
   };
 
   // Handle select all applications
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedApps(applicationItems.map(app => app.id));
-    } else {
+  const handleSelectAll = () => {
+    const selectableApps = applicationItems.filter(app => !pendingDeletes[app.id]);
+    if (selectedApps.length === selectableApps.length) {
       setSelectedApps([]);
+    } else {
+      setSelectedApps(selectableApps.map(app => app.id));
     }
   };
 
   // Handle select single application
   const handleSelectApp = (appId) => {
-    if (selectedApps.includes(appId)) {
-      setSelectedApps(selectedApps.filter(id => id !== appId));
-    } else {
-      setSelectedApps([...selectedApps, appId]);
-    }
+    setSelectedApps(prev =>
+      prev.includes(appId)
+        ? prev.filter(id => id !== appId)
+        : [...prev, appId]
+    );
   };
 
   // Open email modal for bulk
   const handleOpenBulkEmail = () => {
     if (selectedApps.length === 0) {
-      Swal.fire('No Selection', 'Please select at least one application to send emails.', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Applications Selected',
+        text: 'Please select at least one application to send emails.',
+        confirmButtonColor: '#3b82f6',
+      });
       return;
     }
 
@@ -256,7 +289,6 @@ export default function JobApplications({ job, applications: initialApplications
   const extractFilenameFromDisposition = (contentDisposition) => {
     if (!contentDisposition) return null;
 
-    // RFC 6266 / RFC 5987 (filename*)
     const filenameStarMatch = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
     if (filenameStarMatch?.[1]) {
       try {
@@ -266,7 +298,6 @@ export default function JobApplications({ job, applications: initialApplications
       }
     }
 
-    // Basic filename=
     const filenameMatch = contentDisposition.match(/filename\s*=\s*\"?([^\";]+)\"?/i);
     return filenameMatch?.[1] ?? null;
   };
@@ -285,7 +316,12 @@ export default function JobApplications({ job, applications: initialApplications
   // Handle bulk export
   const handleExport = (format) => {
     if (applicationItems.length === 0) {
-      Swal.fire('No Data to Export', 'There are no applications to export.', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Data to Export',
+        text: 'There are no applications to export.',
+        confirmButtonColor: '#3b82f6',
+      });
       return;
     }
 
@@ -295,11 +331,13 @@ export default function JobApplications({ job, applications: initialApplications
     const formData = new FormData();
     formData.append('format', format);
 
-    Object.keys(localFilters).forEach(key => {
-      if (localFilters[key] !== '' && localFilters[key] !== null && localFilters[key] !== undefined) {
-        formData.append(key, localFilters[key]);
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== '' && filters[key] !== null && filters[key] !== undefined) {
+        formData.append(key, filters[key]);
       }
     });
+    formData.append('sort', sortField);
+    formData.append('direction', sortDirection);
 
     fetch(route('backend.applications.export', job.id), {
       method: 'POST',
@@ -347,60 +385,15 @@ export default function JobApplications({ job, applications: initialApplications
       .finally(() => setIsExporting(false));
   };
 
-  // Handle single application export
-  const handleExportSingle = (app, format) => {
-    setIsExporting(true);
-
-    fetch(route('backend.applications.export-single', app.id), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-      },
-      body: JSON.stringify({ format }),
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Export failed');
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = `application_${app.name}_${Date.now()}.${format}`;
-        if (contentDisposition) {
-          const extracted = extractFilenameFromDisposition(contentDisposition);
-          if (extracted) filename = extracted;
-        }
-        return response.blob().then(blob => ({ blob, filename }));
-      })
-      .then(({ blob, filename }) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        Swal.fire({
-          icon: 'success',
-          title: 'Exported!',
-          text: 'Application data downloaded successfully.',
-          timer: 1500,
-          showConfirmButton: false,
-        });
-      })
-      .catch(error => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Export Failed',
-          text: 'Failed to export application data.',
-          confirmButtonColor: '#d33',
-        });
-      })
-      .finally(() => setIsExporting(false));
-  };
-
   // Handle bulk delete with optimistic update
   const handleBulkDelete = () => {
     if (selectedApps.length === 0) {
-      Swal.fire('No Selection', 'Please select at least one application to delete.', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Applications Selected',
+        text: 'Please select at least one application to delete.',
+        confirmButtonColor: '#3b82f6',
+      });
       return;
     }
 
@@ -415,17 +408,14 @@ export default function JobApplications({ job, applications: initialApplications
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Store original state for rollback
         const originalApplications = JSON.parse(JSON.stringify(applications));
 
-        // Mark as deleting
         const deleteKeys = {};
         selectedApps.forEach(appId => {
           deleteKeys[appId] = true;
         });
         setPendingDeletes(prev => ({ ...prev, ...deleteKeys }));
 
-        // Optimistically remove from UI
         const updatedApplications = {
           ...applications,
           data: applications.data.filter(app => !selectedApps.includes(app.id))
@@ -449,7 +439,6 @@ export default function JobApplications({ job, applications: initialApplications
             setSelectedApps([]);
             setIsDeleting(false);
 
-            // Clear pending deletes
             setPendingDeletes(prev => {
               const newPending = { ...prev };
               selectedApps.forEach(id => delete newPending[id]);
@@ -457,7 +446,6 @@ export default function JobApplications({ job, applications: initialApplications
             });
           },
           onError: (error) => {
-            // Revert on error
             setApplications(originalApplications);
             setPendingDeletes(prev => {
               const newPending = { ...prev };
@@ -489,13 +477,10 @@ export default function JobApplications({ job, applications: initialApplications
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Store original state for rollback
         const originalApplications = JSON.parse(JSON.stringify(applications));
 
-        // Mark as deleting
         setPendingDeletes(prev => ({ ...prev, [appId]: true }));
 
-        // Optimistically remove from UI
         const updatedApplications = {
           ...applications,
           data: applications.data.filter(app => app.id !== appId)
@@ -517,13 +502,11 @@ export default function JobApplications({ job, applications: initialApplications
               delete newPending[appId];
               return newPending;
             });
-            // Remove from selected if present
             if (selectedApps.includes(appId)) {
               setSelectedApps(prev => prev.filter(id => id !== appId));
             }
           },
           onError: (error) => {
-            // Revert on error
             setApplications(originalApplications);
             setPendingDeletes(prev => {
               const newPending = { ...prev };
@@ -545,7 +528,12 @@ export default function JobApplications({ job, applications: initialApplications
   // Handle bulk status update with optimistic update
   const handleBulkStatusUpdate = (newStatus) => {
     if (selectedApps.length === 0) {
-      Swal.fire('No Selection', 'Please select at least one application.', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Applications Selected',
+        text: 'Please select at least one application.',
+        confirmButtonColor: '#3b82f6',
+      });
       return;
     }
 
@@ -554,23 +542,20 @@ export default function JobApplications({ job, applications: initialApplications
       text: `Are you sure you want to change ${selectedApps.length} application(s) status to ${newStatus}?`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
+      confirmButtonColor: '#10b981',
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, update',
       cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Store original state for rollback
         const originalApplications = JSON.parse(JSON.stringify(applications));
 
-        // Track pending updates
         const updateKeys = {};
         selectedApps.forEach(appId => {
           updateKeys[appId] = newStatus;
         });
         setPendingUpdates(prev => ({ ...prev, ...updateKeys }));
 
-        // Optimistically update UI
         const updatedApplications = {
           ...applications,
           data: applications.data.map(app =>
@@ -598,7 +583,6 @@ export default function JobApplications({ job, applications: initialApplications
             setSelectedApps([]);
             setIsUpdatingStatus(false);
 
-            // Clear pending updates
             setPendingUpdates(prev => {
               const newPending = { ...prev };
               selectedApps.forEach(id => delete newPending[id]);
@@ -606,7 +590,6 @@ export default function JobApplications({ job, applications: initialApplications
             });
           },
           onError: (error) => {
-            // Revert on error
             setApplications(originalApplications);
             setPendingUpdates(prev => {
               const newPending = { ...prev };
@@ -628,13 +611,17 @@ export default function JobApplications({ job, applications: initialApplications
   // Handle bulk download resumes (MERGED PDF)
   const handleBulkDownload = async () => {
     if (selectedApps.length === 0) {
-      Swal.fire('No Selection', 'Please select at least one application to download resumes.', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Applications Selected',
+        text: 'Please select at least one application to download resumes.',
+        confirmButtonColor: '#3b82f6',
+      });
       return;
     }
 
     setIsDownloading(true);
 
-    // Show loading indicator
     Swal.fire({
       title: 'Preparing Resumes...',
       text: selectedApps.length === 1
@@ -663,11 +650,9 @@ export default function JobApplications({ job, applications: initialApplications
         throw new Error(errorData?.message || `Download failed (${response.status})`);
       }
 
-      // Get filename from Content-Disposition header
       const contentDisposition = response.headers.get('content-disposition');
       const serverFilename = extractFilenameFromDisposition(contentDisposition);
 
-      // Determine filename
       let filename;
       if (serverFilename) {
         filename = serverFilename;
@@ -680,7 +665,6 @@ export default function JobApplications({ job, applications: initialApplications
         filename = `Resumes_${jobTitle}_${timestamp}.pdf`;
       }
 
-      // Download the file
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
 
@@ -693,7 +677,6 @@ export default function JobApplications({ job, applications: initialApplications
 
       window.URL.revokeObjectURL(blobUrl);
 
-      // Close loading and show success
       Swal.close();
       Swal.fire({
         icon: 'success',
@@ -761,13 +744,10 @@ export default function JobApplications({ job, applications: initialApplications
 
   // Handle single status update with optimistic update
   const handleStatusUpdate = (appId, newStatus) => {
-    // Store original state for rollback
     const originalApplications = JSON.parse(JSON.stringify(applications));
 
-    // Mark this update as pending and update locally
     setPendingUpdates(prev => ({ ...prev, [appId]: newStatus }));
 
-    // Optimistically update UI
     const updatedApplications = {
       ...applications,
       data: applications.data.map(app =>
@@ -782,14 +762,12 @@ export default function JobApplications({ job, applications: initialApplications
     }, {
       preserveScroll: true,
       onSuccess: () => {
-        // Clear pending update flag
         setPendingUpdates(prev => {
           const newPending = { ...prev };
           delete newPending[appId];
           return newPending;
         });
 
-        // Show success message
         Swal.fire({
           icon: 'success',
           title: 'Updated!',
@@ -799,7 +777,6 @@ export default function JobApplications({ job, applications: initialApplications
         });
       },
       onError: (error) => {
-        // Revert on error
         setApplications(originalApplications);
         setPendingUpdates(prev => {
           const newPending = { ...prev };
@@ -836,28 +813,23 @@ export default function JobApplications({ job, applications: initialApplications
       );
     }
 
-    const statuses = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: FaClock, label: 'Pending' },
-      shortlisted: { bg: 'bg-green-100', text: 'text-green-800', icon: FaCheckCircle, label: 'Shortlisted' },
-      rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: FaTimesCircle, label: 'Rejected' },
-      hired: { bg: 'bg-purple-100', text: 'text-purple-800', icon: FaStar, label: 'Hired' }
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      shortlisted: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      hired: 'bg-purple-100 text-purple-800'
     };
-    const s = statuses[status] || statuses.pending;
-    const Icon = s.icon;
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
-        <Icon size={10} />
-        {s.label}
-      </span>
-    );
+    return badges[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getAtsScoreColor = (score) => {
-    if (!score) return 'text-gray-400';
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-blue-600';
-    if (score >= 40) return 'text-yellow-600';
-    return 'text-red-600';
+  const getStatusIcon = (status) => {
+    const icons = {
+      pending: <FaHourglassHalf className="text-yellow-500" size={14} />,
+      shortlisted: <FaUserCheck className="text-green-500" size={14} />,
+      rejected: <FaUserSlash className="text-red-500" size={14} />,
+      hired: <FaCheckCircle className="text-purple-500" size={14} />
+    };
+    return icons[status] || <FaBriefcase className="text-gray-500" size={14} />;
   };
 
   const getStatusText = (status) => {
@@ -870,6 +842,22 @@ export default function JobApplications({ job, applications: initialApplications
     return texts[status] || status;
   };
 
+  const getAtsScoreColor = (score) => {
+    if (score === undefined || score === null) return 'text-gray-500';
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-blue-600';
+    if (score >= 40) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getAtsScoreBg = (score) => {
+    if (score === undefined || score === null) return 'bg-gray-100';
+    if (score >= 80) return 'bg-green-100';
+    if (score >= 60) return 'bg-blue-100';
+    if (score >= 40) return 'bg-yellow-100';
+    return 'bg-red-100';
+  };
+
   const formatSalary = (salary) => {
     if (!salary) return null;
     return new Intl.NumberFormat('en-US').format(salary) + ' BDT';
@@ -877,14 +865,35 @@ export default function JobApplications({ job, applications: initialApplications
 
   // Check if any filter is active
   const hasActiveFilters = () => {
-    return localFilters.status !== '' || localFilters.search !== '' || localFilters.min_score !== '';
+    return Object.keys(filters).some(key =>
+      filters[key] !== '' && filters[key] !== null && filters[key] !== undefined
+    );
+  };
+
+  // Get active filter count
+  const getActiveFilterCount = () => {
+    return Object.keys(filters).filter(key =>
+      filters[key] !== '' && filters[key] !== null && filters[key] !== undefined
+    ).length;
   };
 
   // Get sort icon
   const getSortIcon = (field) => {
-    if (localFilters.sort !== field) return null;
-    return localFilters.direction === 'asc' ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />;
+    if (sortField !== field) return <FaSort className="text-gray-400 ml-1" size={12} />;
+    return sortDirection === 'asc' ?
+      <FaSortUp className="text-blue-600 ml-1" size={12} /> :
+      <FaSortDown className="text-blue-600 ml-1" size={12} />;
   };
+
+  // Filter out deleted applications from display
+  const visibleApplications = applicationItems.filter(app => !pendingDeletes[app.id]);
+
+  // Get status counts from visible applications
+  const pendingCount = visibleApplications.filter(app => app.status === 'pending').length;
+  const shortlistedCount = visibleApplications.filter(app => app.status === 'shortlisted').length;
+  const rejectedCount = visibleApplications.filter(app => app.status === 'rejected').length;
+  const hiredCount = visibleApplications.filter(app => app.status === 'hired').length;
+  const totalCount = visibleApplications.length;
 
   // Show flash messages
   useEffect(() => {
@@ -907,28 +916,120 @@ export default function JobApplications({ job, applications: initialApplications
     }
   }, [flash]);
 
-  // Filter out deleted applications from display
-  const visibleApplications = applicationItems.filter(app => !pendingDeletes[app.id]);
+  // Pagination component
+  const Pagination = () => {
+    if (!pagination || pagination.lastPage <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(pagination.lastPage, startPage + maxVisible - 1);
+
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Showing <span className="font-medium">{pagination.from || 0}</span> to{' '}
+            <span className="font-medium">{pagination.to || 0}</span> of{' '}
+            <span className="font-medium">{pagination.total}</span> applications
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handlePageChange(pagination.currentPage - 1)}
+            disabled={pagination.currentPage === 1}
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+          >
+            <FaChevronLeft size={12} />
+            Previous
+          </button>
+
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => handlePageChange(1)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2 text-gray-400">...</span>}
+            </>
+          )}
+
+          {pages.map(page => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition ${page === pagination.currentPage
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          {endPage < pagination.lastPage && (
+            <>
+              {endPage < pagination.lastPage - 1 && <span className="px-2 text-gray-400">...</span>}
+              <button
+                onClick={() => handlePageChange(pagination.lastPage)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+              >
+                {pagination.lastPage}
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => handlePageChange(pagination.currentPage + 1)}
+            disabled={pagination.currentPage === pagination.lastPage}
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === pagination.lastPage
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+          >
+            Next
+            <FaChevronRight size={12} />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <AuthenticatedLayout>
       <Head title={`Applications for ${job.title}`} />
 
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
+        <div className="mx-auto">
           {/* HEADER */}
           <div className="mb-6">
             <Link
               href={route('backend.listing.index')}
-              className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
+              className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
             >
-              <FaArrowLeft className="mr-2" size={16} />
+              <FaArrowLeft className="mr-2" size={14} />
               Back to Job Listings
             </Link>
 
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
+                <h1 className="text-3xl font-bold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                  {job.title}
+                </h1>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-sm text-gray-500 flex items-center gap-1">
                     <FaBuilding size={12} />
@@ -939,6 +1040,40 @@ export default function JobApplications({ job, applications: initialApplications
                     Posted: {formatDate(job.created_at)}
                   </span>
                 </div>
+                <div className="flex gap-3 mt-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    Pending: {pendingCount}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    Shortlisted: {shortlistedCount}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    Rejected: {rejectedCount}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    Hired: {hiredCount}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                    Total: {totalCount}
+                  </span>
+                  {hasActiveFilters() && (
+                    <span className="inline-flex items-center gap-1 text-xs text-blue-600">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      Filtered ({getActiveFilterCount()})
+                    </span>
+                  )}
+                  {pagination && (
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                      Page Total: {pagination.total}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -947,7 +1082,7 @@ export default function JobApplications({ job, applications: initialApplications
                   <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
                     disabled={isExporting || applicationItems.length === 0}
-                    className="px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                   >
                     {isExporting ? (
                       <FaSpinner className="animate-spin" size={14} />
@@ -967,14 +1102,14 @@ export default function JobApplications({ job, applications: initialApplications
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-20 border border-gray-200 overflow-hidden">
                         <button
                           onClick={() => handleExport('xlsx')}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors"
                         >
                           <FaFileExcel className="text-green-600" size={16} />
                           Export as Excel (.xlsx)
                         </button>
                         <button
                           onClick={() => handleExport('csv')}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-t border-gray-100"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-t border-gray-100 transition-colors"
                         >
                           <FaFileCsv className="text-blue-600" size={16} />
                           Export as CSV (.csv)
@@ -986,7 +1121,7 @@ export default function JobApplications({ job, applications: initialApplications
 
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 ${showFilters || hasActiveFilters()
+                  className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all duration-200 ${showFilters || hasActiveFilters()
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
@@ -994,8 +1129,8 @@ export default function JobApplications({ job, applications: initialApplications
                   <FaFilter size={14} />
                   Filters
                   {hasActiveFilters() && (
-                    <span className="ml-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                      {Object.values(localFilters).filter(v => v !== '' && v !== 'created_at' && v !== 'desc').length}
+                    <span className="ml-1 bg-white text-blue-600 rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                      {getActiveFilterCount()}
                     </span>
                   )}
                   {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
@@ -1004,55 +1139,42 @@ export default function JobApplications({ job, applications: initialApplications
             </div>
           </div>
 
-          {/* STATS CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <p className="text-xs text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{visibleApplications.length}</p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <p className="text-xs text-gray-500">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {visibleApplications.filter(app => app.status === 'pending').length}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <p className="text-xs text-gray-500">Shortlisted</p>
-              <p className="text-2xl font-bold text-green-600">
-                {visibleApplications.filter(app => app.status === 'shortlisted').length}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <p className="text-xs text-gray-500">Rejected</p>
-              <p className="text-2xl font-bold text-red-600">
-                {visibleApplications.filter(app => app.status === 'rejected').length}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <p className="text-xs text-gray-500">Hired</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {visibleApplications.filter(app => app.status === 'hired').length}
-              </p>
-            </div>
-          </div>
-
-          {/* FILTERS PANEL */}
+          {/* FILTERS PANEL - Comprehensive like Index page */}
           {showFilters && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 animate-fade-in">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Filter Applications</h3>
-                <button onClick={resetFilters} className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1">
-                  <FaTimes size={12} /> Reset all
+                <button
+                  onClick={resetFilters}
+                  className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
+                >
+                  <FaTimes size={12} />
+                  Reset all
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                    <input
+                      type="text"
+                      value={filters.search}
+                      onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                      placeholder="Name, email, or phone..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Status */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <select
-                    name="status"
-                    value={localFilters.status}
-                    onChange={handleFilterChange}
+                    value={filters.status}
+                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Statuses</option>
@@ -1063,34 +1185,128 @@ export default function JobApplications({ job, applications: initialApplications
                     ))}
                   </select>
                 </div>
+
+                {/* ATS Score Range */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                  <div className="relative">
-                    <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ATS Score Range</label>
+                  <div className="flex gap-2">
                     <input
-                      type="text"
-                      name="search"
-                      value={localFilters.search}
-                      onChange={handleFilterChange}
-                      placeholder="Name, email, or phone..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      type="number"
+                      value={filters.min_ats_score}
+                      onChange={(e) => setFilters(prev => ({ ...prev, min_ats_score: e.target.value }))}
+                      placeholder={`Min (${filterOptions?.ats?.min || 0})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      min={filterOptions?.ats?.min || 0}
+                      max={filterOptions?.ats?.max || 100}
+                    />
+                    <input
+                      type="number"
+                      value={filters.max_ats_score}
+                      onChange={(e) => setFilters(prev => ({ ...prev, max_ats_score: e.target.value }))}
+                      placeholder={`Max (${filterOptions?.ats?.max || 100})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      min={filterOptions?.ats?.min || 0}
+                      max={filterOptions?.ats?.max || 100}
                     />
                   </div>
                 </div>
+
+                {/* Experience Range */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Min ATS Score</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Experience (years)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={filters.min_experience}
+                      onChange={(e) => setFilters(prev => ({ ...prev, min_experience: e.target.value }))}
+                      placeholder={`Min (${filterOptions?.experience?.min || 0})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      min={filterOptions?.experience?.min || 0}
+                      max={filterOptions?.experience?.max || 30}
+                    />
+                    <input
+                      type="number"
+                      value={filters.max_experience}
+                      onChange={(e) => setFilters(prev => ({ ...prev, max_experience: e.target.value }))}
+                      placeholder={`Max (${filterOptions?.experience?.max || 30})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      min={filterOptions?.experience?.min || 0}
+                      max={filterOptions?.experience?.max || 30}
+                    />
+                  </div>
+                </div>
+
+                {/* Salary Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Expected Salary (BDT)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={filters.min_salary}
+                      onChange={(e) => setFilters(prev => ({ ...prev, min_salary: e.target.value }))}
+                      placeholder={`Min (${(filterOptions?.salary?.min || 0).toLocaleString()})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      value={filters.max_salary}
+                      onChange={(e) => setFilters(prev => ({ ...prev, max_salary: e.target.value }))}
+                      placeholder={`Max (${(filterOptions?.salary?.max || 500000).toLocaleString()})`}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Education Level */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Education</label>
                   <select
-                    name="min_score"
-                    value={localFilters.min_score}
-                    onChange={handleFilterChange}
+                    value={filters.education_level}
+                    onChange={(e) => setFilters(prev => ({ ...prev, education_level: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Any Score</option>
-                    <option value="80">80%+ (Excellent)</option>
-                    <option value="60">60%+ (Good)</option>
-                    <option value="40">40%+ (Fair)</option>
-                    <option value="0">Below 40%</option>
+                    <option value="">All Levels</option>
+                    {Object.entries(educationLevels).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
+                </div>
+
+                {/* Date Range Preset */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                  <select
+                    value={filters.date_range}
+                    onChange={(e) => setFilters(prev => ({ ...prev, date_range: e.target.value, date_from: '', date_to: '' }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    {dateRangeOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Custom Date Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Custom Date Range</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value, date_range: '' }))}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(e) => setFilters(prev => ({ ...prev, date_to: e.target.value, date_range: '' }))}
+                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1113,7 +1329,7 @@ export default function JobApplications({ job, applications: initialApplications
 
           {/* BULK ACTIONS BAR */}
           {selectedApps.length > 0 && (
-            <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-4 mb-6 border border-blue-200">
+            <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-4 mb-6 animate-fade-in border border-blue-200">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <FaCheckDouble className="text-blue-600" size={20} />
@@ -1124,7 +1340,7 @@ export default function JobApplications({ job, applications: initialApplications
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={handleOpenBulkEmail}
-                    className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-green-700 transition-all duration-200"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-green-700 transition-all duration-200"
                   >
                     <FaEnvelope size={14} />
                     Send Email
@@ -1132,10 +1348,10 @@ export default function JobApplications({ job, applications: initialApplications
                   <select
                     onChange={(e) => handleBulkStatusUpdate(e.target.value)}
                     disabled={isUpdatingStatus}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-2 text-sm border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                     defaultValue=""
                   >
-                    <option value="" disabled>Update Status</option>
+                    <option value="" disabled>Bulk Update Status</option>
                     {statuses.map(status => (
                       <option key={status} value={status}>
                         Mark as {getStatusText(status)}
@@ -1145,7 +1361,7 @@ export default function JobApplications({ job, applications: initialApplications
                   <button
                     onClick={handleBulkDownload}
                     disabled={isDownloading}
-                    className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-purple-700 transition-all duration-200 disabled:opacity-50"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-purple-700 transition-all duration-200 disabled:opacity-50"
                   >
                     {isDownloading ? (
                       <FaSpinner className="animate-spin" size={14} />
@@ -1164,14 +1380,14 @@ export default function JobApplications({ job, applications: initialApplications
                   <button
                     onClick={handleBulkDelete}
                     disabled={isDeleting}
-                    className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-all duration-200 disabled:opacity-50"
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-all duration-200 disabled:opacity-50"
                   >
                     {isDeleting ? <FaSpinner className="animate-spin" size={14} /> : <FaTrash size={14} />}
                     Delete All
                   </button>
                   <button
                     onClick={() => setSelectedApps([])}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-all duration-200"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200"
                   >
                     Clear Selection
                   </button>
@@ -1180,99 +1396,121 @@ export default function JobApplications({ job, applications: initialApplications
             </div>
           )}
 
-          {/* APPLICATIONS TABLE */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* TABLE CARD */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-linear-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-4 py-3">
+                    <th className="px-4 py-4 text-left">
                       <input
                         type="checkbox"
-                        onChange={handleSelectAll}
                         checked={visibleApplications.length > 0 && selectedApps.length === visibleApplications.length}
+                        onChange={handleSelectAll}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        disabled={visibleApplications.length === 0}
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('name')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
                         Applicant
                         {getSortIcon('name')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Contact
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('ats_score')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('ats_score')}
+                    >
+                      <div className="flex items-center">
                         ATS Score
                         {getSortIcon('ats_score')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('expected_salary')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('expected_salary')}
+                    >
+                      <div className="flex items-center">
                         Expected Salary
                         {getSortIcon('expected_salary')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('years_of_experience')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('years_of_experience')}
+                    >
+                      <div className="flex items-center">
                         Experience
                         {getSortIcon('years_of_experience')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('created_at')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center">
                         Applied On
                         {getSortIcon('created_at')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onClick={() => handleSortChange('status')}>
-                      <div className="flex items-center gap-1">
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:text-gray-900"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center">
                         Status
                         {getSortIcon('status')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
+
                 <tbody className="bg-white divide-y divide-gray-200">
                   {visibleApplications.length === 0 && (
                     <tr>
-                      <td colSpan="9" className="text-center py-12">
-                        <div className="flex flex-col items-center">
-                          <FaBriefcase className="text-4xl text-gray-300 mb-3" />
-                          <p className="text-gray-500">No applications found</p>
-                          <p className="text-sm text-gray-400 mt-1">
-                            {hasActiveFilters() ? 'Try adjusting your filters.' : 'No applications have been submitted yet.'}
-                          </p>
-                          {hasActiveFilters() && (
-                            <div className="mt-4">
-                              <button
-                                onClick={resetFilters}
-                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                              >
-                                <FaTimes className="mr-2" size={14} />
-                                Clear Filters
-                              </button>
-                            </div>
-                          )}
+                      <td colSpan="9" className="text-center py-16">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FaBriefcase className="h-10 w-10 text-gray-400" />
                         </div>
+                        <h3 className="text-lg font-medium text-gray-900">No applications found</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {hasActiveFilters() ? 'Try adjusting your filters.' : 'No applications have been submitted for this job yet.'}
+                        </p>
+                        {hasActiveFilters() && (
+                          <div className="mt-6">
+                            <button
+                              onClick={resetFilters}
+                              className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+                            >
+                              <FaTimes className="mr-2" size={16} />
+                              Clear Filters
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
-                  {visibleApplications.map((app) => {
+
+                  {visibleApplications.map((app, index) => {
                     const atsScore = app.calculated_ats_score || app.ats_score?.percentage;
                     const isPending = pendingUpdates[app.id] !== undefined;
-                    const isDeletingApp = pendingDeletes[app.id];
                     const displayStatus = isPending ? pendingUpdates[app.id] : app.status;
 
-                    if (isDeletingApp) return null;
-
                     return (
-                      <tr key={app.id} className={`hover:bg-gray-50 transition-colors ${selectedApps.includes(app.id) ? 'bg-blue-50' : ''} ${isPending ? 'opacity-70' : ''}`}>
+                      <tr
+                        key={app.id}
+                        className={`hover:bg-gray-50 transition-all duration-200 animate-fade-in ${selectedApps.includes(app.id) ? 'bg-blue-50' : ''} ${isPending ? 'opacity-70' : ''}`}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
                         <td className="px-4 py-4">
                           <input
                             type="checkbox"
@@ -1282,86 +1520,112 @@ export default function JobApplications({ job, applications: initialApplications
                             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                           />
                         </td>
+
+                        {/* APPLICANT */}
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                              <FaUser className="text-gray-500" size={16} />
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
+                              {app.name?.charAt(0)?.toUpperCase() || '?'}
                             </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
+                            <div>
+                              <div className={`font-semibold ${isPending ? 'text-gray-500' : 'text-gray-900'}`}>
                                 {app.name}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs mt-0.5 text-gray-500">
                                 ID: #{app.id}
                               </div>
                             </div>
                           </div>
                         </td>
+
+                        {/* CONTACT */}
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 flex items-center gap-2">
-                            <FaEnvelope className="text-gray-400" size={12} />
-                            {app.email}
-                          </div>
-                          {app.phone && (
-                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                              <FaPhone className="text-gray-400" size={12} />
-                              {app.phone}
+                          <div className="space-y-1">
+                            <div className={`flex items-center gap-1 text-sm ${isPending ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <FaEnvelope size={12} className="text-gray-400" />
+                              <a href={`mailto:${app.email}`} className={`hover:text-blue-600 truncate max-w-36 ${isPending ? 'pointer-events-none' : ''}`}>
+                                {app.email}
+                              </a>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {atsScore ? (
-                            <div className="flex items-center gap-2">
-                              <span className={`text-lg font-bold ${getAtsScoreColor(atsScore)}`}>
-                                {Math.round(atsScore)}%
-                              </span>
-                              <div className="w-20">
-                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full ${atsScore >= 80 ? 'bg-green-500' :
-                                      atsScore >= 60 ? 'bg-blue-500' :
-                                        atsScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                                      }`}
-                                    style={{ width: `${atsScore}%` }}
-                                  />
-                                </div>
+                            {app.phone && (
+                              <div className={`flex items-center gap-1 text-sm ${isPending ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <FaPhone size={12} className="text-gray-400" />
+                                {app.phone}
                               </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* ATS SCORE */}
+                        <td className="px-6 py-4">
+                          {atsScore !== undefined && atsScore !== null ? (
+                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getAtsScoreBg(atsScore)} ${getAtsScoreColor(atsScore)}`}>
+                              <FaChartLine size={10} />
+                              {Math.round(atsScore)}%
                             </div>
                           ) : (
                             <span className="text-xs text-gray-400">Not calculated</span>
                           )}
                         </td>
+
+                        {/* EXPECTED SALARY */}
                         <td className="px-6 py-4">
                           {app.expected_salary ? (
-                            <span className="text-sm font-medium text-green-600">
+                            <span className={`text-sm font-medium ${isPending ? 'text-gray-400' : 'text-green-600'}`}>
                               {formatSalary(app.expected_salary)}
                             </span>
                           ) : (
-                            <span className="text-sm text-gray-400">Not specified</span>
+                            <span className={`text-sm ${isPending ? 'text-gray-400' : 'text-gray-400'}`}>
+                              Not specified
+                            </span>
                           )}
                         </td>
+
+                        {/* EXPERIENCE */}
                         <td className="px-6 py-4">
                           {app.years_of_experience ? (
-                            <span className="text-sm text-gray-700">
+                            <span className={`text-sm ${isPending ? 'text-gray-400' : 'text-gray-700'}`}>
                               {app.years_of_experience} {app.years_of_experience === 1 ? 'year' : 'years'}
                             </span>
                           ) : (
-                            <span className="text-sm text-gray-400">Not specified</span>
+                            <span className={`text-sm ${isPending ? 'text-gray-400' : 'text-gray-400'}`}>
+                              Not specified
+                            </span>
                           )}
                         </td>
+
+                        {/* APPLIED ON */}
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-600">{formatDate(app.created_at)}</span>
+                          <span className={`text-sm ${isPending ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {formatDate(app.created_at)}
+                          </span>
                         </td>
+
+                        {/* STATUS */}
                         <td className="px-6 py-4">
-                          {getStatusBadge(displayStatus, isPending)}
+                          {!isPending ? (
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(app.status)}
+                              <span className={`text-xs font-medium rounded-full px-2 py-1 ${getStatusBadge(app.status)}`}>
+                                {getStatusText(app.status)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                              <FaSpinner className="animate-spin" size={10} />
+                              Updating...
+                            </span>
+                          )}
                         </td>
-                        <td className="px-6 py-4 text-right">
+
+                        {/* ACTIONS */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end gap-2">
                             <select
                               value={displayStatus}
                               onChange={(e) => handleStatusUpdate(app.id, e.target.value)}
                               disabled={isPending}
-                              className="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                              className="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white"
                             >
                               {statuses.map(status => (
                                 <option key={status} value={status}>
@@ -1369,33 +1633,37 @@ export default function JobApplications({ job, applications: initialApplications
                                 </option>
                               ))}
                             </select>
+
                             <button
                               onClick={() => handleOpenSingleEmail(app)}
                               disabled={isPending}
-                              className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200 disabled:opacity-50"
+                              className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200 disabled:opacity-50"
                               title="Send Email"
                             >
                               <FaEnvelope size={16} />
                             </button>
+
                             <Link
                               href={route('backend.applications.show', app.id)}
-                              className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
                               title="View Details"
                             >
                               <FaEye size={16} />
                             </Link>
+
                             <button
                               onClick={() => handleDownloadResume(app)}
                               disabled={isPending}
-                              className="p-1.5 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-all duration-200 disabled:opacity-50"
+                              className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-lg transition-all duration-200 disabled:opacity-50"
                               title="Download Resume"
                             >
                               <FaFilePdf size={16} />
                             </button>
+
                             <button
                               onClick={() => handleDeleteSingle(app.id, app.name)}
                               disabled={isPending}
-                              className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50"
+                              className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50"
                               title="Delete"
                             >
                               <FaTrash size={16} />
@@ -1410,95 +1678,7 @@ export default function JobApplications({ job, applications: initialApplications
             </div>
 
             {/* PAGINATION */}
-            {pagination && pagination.lastPage > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-                <div className="text-sm text-gray-500">
-                  Showing <span className="font-medium">{pagination.from || 0}</span> to{' '}
-                  <span className="font-medium">{pagination.to || 0}</span> of{' '}
-                  <span className="font-medium">{pagination.total}</span> applications
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    disabled={pagination.currentPage === 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === 1
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                  >
-                    <FaChevronLeft size={12} />
-                    Previous
-                  </button>
-
-                  {(() => {
-                    const pages = [];
-                    const maxVisible = 5;
-                    let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisible / 2));
-                    let endPage = Math.min(pagination.lastPage, startPage + maxVisible - 1);
-
-                    if (endPage - startPage + 1 < maxVisible) {
-                      startPage = Math.max(1, endPage - maxVisible + 1);
-                    }
-
-                    if (startPage > 1) {
-                      pages.push(
-                        <button
-                          key={1}
-                          onClick={() => handlePageChange(1)}
-                          className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
-                        >
-                          1
-                        </button>
-                      );
-                      if (startPage > 2) pages.push(<span key="dots1" className="px-2 text-gray-400">...</span>);
-                    }
-
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(
-                        <button
-                          key={i}
-                          onClick={() => handlePageChange(i)}
-                          className={`px-3 py-1.5 rounded-lg text-sm transition ${i === pagination.currentPage
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                            }`}
-                        >
-                          {i}
-                        </button>
-                      );
-                    }
-
-                    if (endPage < pagination.lastPage) {
-                      if (endPage < pagination.lastPage - 1) pages.push(<span key="dots2" className="px-2 text-gray-400">...</span>);
-                      pages.push(
-                        <button
-                          key={pagination.lastPage}
-                          onClick={() => handlePageChange(pagination.lastPage)}
-                          className="px-3 py-1.5 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
-                        >
-                          {pagination.lastPage}
-                        </button>
-                      );
-                    }
-
-                    return pages;
-                  })()}
-
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    disabled={pagination.currentPage === pagination.lastPage}
-                    className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition ${pagination.currentPage === pagination.lastPage
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                  >
-                    Next
-                    <FaChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination />
           </div>
         </div>
       </div>
@@ -1520,6 +1700,23 @@ export default function JobApplications({ job, applications: initialApplications
           });
         }}
       />
+
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </AuthenticatedLayout>
   );
 }

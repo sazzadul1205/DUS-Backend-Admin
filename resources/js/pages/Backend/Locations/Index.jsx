@@ -32,7 +32,7 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // SweetAlert2
 import Swal from 'sweetalert2';
 
-export default function LocationsIndex({ locations: initialLocations, filters: initialFilters = {} }) {
+export default function LocationsIndex({locations: initialLocations,filters: initialFilters = {},stats = {},}) {
   const { flash } = usePage().props;
 
   // States
@@ -889,28 +889,23 @@ export default function LocationsIndex({ locations: initialLocations, filters: i
               <div className="flex gap-3 mt-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 text-xs">
                   <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  Active: {activeCount}
+                  Active: {stats?.active ?? 0}
                 </span>
+
                 <span className="inline-flex items-center gap-1 text-xs">
                   <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                  Inactive: {inactiveCount}
+                  Inactive: {stats?.inactive ?? 0}
                 </span>
+
                 <span className="inline-flex items-center gap-1 text-xs">
                   <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                  Deleted: {deletedCount}
+                  Deleted: {stats?.total_deleted ?? 0}
                 </span>
-                {hasActiveFilters() && (
-                  <span className="inline-flex items-center gap-1 text-xs text-blue-600">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    Filtered
-                  </span>
-                )}
-                {pagination && (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                    Total: {pagination.total}
-                  </span>
-                )}
+
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  Total: {stats?.total ?? 0}
+                </span>
               </div>
             </div>
 

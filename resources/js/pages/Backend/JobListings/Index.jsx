@@ -36,7 +36,7 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // SweetAlert2
 import Swal from 'sweetalert2';
 
-export default function JobListingsIndex({ jobListings: initialJobListings, filters: initialFilters = {}, filterOptions = {} }) {
+export default function JobListingsIndex({ jobListings: initialJobListings, filters: initialFilters = {}, filterOptions = {}, activeJobs, inactiveJobs, deletedJobs, totalViews, totalJobs, }) {
   const { flash } = usePage().props;
 
   // States
@@ -191,15 +191,12 @@ export default function JobListingsIndex({ jobListings: initialJobListings, filt
     });
   }, [jobListingItems]);
 
-  // Count jobs by status (from current page only)
-  const activeCount = jobListingItems.filter(job => !job.deleted_at && job.is_active).length;
-  const inactiveCount = jobListingItems.filter(job => !job.deleted_at && !job.is_active).length;
-  const deletedCount = jobListingItems.filter(job => job.deleted_at).length;
-
-  // Calculate total views across all jobs
-  const totalViewsAll = useMemo(() => {
-    return jobListingItems.reduce((sum, job) => sum + (job.views_count || 0), 0);
-  }, [jobListingItems]);
+  // Count jobs by status
+  const activeCount = activeJobs || 0;
+  const inactiveCount = inactiveJobs || 0;
+  const deletedCount = deletedJobs || 0;
+  const totalViewsAll = totalViews || 0;
+  const totalCount = totalJobs || 0;
 
   // Handle filter change
   const handleFilterChange = (key, value) => {
@@ -721,7 +718,7 @@ export default function JobListingsIndex({ jobListings: initialJobListings, filt
                 {pagination && (
                   <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                     <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                    Total: {pagination.total}
+                    Total: {totalCount}
                   </span>
                 )}
               </div>
@@ -842,7 +839,7 @@ export default function JobListingsIndex({ jobListings: initialJobListings, filt
                     <option value="all">All Statuses</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
-                    <option value="deleted">Deleted</option>
+                    <option value="trashed">Deleted</option>
                   </select>
                 </div>
 

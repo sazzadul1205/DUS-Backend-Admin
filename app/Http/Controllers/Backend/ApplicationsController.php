@@ -1,61 +1,306 @@
 <?php
+// Controllers/Backend/ApplicationsController.php
 
 namespace App\Http\Controllers\Backend;
 
+// Controllers
 use App\Http\Controllers\Controller;
+
+// Mails
 use App\Mail\ApplicationEmail;
+
+// Models
 use App\Models\Application;
+use App\Models\JobCategory;
 use App\Models\JobListing;
-use App\Services\ATSService;
+use App\Models\Location;
+use App\Models\User;
+// HTTP
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+
+// Collections
+use Illuminate\Support\Collection;
+
+// Facades
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+
+// For PDF
+use setasign\Fpdi\Fpdi;
+
+// For zip
 use ZipArchive;
 
 class ApplicationsController extends Controller
 {
     /**
-     * Display all applications from all jobs
+     * Display all applications from all jobs with comprehensive filtering
      */
     public function index(Request $request)
     {
-        $query = Application::with(['jobListing', 'applicantProfile.user', 'statusTimelines']);
+        $query = Application::with([
+            'jobListing' => function ($q) {
+                $q->with(['category', 'locations']);
+            },
+            'applicantProfile.user',
+            'statusTimelines'
+        ]);
 
         // Filter by status
-        if ($request->has('status') && $request->status) {
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
         // Filter by job
-        if ($request->has('job_id') && $request->job_id) {
+        if ($request->filled('job_id')) {
             $query->where('job_listing_id', $request->job_id);
         }
 
-        // Search by name or email
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+        // Filter by job category
+        if ($request->filled('category_id')) {
+            $query->whereHas('jobListing', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
             });
         }
 
-        $applications = $query->orderBy('created_at', 'desc')->paginate(20);
+        // Search by name, email, or phone
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
 
-        // Get all jobs for filter dropdown
+        // Date filters
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('date_range')) {
+            switch ($request->date_range) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'yesterday':
+                    $query->whereDate('created_at', today()->subDay());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('created_at', now()->subMonth()->month);
+                    break;
+            }
+        }
+
+        // ATS score filters
+        if ($request->filled('min_ats_score')) {
+            $minScore = (int) $request->min_ats_score;
+            $query->where(function ($q) use ($minScore) {
+                $q->whereRaw('JSON_EXTRACT(ats_score, "$.percentage") >= ?', [$minScore])
+                    ->orWhereRaw('ats_score >= ?', [$minScore]);
+            });
+        }
+
+        if ($request->filled('max_ats_score')) {
+            $maxScore = (int) $request->max_ats_score;
+            $query->where(function ($q) use ($maxScore) {
+                $q->whereRaw('JSON_EXTRACT(ats_score, "$.percentage") <= ?', [$maxScore])
+                    ->orWhereRaw('ats_score <= ?', [$maxScore]);
+            });
+        }
+
+        // Experience
+        if ($request->filled('min_experience')) {
+            $query->where('years_of_experience', '>=', (int) $request->min_experience);
+        }
+
+        if ($request->filled('max_experience')) {
+            $query->where('years_of_experience', '<=', (int) $request->max_experience);
+        }
+
+        // Salary
+        if ($request->filled('min_salary')) {
+            $query->where('expected_salary', '>=', (int) $request->min_salary);
+        }
+
+        if ($request->filled('max_salary')) {
+            $query->where('expected_salary', '<=', (int) $request->max_salary);
+        }
+
+        // Education
+        if ($request->filled('education_level')) {
+            $query->where('education_level', $request->education_level);
+        }
+
+        // Job type
+        if ($request->filled('job_type')) {
+            $query->whereHas('jobListing', function ($q) use ($request) {
+                $q->where('job_type', $request->job_type);
+            });
+        }
+
+        // Location
+        if ($request->filled('location_id')) {
+            $query->whereHas('jobListing.locations', function ($q) use ($request) {
+                $q->where('locations.id', $request->location_id);
+            });
+        }
+
+        // Trashed
+        if ($request->filled('trashed') && $request->trashed === 'only') {
+            $query->onlyTrashed();
+        } elseif ($request->filled('trashed') && $request->trashed === 'with') {
+            $query->withTrashed();
+        }
+
+        // Sorting
+        $sortField = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+
+        $allowedSortFields = [
+            'created_at',
+            'name',
+            'email',
+            'expected_salary',
+            'years_of_experience',
+            'status',
+            'ats_score'
+        ];
+
+        if ($sortField === 'ats_score') {
+            $query->orderByRaw(
+                'COALESCE(JSON_EXTRACT(ats_score, "$.percentage"), CAST(ats_score AS UNSIGNED), 0) ' . $sortDirection
+            );
+        } elseif (in_array($sortField, $allowedSortFields)) {
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $applications = $query->paginate($request->get('per_page', 7))
+            ->withQueryString();
+
+        // ATS transformation
+        $applications->getCollection()->transform(function ($application) {
+            $atsScore = null;
+            $atsPercentage = null;
+
+            if ($application->ats_score) {
+                if (is_array($application->ats_score)) {
+                    $atsPercentage = $application->ats_score['percentage'] ?? $application->ats_score['total'] ?? null;
+                } elseif (is_numeric($application->ats_score)) {
+                    $atsPercentage = $application->ats_score;
+                } elseif (is_string($application->ats_score)) {
+                    $decoded = json_decode($application->ats_score, true);
+                    if ($decoded) {
+                        $atsPercentage = $decoded['percentage'] ?? $decoded['total'] ?? null;
+                    }
+                }
+            }
+
+            $application->calculated_ats_score = $atsPercentage;
+            $application->ats_percentage = $atsPercentage;
+
+            return $application;
+        });
+
+        // Related filter data (NO employer)
         $jobs = JobListing::where('is_active', true)->get(['id', 'title']);
+        $categories = JobCategory::where('is_active', true)->get(['id', 'name']);
+        $locations = Location::where('is_active', true)->get(['id', 'name']);
+        $jobTypes = JobListing::$jobTypes;
+
+        $educationLevels = [
+            'high_school' => 'High School',
+            'associate' => 'Associate Degree',
+            'bachelor' => 'Bachelor\'s Degree',
+            'master' => 'Master\'s Degree',
+            'phd' => 'PhD',
+            'other' => 'Other'
+        ];
+
+        // Status counts
+        $statusCounts = [
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'shortlisted' => (clone $query)->where('status', 'shortlisted')->count(),
+            'rejected' => (clone $query)->where('status', 'rejected')->count(),
+            'hired' => (clone $query)->where('status', 'hired')->count(),
+            'total' => (clone $query)->count(),
+        ];
+
+        $statusCounts['deleted'] = Application::onlyTrashed()->count();
+
+        // Stats
+        $atsStats = Application::selectRaw('
+        MIN(CAST(JSON_EXTRACT(ats_score, "$.percentage") AS UNSIGNED)) as min_ats,
+        MAX(CAST(JSON_EXTRACT(ats_score, "$.percentage") AS UNSIGNED)) as max_ats')->first();
+
+        $salaryStats = Application::selectRaw('MIN(expected_salary) as min_salary, MAX(expected_salary) as max_salary')->first();
+
+        $expStats = Application::selectRaw('MIN(years_of_experience) as min_exp, MAX(years_of_experience) as max_exp')->first();
 
         return inertia('Backend/Applications/Index', [
             'applications' => $applications,
             'jobs' => $jobs,
-            'filters' => $request->only(['status', 'job_id', 'search'])
+            'categories' => $categories,
+            'locations' => $locations,
+            'jobTypes' => $jobTypes,
+            'educationLevels' => $educationLevels,
+            'filters' => $request->only([
+                'status',
+                'job_id',
+                'category_id',
+                'search',
+                'date_from',
+                'date_to',
+                'date_range',
+                'min_ats_score',
+                'max_ats_score',
+                'min_experience',
+                'max_experience',
+                'min_salary',
+                'max_salary',
+                'education_level',
+                'job_type',
+                'location_id',
+                'trashed',
+                'sort',
+                'direction',
+                'per_page'
+            ]),
+            'statusCounts' => $statusCounts,
+            'totalApplications' => Application::count(),
+            'filterOptions' => [
+                'ats' => [
+                    'min' => $atsStats->min_ats ?? 0,
+                    'max' => $atsStats->max_ats ?? 100,
+                ],
+                'salary' => [
+                    'min' => $salaryStats->min_salary ?? 0,
+                    'max' => $salaryStats->max_salary ?? 500000,
+                ],
+                'experience' => [
+                    'min' => $expStats->min_exp ?? 0,
+                    'max' => $expStats->max_exp ?? 30,
+                ],
+            ],
         ]);
     }
 
     /**
-     * Display applications for a specific job
+     * Display applications for a specific job with comprehensive filtering
      */
     public function jobApplications(Request $request, $jobId)
     {
@@ -65,12 +310,12 @@ class ApplicationsController extends Controller
             ->where('job_listing_id', $jobId);
 
         // Filter by status
-        if ($request->has('status') && $request->status) {
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Search by name or email
-        if ($request->has('search') && $request->search) {
+        // Search by name, email, or phone
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -79,33 +324,103 @@ class ApplicationsController extends Controller
             });
         }
 
-        // Filter by minimum ATS score
-        if ($request->has('min_score') && $request->min_score !== '') {
-            $minScore = (int) $request->min_score;
+        // ATS score range filters
+        if ($request->filled('min_ats_score')) {
+            $minScore = (int) $request->min_ats_score;
             $query->where(function ($q) use ($minScore) {
                 $q->whereRaw('JSON_EXTRACT(ats_score, "$.percentage") >= ?', [$minScore])
                     ->orWhereRaw('ats_score >= ?', [$minScore]);
             });
         }
 
-        // Sort by ATS score if requested
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
+        if ($request->filled('max_ats_score')) {
+            $maxScore = (int) $request->max_ats_score;
+            $query->where(function ($q) use ($maxScore) {
+                $q->whereRaw('JSON_EXTRACT(ats_score, "$.percentage") <= ?', [$maxScore])
+                    ->orWhereRaw('ats_score <= ?', [$maxScore]);
+            });
+        }
 
-        if ($sortField === 'ats_score') {
-            $query->orderByRaw('COALESCE(JSON_EXTRACT(ats_score, "$.percentage"), CAST(ats_score AS UNSIGNED), 0) ' . $sortDirection);
-        } else {
-            $allowedSortFields = ['created_at', 'name', 'email', 'expected_salary', 'years_of_experience', 'status'];
-            if (in_array($sortField, $allowedSortFields)) {
-                $query->orderBy($sortField, $sortDirection);
-            } else {
-                $query->orderBy('created_at', 'desc');
+        // Experience range filters
+        if ($request->filled('min_experience')) {
+            $query->where('years_of_experience', '>=', (int) $request->min_experience);
+        }
+
+        if ($request->filled('max_experience')) {
+            $query->where('years_of_experience', '<=', (int) $request->max_experience);
+        }
+
+        // Salary range filters
+        if ($request->filled('min_salary')) {
+            $query->where('expected_salary', '>=', (int) $request->min_salary);
+        }
+
+        if ($request->filled('max_salary')) {
+            $query->where('expected_salary', '<=', (int) $request->max_salary);
+        }
+
+        // Education level filter
+        if ($request->filled('education_level')) {
+            $query->where('education_level', $request->education_level);
+        }
+
+        // Date filters
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('date_range')) {
+            switch ($request->date_range) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'yesterday':
+                    $query->whereDate('created_at', today()->subDay());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('created_at', now()->subMonth()->month);
+                    break;
             }
         }
 
-        $applications = $query->paginate(20)->withQueryString();
+        // Sorting
+        $sortField = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
 
-        // Calculate ATS score for each application
+        $allowedSortFields = [
+            'created_at',
+            'name',
+            'email',
+            'expected_salary',
+            'years_of_experience',
+            'status',
+            'ats_score'
+        ];
+
+        if ($sortField === 'ats_score') {
+            $query->orderByRaw(
+                'COALESCE(JSON_EXTRACT(ats_score, "$.percentage"), CAST(ats_score AS UNSIGNED), 0) ' . $sortDirection
+            );
+        } elseif (in_array($sortField, $allowedSortFields)) {
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $perPage = $request->get('per_page', 20);
+        $applications = $query->paginate($perPage)->withQueryString();
+
+        // Transform ATS scores
         $applications->getCollection()->transform(function ($application) {
             $atsScore = null;
 
@@ -123,30 +438,78 @@ class ApplicationsController extends Controller
             }
 
             $application->calculated_ats_score = $atsScore;
-
             return $application;
         });
 
-        // Status counts
+        // Status counts (respecting applied filters)
+        $statusCountsQuery = clone $query;
         $statusCounts = [
-            'pending' => Application::where('job_listing_id', $jobId)->where('status', 'pending')->count(),
-            'shortlisted' => Application::where('job_listing_id', $jobId)->where('status', 'shortlisted')->count(),
-            'rejected' => Application::where('job_listing_id', $jobId)->where('status', 'rejected')->count(),
-            'hired' => Application::where('job_listing_id', $jobId)->where('status', 'hired')->count(),
+            'pending' => (clone $statusCountsQuery)->where('status', 'pending')->count(),
+            'shortlisted' => (clone $statusCountsQuery)->where('status', 'shortlisted')->count(),
+            'rejected' => (clone $statusCountsQuery)->where('status', 'rejected')->count(),
+            'hired' => (clone $statusCountsQuery)->where('status', 'hired')->count(),
         ];
+
+        // Get filter options (min/max values for ranges)
+        $filterOptionsQuery = Application::where('job_listing_id', $jobId);
+
+        $atsStats = (clone $filterOptionsQuery)->selectRaw('
+        MIN(CAST(JSON_EXTRACT(ats_score, "$.percentage") AS UNSIGNED)) as min_ats,
+        MAX(CAST(JSON_EXTRACT(ats_score, "$.percentage") AS UNSIGNED)) as max_ats
+    ')->first();
+
+        $salaryStats = (clone $filterOptionsQuery)->selectRaw('
+        MIN(expected_salary) as min_salary, 
+        MAX(expected_salary) as max_salary
+    ')->first();
+
+        $expStats = (clone $filterOptionsQuery)->selectRaw('
+        MIN(years_of_experience) as min_exp, 
+        MAX(years_of_experience) as max_exp
+    ')->first();
 
         return inertia('Backend/Applications/JobApplications', [
             'job' => $job,
             'applications' => $applications,
             'statusCounts' => $statusCounts,
-            'filters' => $request->only(['status', 'search', 'min_score', 'sort', 'direction'])
+            'filters' => $request->only([
+                'status',
+                'search',
+                'min_ats_score',
+                'max_ats_score',
+                'min_experience',
+                'max_experience',
+                'min_salary',
+                'max_salary',
+                'education_level',
+                'date_from',
+                'date_to',
+                'date_range',
+                'sort',
+                'direction',
+                'per_page'
+            ]),
+            'filterOptions' => [
+                'ats' => [
+                    'min' => $atsStats->min_ats ?? 0,
+                    'max' => $atsStats->max_ats ?? 100,
+                ],
+                'salary' => [
+                    'min' => $salaryStats->min_salary ?? 0,
+                    'max' => $salaryStats->max_salary ?? 500000,
+                ],
+                'experience' => [
+                    'min' => $expStats->min_exp ?? 0,
+                    'max' => $expStats->max_exp ?? 30,
+                ],
+            ],
         ]);
     }
 
     /**
      * Display single application details with full data
      */
-    public function show($id)
+    public function show(int $id)
     {
         $application = Application::with([
             'jobListing' => function ($q) {
@@ -170,7 +533,7 @@ class ApplicationsController extends Controller
             'statusTimelines' => function ($q) {
                 $q->orderBy('created_at', 'desc');
             }
-        ])->findOrFail($id);
+        ])->withTrashed()->findOrFail($id);
 
         // Extract ATS analysis data
         $atsAnalysis = null;
@@ -187,7 +550,7 @@ class ApplicationsController extends Controller
     /**
      * Update single application status
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, int $id)
     {
         $request->validate([
             'status' => 'required|in:pending,shortlisted,rejected,hired',
@@ -226,7 +589,7 @@ class ApplicationsController extends Controller
     /**
      * Delete a single application (soft delete)
      */
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $application = Application::findOrFail($id);
         $application->delete();
@@ -250,9 +613,55 @@ class ApplicationsController extends Controller
     }
 
     /**
+     * Restore a deleted application
+     */
+    public function restore(int $id)
+    {
+        $application = Application::withTrashed()->findOrFail($id);
+        $application->restore();
+
+        return back()->with('success', 'Application restored successfully.');
+    }
+
+    /**
+     * Bulk restore deleted applications
+     */
+    public function bulkRestore(Request $request)
+    {
+        $request->validate([
+            'application_ids' => 'required|array',
+            'application_ids.*' => 'exists:applications,id',
+        ]);
+
+        $restored = Application::onlyTrashed()
+            ->whereIn('id', $request->application_ids)
+            ->restore();
+
+        return back()->with('success', $restored . ' applications restored successfully.');
+    }
+
+    /**
+     * Force delete application permanently
+     */
+    public function forceDelete(int $id)
+    {
+        $application = Application::withTrashed()->findOrFail($id);
+
+        // Delete resume file if exists
+        $resumePath = $application->getActualResumePath();
+        if ($resumePath && Storage::disk('public')->exists($resumePath)) {
+            Storage::disk('public')->delete($resumePath);
+        }
+
+        $application->forceDelete();
+
+        return back()->with('success', 'Application permanently deleted.');
+    }
+
+    /**
      * Download single application resume/CV
      */
-    public function downloadResume($id)
+    public function downloadResume(int $id)
     {
         $application = Application::findOrFail($id);
         $resumePath = $application->getActualResumePath();
@@ -399,24 +808,23 @@ class ApplicationsController extends Controller
     /**
      * Merge PDFs using FPDI
      */
-    private function mergeWithFpdi($resumeFiles, $mergedPath, $mergedFilename)
+    private function mergeWithFpdi(array $resumeFiles, string $mergedPath, string $mergedFilename)
     {
-        $pdf = new \setasign\Fpdi\Fpdi();
+        $pdf = new Fpdi();
 
         foreach ($resumeFiles as $file) {
             if (strtolower(pathinfo($file['path'], PATHINFO_EXTENSION)) === 'pdf') {
                 try {
                     $pageCount = $pdf->setSourceFile($file['path']);
+
                     for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                         $templateId = $pdf->importPage($pageNo);
                         $size = $pdf->getTemplateSize($templateId);
 
-                        // Add page with same orientation
                         $orientation = $size['width'] > $size['height'] ? 'L' : 'P';
                         $pdf->AddPage($orientation, [$size['width'], $size['height']]);
                         $pdf->useTemplate($templateId);
 
-                        // Add applicant name as header (only on first page)
                         if ($pageNo === 1) {
                             $pdf->SetFont('Helvetica', 'B', 10);
                             $pdf->SetTextColor(100, 100, 100);
@@ -425,7 +833,9 @@ class ApplicationsController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::warning('Failed to merge PDF for ' . $file['applicant_name'] . ': ' . $e->getMessage());
+                    Log::warning(
+                        'Failed to merge PDF for ' . ($file['applicant_name'] ?? 'unknown') . ': ' . $e->getMessage()
+                    );
                     continue;
                 }
             }
@@ -433,17 +843,18 @@ class ApplicationsController extends Controller
 
         $pdf->Output('F', $mergedPath);
 
-        // Clean up old temp files
         $tempDir = storage_path('app/temp');
         $this->cleanupOldTempFiles($tempDir, 3600);
 
-        return response()->download($mergedPath, $mergedFilename)->deleteFileAfterSend(true);
+        return response()
+            ->download($mergedPath, $mergedFilename)
+            ->deleteFileAfterSend(true);
     }
 
     /**
      * Get Ghostscript merge command
      */
-    private function getGhostscriptCommand($resumeFiles, $outputPath)
+    private function getGhostscriptCommand(array $resumeFiles, string $outputPath): ?string
     {
         // Check if ghostscript is available
         $gsPath = $this->findExecutable('gs');
@@ -459,7 +870,7 @@ class ApplicationsController extends Controller
     /**
      * Get PDFTK merge command
      */
-    private function getPdftkCommand($resumeFiles, $outputPath)
+    private function getPdftkCommand(array $resumeFiles, string $outputPath): ?string
     {
         // Check if pdftk is available
         $pdftkPath = $this->findExecutable('pdftk');
@@ -475,34 +886,31 @@ class ApplicationsController extends Controller
     /**
      * Find executable path
      */
-    private function findExecutable($command)
+    private function findExecutable(string $command): ?string
     {
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // Windows
             $paths = [
-                "C:\\Program Files\\gs\\gs*\\bin\\gswin64c.exe",  // Ghostscript
+                "C:\\Program Files\\gs\\gs*\\bin\\gswin64c.exe",
                 "C:\\Program Files (x86)\\gs\\gs*\\bin\\gswin32c.exe",
-                "C:\\Program Files (x86)\\PDFtk\\bin\\pdftk.exe",  // PDFTK
+                "C:\\Program Files (x86)\\PDFtk\\bin\\pdftk.exe",
                 "C:\\Program Files\\PDFtk\\bin\\pdftk.exe",
             ];
 
             foreach ($paths as $pattern) {
                 $matches = glob($pattern);
                 if (!empty($matches)) {
-                    return '"' . $matches[0] . '"';
+                    return $matches[0]; // no quotes here
                 }
             }
 
-            // Try where command
             exec("where $command 2>NUL", $output, $returnCode);
             if ($returnCode === 0 && !empty($output[0])) {
-                return '"' . $output[0] . '"';
+                return trim($output[0]);
             }
         } else {
-            // Linux/Mac
             exec("which $command 2>/dev/null", $output, $returnCode);
             if ($returnCode === 0 && !empty($output[0])) {
-                return $output[0];
+                return trim($output[0]);
             }
         }
 
@@ -512,20 +920,32 @@ class ApplicationsController extends Controller
     /**
      * Create ZIP fallback
      */
-    private function createZipFallback($resumeFiles, $jobTitle, $timestamp)
+    private function createZipFallback(array $resumeFiles, string $jobTitle, string $timestamp)
     {
         $zipFileName = 'Resumes_' . $jobTitle . '_' . $timestamp . '.zip';
-        $zipPath = storage_path('app/temp') . '/' . $zipFileName;
+        $tempDir = storage_path('app/temp');
+        $zipPath = $tempDir . '/' . $zipFileName;
+
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
 
         $zip = new ZipArchive();
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return back()->with('error', 'Could not create file for download.');
+            return back()->with('error', 'Could not create ZIP file for download.');
         }
 
         foreach ($resumeFiles as $index => $file) {
+            if (!isset($file['path']) || !file_exists($file['path'])) {
+                continue;
+            }
+
             $extension = pathinfo($file['path'], PATHINFO_EXTENSION);
-            $filename = sprintf('%02d_%s.%s', $index + 1, $file['name'], $extension);
+
+            $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $file['name']);
+            $filename = sprintf('%02d_%s.%s', $index + 1, $safeName, $extension);
+
             $zip->addFile($file['path'], $filename);
         }
 
@@ -537,7 +957,7 @@ class ApplicationsController extends Controller
     /**
      * Clean up old temporary files
      */
-    private function cleanupOldTempFiles($directory, $maxAge = 3600)
+    private function cleanupOldTempFiles(string $directory, int $maxAge = 3600): void
     {
         if (!is_dir($directory)) {
             return;
@@ -547,10 +967,8 @@ class ApplicationsController extends Controller
         $now = time();
 
         foreach ($files as $file) {
-            if (is_file($file)) {
-                if ($now - filemtime($file) >= $maxAge) {
-                    unlink($file);
-                }
+            if (is_file($file) && ($now - filemtime($file) >= $maxAge)) {
+                unlink($file);
             }
         }
     }
@@ -558,7 +976,7 @@ class ApplicationsController extends Controller
     /**
      * Send email to single applicant with template
      */
-    public function sendEmail(Request $request, $id)
+    public function sendEmail(Request $request, int $id)
     {
         $request->validate([
             'subject' => 'required|string|max:255',
@@ -768,7 +1186,7 @@ class ApplicationsController extends Controller
     /**
      * Export single application data
      */
-    public function exportSingleApplication(Request $request, $id)
+    public function exportSingleApplication(Request $request, int $id)
     {
         $request->validate([
             'format' => 'required|in:csv,xlsx',
@@ -843,164 +1261,9 @@ class ApplicationsController extends Controller
     }
 
     /**
-     * Prepare export data for multiple applications
-     */
-    private function prepareExportData($applications)
-    {
-        $exportData = [];
-
-        foreach ($applications as $app) {
-            // Get ATS score
-            $atsScore = 'N/A';
-            if ($app->ats_score) {
-                if (is_array($app->ats_score) && isset($app->ats_score['percentage'])) {
-                    $atsScore = $app->ats_score['percentage'] . '%';
-                } elseif (is_numeric($app->ats_score)) {
-                    $atsScore = $app->ats_score . '%';
-                }
-            }
-
-            $exportData[] = [
-                'Application ID' => $app->id,
-                'Name' => $app->name,
-                'Email' => $app->email,
-                'Phone' => $app->phone ?? 'N/A',
-                'Status' => ucfirst($app->status),
-                'Applied Date' => $app->created_at ? $app->created_at->format('Y-m-d H:i:s') : 'N/A',
-                'Job Title' => $app->jobListing->title ?? 'N/A',
-                'Company' => $app->jobListing->employer->name ?? 'N/A',
-                'Expected Salary (BDT)' => $app->expected_salary ? number_format($app->expected_salary, 0) : 'N/A',
-                'Years of Experience' => $app->years_of_experience ?? 'N/A',
-                'ATS Score' => $atsScore,
-                'Cover Letter Preview' => $app->cover_letter ? substr(str_replace(["\n", "\r"], ' ', $app->cover_letter), 0, 200) . '...' : 'N/A',
-                'Current Location' => $app->current_location ?? 'N/A',
-                'Current Salary (BDT)' => $app->current_salary ? number_format($app->current_salary, 0) : 'N/A',
-                'Notice Period (Days)' => $app->notice_period_days ?? 'N/A',
-                'LinkedIn URL' => $app->linkedin_url ?? 'N/A',
-                'Portfolio URL' => $app->portfolio_url ?? 'N/A',
-                'Additional Info' => $app->additional_info ? substr(str_replace(["\n", "\r"], ' ', $app->additional_info), 0, 200) : 'N/A',
-            ];
-        }
-
-        return $exportData;
-    }
-
-    /**
-     * Prepare detailed single application export
-     */
-    private function prepareSingleApplicationExport($application)
-    {
-        // Get ATS analysis
-        $atsAnalysis = 'N/A';
-        if ($application->ats_score) {
-            if (is_array($application->ats_score)) {
-                if (isset($application->ats_score['analysis'])) {
-                    $atsAnalysis = substr(str_replace(["\n", "\r"], ' ', json_encode($application->ats_score['analysis'])), 0, 500);
-                } elseif (isset($application->ats_score['percentage'])) {
-                    $atsAnalysis = "Score: {$application->ats_score['percentage']}%";
-                    if (isset($application->ats_score['feedback'])) {
-                        $atsAnalysis .= " - Feedback: " . substr($application->ats_score['feedback'], 0, 200);
-                    }
-                }
-            }
-        }
-
-        $data = [
-            'APPLICATION DETAILS' => [
-                'Application ID' => $application->id,
-                'Name' => $application->name,
-                'Email' => $application->email,
-                'Phone' => $application->phone ?? 'N/A',
-                'Status' => ucfirst($application->status),
-                'Applied Date' => $application->created_at ? $application->created_at->format('Y-m-d H:i:s') : 'N/A',
-                'Last Updated' => $application->updated_at ? $application->updated_at->format('Y-m-d H:i:s') : 'N/A',
-                'Expected Salary (BDT)' => $application->expected_salary ? number_format($application->expected_salary, 0) : 'N/A',
-                'Years of Experience' => $application->years_of_experience ?? 'N/A',
-                'Current Location' => $application->current_location ?? 'N/A',
-                'Current Salary (BDT)' => $application->current_salary ? number_format($application->current_salary, 0) : 'N/A',
-                'Notice Period (Days)' => $application->notice_period_days ?? 'N/A',
-                'LinkedIn URL' => $application->linkedin_url ?? 'N/A',
-                'Portfolio URL' => $application->portfolio_url ?? 'N/A',
-                'Cover Letter' => $application->cover_letter ? str_replace(["\n", "\r"], ' ', $application->cover_letter) : 'N/A',
-                'Additional Info' => $application->additional_info ?? 'N/A',
-                'ATS Analysis' => $atsAnalysis,
-            ],
-            'JOB DETAILS' => [
-                'Job Title' => $application->jobListing->title ?? 'N/A',
-                'Job Description' => $application->jobListing->description ? substr(str_replace(["\n", "\r"], ' ', $application->jobListing->description), 0, 500) : 'N/A',
-                'Company Name' => $application->jobListing->employer->name ?? 'N/A',
-                'Category' => $application->jobListing->category->name ?? 'N/A',
-                'Job Type' => $application->jobListing->job_type ?? 'N/A',
-                'Employment Status' => $application->jobListing->employment_status ?? 'N/A',
-                'Min Salary (BDT)' => $application->jobListing->salary_min ? number_format($application->jobListing->salary_min, 0) : 'N/A',
-                'Max Salary (BDT)' => $application->jobListing->salary_max ? number_format($application->jobListing->salary_max, 0) : 'N/A',
-                'Locations' => $application->jobListing->locations ? $application->jobListing->locations->pluck('name')->implode(', ') : 'N/A',
-                'Job Posted Date' => $application->jobListing->created_at ? $application->jobListing->created_at->format('Y-m-d') : 'N/A',
-                'Job Deadline' => $application->jobListing->application_deadline ? $application->jobListing->application_deadline->format('Y-m-d') : 'N/A',
-            ],
-            'WORK HISTORY' => [],
-            'EDUCATION' => [],
-            'ACHIEVEMENTS' => [],
-            'STATUS TIMELINE' => [],
-        ];
-
-        // Add work history
-        if ($application->applicantProfile && $application->applicantProfile->jobHistories) {
-            foreach ($application->applicantProfile->jobHistories as $job) {
-                $data['WORK HISTORY'][] = [
-                    'Company' => $job->company_name,
-                    'Designation' => $job->designation,
-                    'Start Year' => $job->starting_year,
-                    'End Year' => $job->ending_year ?? 'Present',
-                    'Current Job' => $job->is_current ? 'Yes' : 'No',
-                    'Responsibilities' => substr(str_replace(["\n", "\r"], ' ', $job->responsibilities ?? ''), 0, 200),
-                ];
-            }
-        }
-
-        // Add education
-        if ($application->applicantProfile && $application->applicantProfile->educationHistories) {
-            foreach ($application->applicantProfile->educationHistories as $edu) {
-                $data['EDUCATION'][] = [
-                    'Degree' => $edu->degree,
-                    'Institution' => $edu->institution,
-                    'Major' => $edu->major ?? 'N/A',
-                    'Passing Year' => $edu->passing_year,
-                    'Result' => $edu->result ?? 'N/A',
-                ];
-            }
-        }
-
-        // Add achievements
-        if ($application->applicantProfile && $application->applicantProfile->achievements) {
-            foreach ($application->applicantProfile->achievements as $achievement) {
-                $data['ACHIEVEMENTS'][] = [
-                    'Title' => $achievement->title,
-                    'Description' => substr(str_replace(["\n", "\r"], ' ', $achievement->description ?? ''), 0, 200),
-                    'Date' => $achievement->date ?? 'N/A',
-                ];
-            }
-        }
-
-        // Add status timeline
-        if ($application->statusTimelines) {
-            foreach ($application->statusTimelines as $timeline) {
-                $data['STATUS TIMELINE'][] = [
-                    'Status' => ucfirst($timeline->status),
-                    'Changed By' => $timeline->changed_by ?? 'System',
-                    'Notes' => $timeline->notes ?? 'N/A',
-                    'Date' => $timeline->created_at ? $timeline->created_at->format('Y-m-d H:i:s') : 'N/A',
-                ];
-            }
-        }
-
-        return $data;
-    }
-
-    /**
      * Recalculate ATS score for an application
      */
-    public function recalculateAts($id)
+    public function recalculateAts(int $id)
     {
         $application = Application::with('jobListing')->findOrFail($id);
 
@@ -1047,12 +1310,158 @@ class ApplicationsController extends Controller
     }
 
     /**
-     * Prepare export data for a single application
+     * Prepare export data for multiple applications
+     */
+    private function prepareExportData(Collection $applications)
+    {
+        $exportData = [];
+
+        foreach ($applications as $app) {
+            // Get ATS score
+            $atsScore = 'N/A';
+            if ($app->ats_score) {
+                if (is_array($app->ats_score) && isset($app->ats_score['percentage'])) {
+                    $atsScore = $app->ats_score['percentage'] . '%';
+                } elseif (is_numeric($app->ats_score)) {
+                    $atsScore = $app->ats_score . '%';
+                }
+            }
+
+            $exportData[] = [
+                'Application ID' => $app->id,
+                'Name' => $app->name,
+                'Email' => $app->email,
+                'Phone' => $app->phone ?? 'N/A',
+                'Status' => ucfirst($app->status),
+                'Applied Date' => $app->created_at ? $app->created_at->format('Y-m-d H:i:s') : 'N/A',
+                'Job Title' => $app->jobListing->title ?? 'N/A',
+                'Company' => $app->jobListing->employer->name ?? 'N/A',
+                'Expected Salary (BDT)' => $app->expected_salary ? number_format($app->expected_salary, 0) : 'N/A',
+                'Years of Experience' => $app->years_of_experience ?? 'N/A',
+                'ATS Score' => $atsScore,
+                'Education Level' => $app->education_level ?? 'N/A',
+                'Current Location' => $app->current_location ?? 'N/A',
+                'Current Salary (BDT)' => $app->current_salary ? number_format($app->current_salary, 0) : 'N/A',
+                'Notice Period (Days)' => $app->notice_period_days ?? 'N/A',
+                'LinkedIn URL' => $app->linkedin_url ?? 'N/A',
+                'Portfolio URL' => $app->portfolio_url ?? 'N/A',
+            ];
+        }
+
+        return $exportData;
+    }
+
+    /**
+     * Prepare detailed single application export
+     */
+    private function prepareSingleApplicationExport(Application $application): array
+    {
+        // Get ATS analysis
+        $atsAnalysis = 'N/A';
+        if ($application->ats_score) {
+            if (is_array($application->ats_score)) {
+                if (isset($application->ats_score['analysis'])) {
+                    $atsAnalysis = substr(str_replace(["\n", "\r"], ' ', json_encode($application->ats_score['analysis'])), 0, 500);
+                } elseif (isset($application->ats_score['percentage'])) {
+                    $atsAnalysis = "Score: {$application->ats_score['percentage']}%";
+                    if (isset($application->ats_score['feedback'])) {
+                        $atsAnalysis .= " - Feedback: " . substr($application->ats_score['feedback'], 0, 200);
+                    }
+                }
+            }
+        }
+
+        $data = [
+            'APPLICATION DETAILS' => [
+                'Application ID' => $application->id,
+                'Name' => $application->name,
+                'Email' => $application->email,
+                'Phone' => $application->phone ?? 'N/A',
+                'Status' => ucfirst($application->status),
+                'Applied Date' => $application->created_at ? $application->created_at->format('Y-m-d H:i:s') : 'N/A',
+                'Last Updated' => $application->updated_at ? $application->updated_at->format('Y-m-d H:i:s') : 'N/A',
+                'Expected Salary (BDT)' => $application->expected_salary ? number_format($application->expected_salary, 0) : 'N/A',
+                'Years of Experience' => $application->years_of_experience ?? 'N/A',
+                'Education Level' => $application->education_level ?? 'N/A',
+                'Current Location' => $application->current_location ?? 'N/A',
+                'Current Salary (BDT)' => $application->current_salary ? number_format($application->current_salary, 0) : 'N/A',
+                'Notice Period (Days)' => $application->notice_period_days ?? 'N/A',
+                'LinkedIn URL' => $application->linkedin_url ?? 'N/A',
+                'Portfolio URL' => $application->portfolio_url ?? 'N/A',
+                'ATS Analysis' => $atsAnalysis,
+            ],
+            'JOB DETAILS' => [
+                'Job Title' => $application->jobListing->title ?? 'N/A',
+                'Company Name' => $application->jobListing->employer->name ?? 'N/A',
+                'Category' => $application->jobListing->category->name ?? 'N/A',
+                'Job Type' => $application->jobListing->job_type ?? 'N/A',
+                'Min Salary (BDT)' => $application->jobListing->salary_min ? number_format($application->jobListing->salary_min, 0) : 'N/A',
+                'Max Salary (BDT)' => $application->jobListing->salary_max ? number_format($application->jobListing->salary_max, 0) : 'N/A',
+                'Locations' => $application->jobListing->locations ? $application->jobListing->locations->pluck('name')->implode(', ') : 'N/A',
+                'Job Posted Date' => $application->jobListing->created_at ? $application->jobListing->created_at->format('Y-m-d') : 'N/A',
+                'Job Deadline' => $application->jobListing->application_deadline ? $application->jobListing->application_deadline->format('Y-m-d') : 'N/A',
+            ],
+            'WORK HISTORY' => [],
+            'EDUCATION' => [],
+            'ACHIEVEMENTS' => [],
+            'STATUS TIMELINE' => [],
+        ];
+
+        // Add work history
+        if ($application->applicantProfile && $application->applicantProfile->jobHistories) {
+            foreach ($application->applicantProfile->jobHistories as $job) {
+                $data['WORK HISTORY'][] = [
+                    'Company' => $job->company_name,
+                    'Position' => $job->position,
+                    'Start Year' => $job->starting_year,
+                    'End Year' => $job->ending_year ?? 'Present',
+                    'Current Job' => $job->is_current ? 'Yes' : 'No',
+                ];
+            }
+        }
+
+        // Add education
+        if ($application->applicantProfile && $application->applicantProfile->educationHistories) {
+            foreach ($application->applicantProfile->educationHistories as $edu) {
+                $data['EDUCATION'][] = [
+                    'Degree' => $edu->degree,
+                    'Institution' => $edu->institution_name,
+                    'Passing Year' => $edu->passing_year,
+                ];
+            }
+        }
+
+        // Add achievements
+        if ($application->applicantProfile && $application->applicantProfile->achievements) {
+            foreach ($application->applicantProfile->achievements as $achievement) {
+                $data['ACHIEVEMENTS'][] = [
+                    'Title' => $achievement->achievement_name,
+                    'Description' => substr(str_replace(["\n", "\r"], ' ', $achievement->achievement_details ?? ''), 0, 200),
+                ];
+            }
+        }
+
+        // Add status timeline
+        if ($application->statusTimelines) {
+            foreach ($application->statusTimelines as $timeline) {
+                $data['STATUS TIMELINE'][] = [
+                    'Status' => ucfirst($timeline->status),
+                    'Notes' => $timeline->notes ?? 'N/A',
+                    'Date' => $timeline->created_at ? $timeline->created_at->format('Y-m-d H:i:s') : 'N/A',
+                ];
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize filename for export
      */
     private function sanitizeFilename(string $filename): string
     {
         $filename = preg_replace('/[^a-zA-Z0-9\s_-]/', '', $filename);
-        $filename = str_replace(' ', '_', $filename);
+        $filename = str_replace(' ', '_', trim($filename));
         $filename = preg_replace('/_+/', '_', $filename);
         $filename = trim($filename, '_');
 

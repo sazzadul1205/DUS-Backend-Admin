@@ -88,26 +88,27 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
             Route::get('/', [RoleController::class, 'index'])->name('index');
             Route::get('/create', [RoleController::class, 'create'])->name('create');
             Route::post('/', [RoleController::class, 'store'])->name('store');
-            Route::get('/{id}', [RoleController::class, 'show'])->name('show');
-            Route::get('/{id}/edit', [RoleController::class, 'edit'])->name('edit');
-            Route::put('/{id}', [RoleController::class, 'update'])->name('update');
+
+            // Trashed listing & exports (must be declared before /{id})
+            Route::get('/trashed', [RoleController::class, 'trashed'])->name('trashed');
+            Route::get('/export', [RoleController::class, 'export'])->name('export');
+
+            Route::get('/{id}', [RoleController::class, 'show'])->name('show')->whereNumber('id');
+            Route::get('/{id}/edit', [RoleController::class, 'edit'])->name('edit')->whereNumber('id');
+            Route::put('/{id}', [RoleController::class, 'update'])->name('update')->whereNumber('id');
 
             // Soft Delete & Restore
-            Route::delete('/{id}', [RoleController::class, 'destroy'])->name('destroy');
-            Route::post('/{id}/restore', [RoleController::class, 'restore'])->name('restore');
-            Route::delete('/{id}/force', [RoleController::class, 'forceDelete'])->name('force-delete');
-
-            // Trashed listing
-            Route::get('/trashed', [RoleController::class, 'trashed'])->name('trashed');
+            Route::delete('/{id}', [RoleController::class, 'destroy'])->name('destroy')->whereNumber('id');
+            Route::post('/{id}/restore', [RoleController::class, 'restore'])->name('restore')->whereNumber('id');
+            Route::delete('/{id}/force', [RoleController::class, 'forceDelete'])->name('force-delete')->whereNumber('id');
 
             // Bulk operations
             Route::post('/bulk/delete', [RoleController::class, 'bulkDelete'])->name('bulk-delete');
             Route::post('/bulk/restore', [RoleController::class, 'bulkRestore'])->name('bulk-restore');
 
             // Utilities
-            Route::post('/{id}/toggle-status', [RoleController::class, 'toggleStatus'])->name('toggle-status');
-            Route::post('/{id}/clone', [RoleController::class, 'clone'])->name('clone');
-            Route::get('/export', [RoleController::class, 'export'])->name('export');
+            Route::post('/{id}/toggle-status', [RoleController::class, 'toggleStatus'])->name('toggle-status')->whereNumber('id');
+            Route::post('/{id}/clone', [RoleController::class, 'clone'])->name('clone')->whereNumber('id');
         });
 
         /*

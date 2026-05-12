@@ -209,8 +209,16 @@ class JobListingController extends Controller
             'employers' => User::where('role', 'employer')->get(['id', 'name']),
         ];
 
+        // Return response
         return Inertia::render('Backend/JobListings/Index', [
             'jobListings' => $jobListings,
+
+            'activeJobs' => JobListing::where('is_active', true)->count(),
+            'inactiveJobs' => JobListing::where('is_active', false)->count(),
+            'deletedJobs' => JobListing::onlyTrashed()->count(),
+            'totalViews' => JobListing::withCount('views')->get()->sum('views_count'),
+            'totalJobs' => JobListing::withTrashed()->count(),
+
             'filters' => $request->all([
                 'search',
                 'status',
@@ -235,6 +243,7 @@ class JobListingController extends Controller
                 'salary_min_filter',
                 'salary_max_filter'
             ]),
+
             'filterOptions' => $filterOptions,
         ]);
     }
