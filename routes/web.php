@@ -27,6 +27,9 @@ use App\Http\Controllers\Profile\AdminProfileController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 
+// Laravel
+use Illuminate\Http\Request;
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -54,6 +57,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/cv', [ProfileCompletionController::class, 'uploadCv'])->middleware('throttle:profile-cv')->name('profile.cv.upload');
     Route::delete('/profile/cv/{cv}', [ProfileCompletionController::class, 'destroyCv'])->name('profile.cv.destroy');
     Route::patch('/profile/cv/{cv}/primary', [ProfileCompletionController::class, 'setPrimaryCv'])->name('profile.cv.primary');
+
+    // API endpoint for checking verification status (used by the verify page)
+    Route::get('/api/user/verification-status', function (Request $request) {
+        return response()->json([
+            'verified' => $request->user()->hasVerifiedEmail(),
+        ]);
+    })->name('api.verification.status');
 });
 
 /*

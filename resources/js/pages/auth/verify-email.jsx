@@ -1,12 +1,47 @@
 // pages/auth/verify-email.jsx
 
-import { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { LoaderCircle, Mail, Send, LogOut, CheckCircle, MailCheck, Clock } from 'lucide-react';
 
 export default function VerifyEmail({ status }) {
     const { post, processing } = useForm({});
     const [resendStatus, setResendStatus] = useState(null);
+    const [checking, setChecking] = useState(true);
+
+    // Check if email is already verified (in case user verified in another tab)
+    useEffect(() => {
+        const checkVerificationStatus = async () => {
+            try {
+                const response = await fetch('/api/user/verification-status', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.verified) {
+                        // Redirect to profile completion or dashboard
+                        window.location.href = route('profile.complete');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking verification status:', error);
+            } finally {
+                setChecking(false);
+            }
+        };
+
+        // Check every 5 seconds for verification status
+        const interval = setInterval(checkVerificationStatus, 5000);
+
+        // Initial check
+        checkVerificationStatus();
+
+        return () => clearInterval(interval);
+    }, []);
 
     const submit = (e) => {
         e.preventDefault();
@@ -18,6 +53,16 @@ export default function VerifyEmail({ status }) {
     const handleLogout = () => {
         post(route('logout'));
     };
+
+    if (checking) {
+        return (
+            <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8">
+                <div className="flex items-center justify-center">
+                    <LoaderCircle className="h-8 w-8 animate-spin text-[#1b1b18]" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -79,6 +124,14 @@ export default function VerifyEmail({ status }) {
                                     <span>The link expires in 60 minutes</span>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Auto-refresh notice */}
+                        <div className="mb-4 text-center">
+                            <p className="text-xs text-[#706f6c] flex items-center justify-center gap-1">
+                                <LoaderCircle className="h-3 w-3 animate-spin" />
+                                This page automatically detects when your email is verified
+                            </p>
                         </div>
 
                         {/* Action Buttons */}
