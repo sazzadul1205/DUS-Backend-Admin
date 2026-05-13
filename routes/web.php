@@ -23,6 +23,7 @@ use App\Http\Controllers\Backend\ApplicationsController;
 use App\Http\Controllers\Backend\NotificationController;
 use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\UserController;
+use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Profile\AdminProfileController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -36,8 +37,28 @@ use Illuminate\Http\Request;
 |--------------------------------------------------------------------------
 */
 
-// Home
-Route::inertia('/', 'welcome')->name('home');
+/*
+|--------------------------------------------------------------------------
+| Frontend Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('/')->group(function () {
+    // Home page (main landing page)
+    Route::get('/', [FrontendController::class, 'home'])->name('home');
+
+    // Other frontend pages
+    Route::get('/about', [FrontendController::class, 'about'])->name('frontend.about');
+    Route::get('/projects-programs', [FrontendController::class, 'projectsPrograms'])->name('frontend.projects-programs');
+    Route::get('/workplace-area', [FrontendController::class, 'workplaceArea'])->name('frontend.workplace-area');
+    Route::get('/posts', [FrontendController::class, 'posts'])->name('frontend.posts');
+    Route::get('/posts/{slug}', [FrontendController::class, 'showPost'])->name('frontend.posts.show');
+    Route::get('/media', [FrontendController::class, 'media'])->name('frontend.media');
+    Route::get('/get-involved', [FrontendController::class, 'getInvolved'])->name('frontend.get-involved');
+    Route::get('/jobs-frontend', [FrontendController::class, 'jobs'])->name('frontend.jobs');
+    Route::get('/jobs-frontend/{slug}', [FrontendController::class, 'showJob'])->name('frontend.jobs.show');
+});
+
 
 // Public job listings (no auth) - Using PublicJobListingController
 Route::get('/jobs', [PublicJobListingController::class, 'index'])->name('public.jobs.index');
