@@ -19,24 +19,24 @@ const Banner = () => {
       <div className="absolute inset-0 bg-linear-to-r from-black/85 via-black/10 to-transparent"></div>
 
       {/* Content */}
-      <div className="absolute inset-0 flex items-center left-11">
-        <div className="max-w-215.75 px-20 md:px-20 text-white">
+      <div className="absolute left-24 inset-0 flex items-center p-12.5">
+        <div className="max-w-215.75 px-20 md:px-20 text-white space-y-5">
 
-          <p className="uppercase tracking-[4px] text-3xl font-semibold mb-4 text-white">
+          <p className="bricolage-grotesque uppercase tracking-[4px] text-[30px] font-semibold text-white">
             Together, We Create Impact
           </p>
 
-          <h1 className="text-[100px] font-bold leading-tight w-215.75 mb-6">
+          <h1 className="bricolage-grotesque text-[100px] font-bold leading-tight w-215.75 ">
             Be the Light for Someone in Need
           </h1>
 
-          <p className="font-normal text-[30px] text-white leading-tight w-215.75 mb-8">
+          <p className="bricolage-grotesque font-normal text-[30px] text-white leading-tight w-215.75 ">
             Your kindness has the power to change lives. Join us in <br /> bringing hope,
             support, and brighter futures to those in need. Every donation makes a difference big or small.
           </p>
 
-          <div className='flex items-center gap-6'>
-            <button className='capitalize font-600 text-[18px] px-8 py-5 bricolage-grotesque rounded-md bg-[#009BE2] text-white inline-flex items-center gap-3 group hover:bg-[#009BE2]/90 transition-all duration-300'>
+          <div className='flex items-center gap-6 pt-7.5'>
+            <button className='capitalize font-600 text-[18px] px-7.5 py-5 bricolage-grotesque rounded-md bg-[#009BE2] text-white inline-flex items-center gap-3 group hover:bg-[#009BE2]/90 transition-all duration-300'>
               <span>Become a Volunteer</span>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300">
                 <g clipPath="url(#clip0_96_3528)">
@@ -54,8 +54,8 @@ const Banner = () => {
                 </defs>
               </svg>
             </button>
-
-            <button className='capitalize font-600 text-[18px] px-8 py-5 bricolage-grotesque rounded-md bg-white text-black inline-flex items-center gap-3 group hover:bg-gray-50 transition-all duration-300'>
+ 
+            <button className='capitalize font-600 text-[18px] px-7.5 py-5 bricolage-grotesque rounded-md bg-white text-black inline-flex items-center gap-3 group hover:bg-gray-50 transition-all duration-300'>
               <span>How can I help?</span>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300">
                 <g clipPath="url(#clip0_96_3528)">
