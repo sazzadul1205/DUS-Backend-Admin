@@ -3,6 +3,7 @@
 import { Head } from '@inertiajs/react';
 import PublicLayout from '../../../layouts/PublicLayout';
 import Banner from './Components/Banner';
+import AboutUs from './Components/AboutUs';
 
 export default function Home() {
   return (
@@ -10,6 +11,8 @@ export default function Home() {
       <Head title="Job Match - Find Your Perfect Career" />
 
       <Banner />
+
+      <AboutUs />
     </PublicLayout>
   );
 }
