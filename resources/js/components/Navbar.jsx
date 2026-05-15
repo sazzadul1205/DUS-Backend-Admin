@@ -14,8 +14,8 @@ const Navbar = ({ navbarData }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="mx-auto px-20 py-3">
+    <nav className=" bg-white shadow-sm sticky top-0 z-20">
+      <div className="mx-auto px-5 md:px-20 py-3">
         <div className="flex justify-between items-center h-20">
 
           {/* Logo */}

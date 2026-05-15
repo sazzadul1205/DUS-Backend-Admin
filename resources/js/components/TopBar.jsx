@@ -158,7 +158,7 @@ const TopBar = ({ topBarData }) => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={topBarData.search.placeholder}
-                      className="px-3 py-1 rounded-l-md text-sm focus:outline-none focus:ring-1 focus:ring-[#009BE2] w-full"
+                      className="px-3 py-1 rounded-l-md text-sm focus:outline-none text-white focus:ring-1 focus:ring-[#009BE2] w-full"
                       autoFocus
                     />
                     <button

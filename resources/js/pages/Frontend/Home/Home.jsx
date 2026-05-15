@@ -4,6 +4,7 @@
 import { Head, usePage } from '@inertiajs/react';
 
 // Icons
+import { Menu, X } from 'lucide-react';
 import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter } from 'react-icons/fa6';
 
 // Layouts
@@ -16,39 +17,36 @@ import StoriesSection from './Sections/StoriesSection';
 import AboutUsSection from './Sections/AboutUsSection';
 import OurActionSection from './Sections/OurActionSection';
 import OurProgramsSection from './Sections/OurProgramsSection';
-import UpcomingEventsSection from './Sections/UpcomingEventsSection';
-import ProgramImpactSection from './Sections/ProgramImpactSection';
 import WhereWeWorkSection from './Sections/WhereWeWorkSection';
-import { Menu, X } from 'lucide-react';
-
-
+import ProgramImpactSection from './Sections/ProgramImpactSection';
+import UpcomingEventsSection from './Sections/UpcomingEventsSection';
 
 export default function Home() {
   // Get authentication status from Inertia page props
   const { auth } = usePage().props;
 
-  // Banner Data
+  // Banner Data (updated for better responsiveness)
   const bannerData = {
     background: {
       src: "/storage/uploads/banners/Background.jpg",
       alt: "Background"
     },
     overlay: {
-      darkOverlay: "bg-black/50",
-      gradient: "bg-linear-to-r from-black/85 via-black/10 to-transparent"
+      darkOverlay: "bg-black/40 lg:bg-black/50",
+      gradient: "bg-gradient-to-r from-black/85 via-black/10 to-transparent"
     },
     content: {
       tagline: {
         text: "Together, We Create Impact",
-        className: "uppercase tracking-[4px] text-[30px] font-semibold"
+        className: "uppercase tracking-[4px]  font-semibold"
       },
       title: {
         text: "Be the Light for Someone in Need",
-        className: "text-[100px] font-bold leading-tight"
+        className: " font-bold leading-tight"
       },
       description: {
         text: "Your kindness has the power to change lives. Join us in bringing hope, support, and brighter futures to those in need. Every donation makes a difference big or small.",
-        className: "font-normal text-[30px] leading-tight"
+        className: "font-normal  leading-tight"
       }
     },
     buttons: [
@@ -56,14 +54,14 @@ export default function Home() {
         id: 1,
         text: "Become a Volunteer",
         variant: "primary",
-        className: "bg-[#009BE2] text-white hover:bg-[#009BE2]/90",
+        className: "bg-[#009BE2] text-white hover:bg-[#009BE2]/80",
         icon: true
       },
       {
         id: 2,
         text: "How can I help?",
         variant: "secondary",
-        className: "bg-white text-black hover:bg-gray-50",
+        className: "bg-white/90 lg:bg-white text-black hover:bg-white",
         icon: true
       }
     ]
@@ -684,31 +682,31 @@ export default function Home() {
       <Head title="DUS - Dwip Unnayan Society | Empowering Communities" />
 
       {/* Banner Section */}
-      {/* <BannerSection bannerData={bannerData} /> */}
+      <BannerSection bannerData={bannerData} />
 
       {/* About Us Section */}
-      {/* <AboutUsSection aboutUsData={aboutUsData} /> */}
+      <AboutUsSection aboutUsData={aboutUsData} />
 
       {/* Our Action Section */}
-      {/* <OurActionSection actionData={ourActionData} /> */}
+      <OurActionSection actionData={ourActionData} />
 
       {/* Where We Work Section */}
-      {/* <WhereWeWorkSection workData={whereWeWorkData} /> */}
+      <WhereWeWorkSection workData={whereWeWorkData} />
 
       {/* Our Programs Section */}
-      {/* <OurProgramsSection programsData={ourProgramsData} /> */}
+      <OurProgramsSection programsData={ourProgramsData} />
 
       {/* Stories Section */}
-      {/* <StoriesSection storiesData={storiesData} /> */}
+      <StoriesSection storiesData={storiesData} />
 
       {/* Upcoming Events Section */}
-      {/* <UpcomingEventsSection eventsData={upcomingEventsData} /> */}
+      <UpcomingEventsSection eventsData={upcomingEventsData} />
 
       {/* Jobs Section */}
-      {/* <JobsSection jobsData={jobsData} /> */}
+      <JobsSection jobsData={jobsData} />
 
       {/* Program Impact Section */}
-      {/* <ProgramImpactSection impactData={programImpactData} /> */}
+      <ProgramImpactSection impactData={programImpactData} />
     </PublicLayout>
   );
 }
