@@ -10,6 +10,7 @@ import OurPrograms from './Components/OurPrograms';
 import Stories from './Components/Stories';
 import UpcomingEvents from './Components/UpcomingEvents';
 import Jobs from './Components/Jobs';
+import ProgramImpact from './Components/ProgramImpact';
 
 export default function Home() {
   return (
@@ -39,6 +40,9 @@ export default function Home() {
 
       {/* Jobs Section */}
       <Jobs />
+
+      {/*  Program Impact Section */}
+      <ProgramImpact />
     </PublicLayout>
   );
 }
