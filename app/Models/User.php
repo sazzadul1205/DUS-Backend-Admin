@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Notifications\DatabaseNotification;
 
 class User extends Authenticatable
 {
@@ -273,11 +274,24 @@ class User extends Authenticatable
      */
     public function activeRoles()
     {
-        return $this->roles()
+        return $this->belongsToMany(Role::class, 'user_roles')
+            ->withPivot('assigned_by', 'assigned_at', 'expires_at', 'is_active')
             ->wherePivot('is_active', true)
             ->where(function ($q) {
-                $q->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            });
+                $q->whereNull('user_roles.expires_at')
+                    ->orWhere('user_roles.expires_at', '>', now());
+            })
+            ->withTimestamps();
+    }
+
+    public function notifications()
+    {
+        return $this->morphMany(DatabaseNotification::class, 'notifiable')
+            ->orderBy('created_at', 'desc');
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->notifications()->whereNull('read_at');
     }
 }

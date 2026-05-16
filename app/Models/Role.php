@@ -230,4 +230,28 @@ class Role extends Model
             ->get()
             ->groupBy('module');
     }
+
+    /**
+     * Check if role has ANY of the given permissions
+     */
+    public function hasAnyPermission(array $permissionSlugs): bool
+    {
+        return $this->grantedPermissions()
+            ->whereIn('slug', $permissionSlugs)
+            ->exists();
+    }
+
+    /**
+     * Get all permission slugs for this role
+     */
+    public function getPermissionSlugsAttribute(): array
+    {
+        return $this->grantedPermissions()->pluck('slug')->toArray();
+    }
+
+    // Accessors
+    public function getUsersCountAttribute(): int
+    {
+        return $this->activeUsers()->count();
+    }
 }

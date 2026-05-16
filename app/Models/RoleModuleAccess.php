@@ -24,6 +24,7 @@ class RoleModuleAccess extends Model
         'module',
         'access_level',
     ];
+    
 
     /**
      * Available access levels in hierarchy order
@@ -78,5 +79,20 @@ class RoleModuleAccess extends Model
         $requiredLevel = $levels[$level] ?? 0;
 
         return $currentLevel >= $requiredLevel;
+    }
+
+    /**
+     * Get human-readable access level label
+     */
+    public static function getAccessLevelLabel(string $level): string
+    {
+        $labels = [
+            self::ACCESS_NO_ACCESS => 'No Access',
+            self::ACCESS_READ => 'Read Only',
+            self::ACCESS_WRITE => 'Read & Write',
+            self::ACCESS_MANAGE => 'Full Management',
+        ];
+
+        return $labels[$level] ?? $level;
     }
 }
