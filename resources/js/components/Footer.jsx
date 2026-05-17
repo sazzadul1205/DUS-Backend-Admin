@@ -7,6 +7,14 @@ import React, { useState } from 'react';
 // Icons
 import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter } from 'react-icons/fa6';
 
+// Map icon names to components
+const iconMap = {
+  FaFacebook: FaFacebook,
+  FaInstagram: FaInstagram,
+  FaLinkedin: FaLinkedin,
+  FaXTwitter: FaXTwitter
+};
+
 const Footer = ({ footerData }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +81,8 @@ const Footer = ({ footerData }) => {
             {/* Social Media Icons */}
             <div className='pt-5 flex justify-center lg:justify-start gap-3 lg:gap-5' aria-label="Social media links">
               {footerData.socialLinks.map((social, index) => {
-                const IconComponent = social.icon;
+                const IconComponent = iconMap[social.iconName];
+                if (!IconComponent) return null;
                 return (
                   <div
                     key={index}

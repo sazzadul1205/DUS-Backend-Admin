@@ -1,14 +1,21 @@
 // resources/js/components/TopBar.jsx
 
-// Icons
+// Icons - Import all needed icons
 import { FiSearch } from "react-icons/fi";
-import { FaXTwitter } from "react-icons/fa6";
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
-import { FaFacebook, FaInstagram, FaLinkedin, FaUser } from "react-icons/fa6";
+import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter, FaUser } from "react-icons/fa6";
 
 // React
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
+
+// Map icon names to components
+const iconMap = {
+  FaFacebook: FaFacebook,
+  FaInstagram: FaInstagram,
+  FaLinkedin: FaLinkedin,
+  FaXTwitter: FaXTwitter
+};
 
 const TopBar = ({ topBarData }) => {
   // Get auth from usePage
@@ -54,16 +61,11 @@ const TopBar = ({ topBarData }) => {
 
   const handleLanguageSelect = (language) => {
     setSelectedLanguage(language);
-    // console.log('Selected language:', language);
     setIsLangDropdownOpen(false);
-    // You can add additional logic here for language change
-    // For example: change app locale, RTL support, etc.
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    // console.log('Searching for:', searchQuery);
-    // Implement search logic
     router.get('/search', { q: searchQuery });
     setIsSearchExpanded(false);
     setSearchQuery('');
@@ -118,7 +120,7 @@ const TopBar = ({ topBarData }) => {
             {/* Language Dropdown Menu with Animation */}
             <div
               className={`absolute top-full mt-2 right-0 bg-white rounded-md shadow-lg py-2 w-40 z-50 transition-all duration-300 origin-top-right
-                ${isLangDropdownOpen
+                                ${isLangDropdownOpen
                   ? 'opacity-100 scale-100 visible'
                   : 'opacity-0 scale-95 invisible'}`}
             >
@@ -149,7 +151,7 @@ const TopBar = ({ topBarData }) => {
             <div className="overflow-hidden">
               <div
                 className={`transition-all duration-300 ease-in-out
-                  ${isSearchExpanded ? 'w-64 opacity-100' : 'w-6 opacity-100'}`}
+                                    ${isSearchExpanded ? 'w-64 opacity-100' : 'w-6 opacity-100'}`}
               >
                 {isSearchExpanded ? (
                   <form onSubmit={handleSearchSubmit} className="flex items-center animate-slideIn">
@@ -200,7 +202,7 @@ const TopBar = ({ topBarData }) => {
             {/* User Dropdown Menu with Animation */}
             <div
               className={`absolute top-full mt-2 right-0 bg-white rounded-md shadow-lg py-2 w-48 z-50 transition-all duration-300 origin-top-right
-                ${isUserDropdownOpen
+                                ${isUserDropdownOpen
                   ? 'opacity-100 scale-100 visible'
                   : 'opacity-0 scale-95 invisible'}`}
             >
@@ -258,7 +260,8 @@ const TopBar = ({ topBarData }) => {
 
           {/* Social Icons with Hover Animation */}
           {topBarData.socialLinks.map((social) => {
-            const IconComponent = social.icon;
+            const IconComponent = iconMap[social.iconName];
+            if (!IconComponent) return null;
             return (
               <a
                 key={social.id}
@@ -306,7 +309,7 @@ const TopBar = ({ topBarData }) => {
           </button>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile Dropdown Menu - Same as before but with icon fix */}
         <div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
             }`}
@@ -463,7 +466,8 @@ const TopBar = ({ topBarData }) => {
             {/* Mobile Social Icons */}
             <div className="flex justify-center gap-4">
               {topBarData.socialLinks.map((social) => {
-                const IconComponent = social.icon;
+                const IconComponent = iconMap[social.iconName];
+                if (!IconComponent) return null;
                 return (
                   <a
                     key={social.id}
@@ -484,21 +488,21 @@ const TopBar = ({ topBarData }) => {
 
       {/* Add custom animation keyframes */}
       <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                
+                .animate-slideIn {
+                    animation: slideIn 0.3s ease-out;
+                }
+            `}</style>
     </>
   );
 };

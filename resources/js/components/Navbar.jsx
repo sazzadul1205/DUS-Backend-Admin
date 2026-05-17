@@ -56,7 +56,7 @@ const Navbar = ({ navbarData }) => {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className={navbarData.mobileMenu.className}
+              className={navbarData.mobileMenu?.className || "md:hidden text-gray-700 hover:text-blue-600 focus:outline-none"}
               aria-label="Toggle menu"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
