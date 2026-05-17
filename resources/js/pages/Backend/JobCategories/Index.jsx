@@ -1,7 +1,14 @@
 // resources/js/pages/Backend/JobCategories/Index.jsx
 
+// React
 import { useState, useMemo, useEffect } from 'react';
+
+// Inertia
 import { Head, router, usePage } from '@inertiajs/react';
+
+// Auth
+import { useAuth } from '../../../hooks/useAuth';
+import { Can } from '../../../components/Auth/Can';
 
 // Icons
 import {
@@ -22,6 +29,7 @@ import {
   FaExclamationTriangle,
   FaChevronLeft,
   FaChevronRight,
+  FaShieldAlt,
 } from 'react-icons/fa';
 
 // Layout
@@ -33,16 +41,39 @@ import Swal from 'sweetalert2';
 export default function JobCategoriesIndex({ categories: initialCategories, filters: initialFilters = {}, stats: initialStats = {} }) {
   const { flash } = usePage().props;
 
+  // Use centralized auth hook
+  const {
+    user: currentUser,
+    hasAnyPermission,
+    hasRole,
+    isAuthenticated,
+  } = useAuth();
+
+  // Check permissions for category management
+  const isSuperAdmin = hasRole('super-admin');
+  const canViewCategories = hasAnyPermission(['categories.view', 'categories.manage']);
+  const canEditCategories = hasAnyPermission(['categories.update', 'categories.manage']);
+  const canCreateCategories = hasAnyPermission(['categories.create', 'categories.manage']);
+  const canToggleCategories = hasAnyPermission(['categories.update', 'categories.manage']);
+  const canDeleteCategories = hasAnyPermission(['categories.destroy', 'categories.manage']);
+  const canRestoreCategories = hasAnyPermission(['categories.restore', 'categories.manage']);
+  const canBulkDeleteCategories = hasAnyPermission(['categories.bulk_delete', 'categories.manage']);
+  const canForceDeleteCategories = hasAnyPermission(['categories.force_delete', 'categories.manage']);
+  const canBulkRestoreCategories = hasAnyPermission(['categories.bulk_restore', 'categories.manage']);
+  const canBulkActivateCategories = hasAnyPermission(['categories.bulk_activate', 'categories.manage']);
+  const canBulkDeactivateCategories = hasAnyPermission(['categories.bulk_deactivate', 'categories.manage']);
+  const canBulkForceDeleteCategories = hasAnyPermission(['categories.bulk_force_delete', 'categories.manage']);
+
   // States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [restoringId, setRestoringId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [forceDeletingId, setForceDeletingId] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [categories, setCategories] = useState(initialCategories);
   const [currentPage, setCurrentPage] = useState(initialCategories?.current_page || 1);
@@ -58,6 +89,24 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     name: '',
     is_active: true,
   });
+
+  // If user doesn't have permission to view categories, show access denied
+  if (!canViewCategories) {
+    return (
+      <AuthenticatedLayout>
+        <Head title="Access Denied" />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaShieldAlt className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+            <p className="text-gray-500 mt-2">You don't have permission to view job categories.</p>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    );
+  }
 
   // Get categories array from paginated response
   const categoryItems = useMemo(() => {
@@ -153,9 +202,10 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
   }, [categoryItems, filters]);
 
   // Stats
-  const activeCount = categoryItems.filter(cat => !cat.deleted_at && cat.is_active).length;
-  const inactiveCount = categoryItems.filter(cat => !cat.deleted_at && !cat.is_active).length;
-  const deletedCount = categoryItems.filter(cat => cat.deleted_at).length;
+  const activeCount = stats?.active || categoryItems.filter(cat => !cat.deleted_at && cat.is_active).length;
+  const inactiveCount = stats?.inactive || categoryItems.filter(cat => !cat.deleted_at && !cat.is_active).length;
+  const deletedCount = stats?.total_deleted || categoryItems.filter(cat => cat.deleted_at).length;
+  const totalCount = stats?.total || categoryItems.length;
 
   // Handle filter change
   const handleFilterChange = (key, value) => {
@@ -268,14 +318,15 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
 
   // Bulk selection handlers
   const handleSelectAll = () => {
-    const nonDeletedCategories = filteredCategories.filter(cat => !cat.deleted_at);
-    if (selectedCategories.length === nonDeletedCategories.length) {
+    const selectableCategories = filteredCategories.filter(cat => !cat.deleted_at && canEditCategories);
+    if (selectedCategories.length === selectableCategories.length) {
       setSelectedCategories([]);
     } else {
-      setSelectedCategories(nonDeletedCategories.map(cat => cat.id));
+      setSelectedCategories(selectableCategories.map(cat => cat.id));
     }
   };
 
+  // Category selection handlers
   const handleSelectCategory = (categoryId) => {
     setSelectedCategories(prev =>
       prev.includes(categoryId)
@@ -284,8 +335,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     );
   };
 
-  // Bulk actions
+  // Bulk Activate Handler
   const handleBulkActivate = () => {
+    if (!canBulkActivateCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to bulk activate categories.', 'error');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Swal.fire('No Selection', 'Please select at least one category.', 'warning');
       return;
@@ -333,7 +389,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Bulk Deactivate Handler
   const handleBulkDeactivate = () => {
+    if (!canBulkDeactivateCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to bulk deactivate categories.', 'error');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Swal.fire('No Selection', 'Please select at least one category.', 'warning');
       return;
@@ -381,7 +443,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Bulk Delete Handler
   const handleBulkDelete = () => {
+    if (!canBulkDeleteCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to bulk delete categories.', 'error');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Swal.fire('No Selection', 'Please select at least one category.', 'warning');
       return;
@@ -440,7 +508,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Bulk Restore Handler
   const handleBulkRestore = () => {
+    if (!canBulkRestoreCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to bulk restore categories.', 'error');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Swal.fire('No Selection', 'Please select at least one category.', 'warning');
       return;
@@ -488,7 +562,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Bulk Force Delete Handler
   const handleBulkForceDelete = () => {
+    if (!canBulkForceDeleteCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to permanently delete categories.', 'error');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Swal.fire('No Selection', 'Please select at least one category.', 'warning');
       return;
@@ -551,14 +631,23 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
-  // Modal handlers
+  // Modal handlers - Create 
   const handleOpenCreate = () => {
+    if (!canCreateCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to create categories.', 'error');
+      return;
+    }
     setEditingCategory(null);
     setFormData({ name: '', is_active: true });
     setIsModalOpen(true);
   };
 
+  // Modal handlers - Edit
   const handleOpenEdit = (category) => {
+    if (!canEditCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to edit categories.', 'error');
+      return;
+    }
     setEditingCategory(category);
     setFormData({
       name: category.name,
@@ -567,13 +656,21 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     setIsModalOpen(true);
   };
 
+  // Modal handlers - Close
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCategory(null);
   };
 
+  // Form handlers
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!canCreateCategories && !canEditCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to save categories.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     if (editingCategory) {
@@ -629,6 +726,11 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
 
   // Single category actions
   const handleDelete = (id, name) => {
+    if (!canDeleteCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to delete categories.', 'error');
+      return;
+    }
+
     Swal.fire({
       title: 'Delete Category?',
       text: `Are you sure you want to delete "${name}"? This will move it to trash.`,
@@ -678,7 +780,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Force delete Handler
   const handleForceDelete = (id, name) => {
+    if (!canForceDeleteCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to permanently delete categories.', 'error');
+      return;
+    }
+
     Swal.fire({
       title: 'Permanently Delete Category?',
       html: `Are you sure you want to <strong>permanently delete</strong> "${name}"?<br/><br/>This action <strong>cannot be undone</strong> and will remove this category from the database completely.`,
@@ -728,7 +836,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Restore Handler
   const handleRestore = (id, name) => {
+    if (!canRestoreCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to restore categories.', 'error');
+      return;
+    }
+
     Swal.fire({
       title: 'Restore Category?',
       text: `Are you sure you want to restore "${name}"?`,
@@ -768,7 +882,13 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     });
   };
 
+  // Toggle Handler
   const handleToggle = (category) => {
+    if (!canToggleCategories) {
+      Swal.fire('Permission Denied', 'You do not have permission to change category status.', 'error');
+      return;
+    }
+
     Swal.fire({
       title: category.is_active ? 'Deactivate Category?' : 'Activate Category?',
       text: `This will ${category.is_active ? 'deactivate' : 'activate'} "${category.name}".`,
@@ -828,6 +948,14 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
     }
   }, [flash]);
 
+
+  // Permissions
+  const canBulkActivate = canBulkActivateCategories && selectedCategories.length > 0;
+  const canBulkDeactivate = canBulkDeactivateCategories && selectedCategories.length > 0;
+  const canBulkDelete = canBulkDeleteCategories && selectedCategories.length > 0;
+  const canBulkForceDelete = canBulkForceDeleteCategories && selectedCategories.length > 0;
+  const canBulkRestore = canBulkRestoreCategories && selectedCategories.length > 0;
+
   return (
     <AuthenticatedLayout>
       <Head title="Job Categories" />
@@ -856,16 +984,14 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                   <span className="w-2 h-2 rounded-full bg-gray-400"></span>
                   Deleted: {deletedCount}
                 </span>
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  Total: {totalCount}
+                </span>
                 {hasActiveFilters() && (
                   <span className="inline-flex items-center gap-1 text-xs text-blue-600">
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                     Filtered
-                  </span>
-                )}
-                {pagination && (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                    Total: {pagination.total}
                   </span>
                 )}
               </div>
@@ -889,13 +1015,15 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                 {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
               </button>
 
-              <button
-                onClick={handleOpenCreate}
-                className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                <FaPlus size={16} />
-                Add Category
-              </button>
+              <Can permission="categories.create" fallback={null}>
+                <button
+                  onClick={handleOpenCreate}
+                  className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
+                >
+                  <FaPlus size={16} />
+                  Add Category
+                </button>
+              </Can>
             </div>
           </div>
 
@@ -910,46 +1038,56 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                   </span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={handleBulkActivate}
-                    disabled={isBulkProcessing}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <FaCheckCircle size={14} />
-                    Activate All
-                  </button>
-                  <button
-                    onClick={handleBulkDeactivate}
-                    disabled={isBulkProcessing}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <FaBan size={14} />
-                    Deactivate All
-                  </button>
-                  <button
-                    onClick={handleBulkRestore}
-                    disabled={isBulkProcessing}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <FaUndo size={14} />
-                    Restore All
-                  </button>
-                  <button
-                    onClick={handleBulkForceDelete}
-                    disabled={isBulkProcessing}
-                    className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <FaExclamationTriangle size={14} />
-                    Permanently Delete
-                  </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    disabled={isBulkProcessing}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <FaTrash size={14} />
-                    Delete All
-                  </button>
+                  {canBulkActivate && (
+                    <button
+                      onClick={handleBulkActivate}
+                      disabled={isBulkProcessing}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaCheckCircle size={14} />
+                      Activate All
+                    </button>
+                  )}
+                  {canBulkDeactivate && (
+                    <button
+                      onClick={handleBulkDeactivate}
+                      disabled={isBulkProcessing}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaBan size={14} />
+                      Deactivate All
+                    </button>
+                  )}
+                  {canBulkRestore && (
+                    <button
+                      onClick={handleBulkRestore}
+                      disabled={isBulkProcessing}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaUndo size={14} />
+                      Restore All
+                    </button>
+                  )}
+                  {canBulkForceDelete && (
+                    <button
+                      onClick={handleBulkForceDelete}
+                      disabled={isBulkProcessing}
+                      className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaExclamationTriangle size={14} />
+                      Permanently Delete
+                    </button>
+                  )}
+                  {canBulkDelete && (
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={isBulkProcessing}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaTrash size={14} />
+                      Delete All
+                    </button>
+                  )}
                   <button
                     onClick={() => setSelectedCategories([])}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200"
@@ -1016,10 +1154,10 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                     <th className="px-4 py-4 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedCategories.length === filteredCategories.filter(cat => !cat.deleted_at).length && filteredCategories.filter(cat => !cat.deleted_at).length > 0}
+                        checked={selectedCategories.length === filteredCategories.filter(cat => !cat.deleted_at && canEditCategories).length && filteredCategories.filter(cat => !cat.deleted_at && canEditCategories).length > 0}
                         onChange={handleSelectAll}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        disabled={filteredCategories.filter(cat => !cat.deleted_at).length === 0}
+                        disabled={filteredCategories.filter(cat => !cat.deleted_at && canEditCategories).length === 0}
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -1065,6 +1203,11 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
 
                   {filteredCategories.map((category, index) => {
                     const trashed = category.deleted_at !== null;
+                    const canEdit = canEditCategories && !trashed;
+                    const canDelete = canDeleteCategories && !trashed;
+                    const canRestore = canRestoreCategories && trashed;
+                    const canForceDelete = canForceDeleteCategories && trashed;
+                    const canToggle = canToggleCategories && !trashed;
 
                     return (
                       <tr
@@ -1073,7 +1216,7 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <td className="px-4 py-4">
-                          {!trashed && (
+                          {!trashed && canEdit && (
                             <input
                               type="checkbox"
                               checked={selectedCategories.includes(category.id)}
@@ -1111,11 +1254,12 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
                           {!trashed ? (
                             <button
                               onClick={() => handleToggle(category)}
-                              disabled={togglingId === category.id}
+                              disabled={togglingId === category.id || !canToggle}
                               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${category.is_active
                                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                 : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                } ${togglingId === category.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                } ${(togglingId === category.id || !canToggle) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={!canToggle ? 'You do not have permission to change category status' : ''}
                             >
                               {togglingId === category.id ? (
                                 <FaSpinner className="animate-spin" size={12} />
@@ -1141,60 +1285,62 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
 
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end gap-2">
-                            {!trashed && (
-                              <>
-                                <button
-                                  onClick={() => handleOpenEdit(category)}
-                                  className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                                  title="Edit Category"
-                                >
-                                  <FaEdit size={18} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(category.id, category.name)}
-                                  disabled={deletingId === category.id}
-                                  className={`p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 ${deletingId === category.id ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                  title="Delete Category"
-                                >
-                                  {deletingId === category.id ? (
-                                    <FaSpinner className="animate-spin" size={18} />
-                                  ) : (
-                                    <FaTrash size={18} />
-                                  )}
-                                </button>
-                              </>
+                            {!trashed && canEdit && (
+                              <button
+                                onClick={() => handleOpenEdit(category)}
+                                className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                title="Edit Category"
+                              >
+                                <FaEdit size={18} />
+                              </button>
                             )}
 
-                            {trashed && (
-                              <>
-                                <button
-                                  onClick={() => handleRestore(category.id, category.name)}
-                                  disabled={restoringId === category.id}
-                                  className={`p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-all duration-200 ${restoringId === category.id ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                  title="Restore Category"
-                                >
-                                  {restoringId === category.id ? (
-                                    <FaSpinner className="animate-spin" size={18} />
-                                  ) : (
-                                    <FaUndo size={18} />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => handleForceDelete(category.id, category.name)}
-                                  disabled={forceDeletingId === category.id}
-                                  className={`p-2 text-red-700 hover:text-red-900 hover:bg-red-100 rounded-lg transition-all duration-200 ${forceDeletingId === category.id ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                  title="Permanently Delete (Cannot be undone)"
-                                >
-                                  {forceDeletingId === category.id ? (
-                                    <FaSpinner className="animate-spin" size={18} />
-                                  ) : (
-                                    <FaExclamationTriangle size={18} />
-                                  )}
-                                </button>
-                              </>
+                            {!trashed && canDelete && (
+                              <button
+                                onClick={() => handleDelete(category.id, category.name)}
+                                disabled={deletingId === category.id}
+                                className={`p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all duration-200 ${deletingId === category.id ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
+                                title="Delete Category"
+                              >
+                                {deletingId === category.id ? (
+                                  <FaSpinner className="animate-spin" size={18} />
+                                ) : (
+                                  <FaTrash size={18} />
+                                )}
+                              </button>
+                            )}
+
+                            {trashed && canRestore && (
+                              <button
+                                onClick={() => handleRestore(category.id, category.name)}
+                                disabled={restoringId === category.id}
+                                className={`p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-all duration-200 ${restoringId === category.id ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
+                                title="Restore Category"
+                              >
+                                {restoringId === category.id ? (
+                                  <FaSpinner className="animate-spin" size={18} />
+                                ) : (
+                                  <FaUndo size={18} />
+                                )}
+                              </button>
+                            )}
+
+                            {trashed && canForceDelete && (
+                              <button
+                                onClick={() => handleForceDelete(category.id, category.name)}
+                                disabled={forceDeletingId === category.id}
+                                className={`p-2 text-red-700 hover:text-red-900 hover:bg-red-100 rounded-lg transition-all duration-200 ${forceDeletingId === category.id ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
+                                title="Permanently Delete (Cannot be undone)"
+                              >
+                                {forceDeletingId === category.id ? (
+                                  <FaSpinner className="animate-spin" size={18} />
+                                ) : (
+                                  <FaExclamationTriangle size={18} />
+                                )}
+                              </button>
                             )}
                           </div>
                         </td>
@@ -1211,8 +1357,8 @@ export default function JobCategoriesIndex({ categories: initialCategories, filt
         </div>
       </div>
 
-      {/* MODAL - Create/Edit Category */}
-      {isModalOpen && (
+      {/* MODAL - Create/Edit Category - Only shown if user has permission */}
+      {isModalOpen && (canCreateCategories || canEditCategories) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 animate-slide-up">
             <div className="flex justify-between items-center p-6 border-b">
