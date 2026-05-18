@@ -42,21 +42,37 @@ export default function Edit({ user: adminUser }) {
     isAuthenticated,
   } = useAuth();
 
-  // Check permissions for admin management
+  // Check permissions for admin management - FIXED to match backend
   const isSuperAdmin = hasRole('super-admin');
-  const canViewAdmins = hasAnyPermission(['admin.view', 'admin.manage']);
-  const canEditAdmins = hasAnyPermission(['admin.update', 'admin.manage']);
-  const canDeleteAdmins = hasAnyPermission(['admin.destroy', 'admin.manage']);
+  const canViewAdmins = hasAnyPermission([
+    'admin.view',
+    'admin.manage',
+    'admin_profile.view',
+    'admin_profile.edit'
+  ]);
+  const canEditAdmins = hasAnyPermission([
+    'admin.update',
+    'admin.manage',
+    'admin_profile.edit',
+    'admin_profile.update'
+  ]);
+  const canDeleteAdmins = hasAnyPermission([
+    'admin.destroy',
+    'admin.manage'
+  ]);
 
   // Check if editing self
   const isEditingSelf = currentUser?.id === adminUser?.id;
 
   // Check if target is super admin (only super admins can edit other super admins)
   const isTargetSuperAdmin = adminUser?.roles?.some(role => role.slug === 'super-admin') || false;
-  const canEditTargetAdmin = isSuperAdmin || (!isTargetSuperAdmin && !isEditingSelf);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState('profile');
+  // FIXED: Can edit target admin
+  const canEditTargetAdmin = canEditAdmins && (
+    isEditingSelf ||
+    isSuperAdmin ||
+    (!isTargetSuperAdmin && !isEditingSelf)
+  );
 
   // If user doesn't have permission to edit admins, show access denied
   if (!canEditAdmins) {
@@ -96,7 +112,7 @@ export default function Edit({ user: adminUser }) {
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Cannot Edit This Admin</h2>
             <p className="text-gray-500 mt-2">
-              {isTargetSuperAdmin
+              {isTargetSuperAdmin && !isSuperAdmin
                 ? "Super admin accounts can only be edited by other super admins."
                 : "You don't have permission to edit this admin account."}
             </p>
@@ -127,6 +143,9 @@ export default function Edit({ user: adminUser }) {
 
   // show Password form
   const [showPassword, setShowPassword] = useState(false);
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState('profile');
 
   // Handle form submission
   const handleProfileSubmit = (e) => {

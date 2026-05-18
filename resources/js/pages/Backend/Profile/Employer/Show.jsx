@@ -63,9 +63,26 @@ export default function EmployerShow({ user: employerUser, stats }) {
   const isSuperAdmin = hasRole('super-admin');
   const isRegularEmployer = hasRole('employer');
   const isEmployerAdmin = hasRole('employer-admin');
-  const canViewEmployers = hasAnyPermission(['employer.view', 'employer.manage']);
-  const canEditEmployers = hasAnyPermission(['employer.update', 'employer.manage']);
-  const canDeleteEmployers = hasAnyPermission(['employer.destroy', 'employer.manage']);
+
+  // FIXED: Include both permission types
+  const canViewEmployers = hasAnyPermission([
+    'employer.view',
+    'employer.manage',
+    'employer_profile.view',
+    'employer_profile.edit'
+  ]);
+
+  const canEditEmployers = hasAnyPermission([
+    'employer.update',
+    'employer.manage',
+    'employer_profile.edit',
+    'employer_profile.update'
+  ]);
+
+  const canDeleteEmployers = hasAnyPermission([
+    'employer.destroy',
+    'employer.manage'
+  ]);
 
   // Loading state
   const [isRestoring, setIsRestoring] = useState(false);

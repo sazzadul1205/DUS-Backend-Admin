@@ -45,17 +45,34 @@ export default function Edit({ user: employerUser, employer }) {
   const isSuperAdmin = hasRole('super-admin');
   const isRegularEmployer = hasRole('employer');
   const isEmployerAdmin = hasRole('employer-admin');
-  const canViewEmployers = hasAnyPermission(['employer.view', 'employer.manage']);
-  const canEditEmployers = hasAnyPermission(['employer.update', 'employer.manage']);
+
+  // FIXED: Include both employer.* and employer_profile.* permissions
+  const canViewEmployers = hasAnyPermission([
+    'employer.view',
+    'employer.manage',
+    'employer_profile.view',
+    'employer_profile.edit',
+    'employer_profile.update'
+  ]);
+
+  const canEditEmployers = hasAnyPermission([
+    'employer.update',
+    'employer.manage',
+    'employer_profile.edit',
+    'employer_profile.update'
+  ]);
 
   // Check if editing self
   const isEditingSelf = currentUser?.id === employerUser?.id;
 
   // Check if user can edit this employer
   const canEditTargetEmployer = () => {
-    if (!canEditEmployers) return false;
+    // Super admin can edit anyone
     if (isSuperAdmin) return true;
+    // Users can edit their own profile
     if (isEditingSelf) return true;
+    // Check if user has edit permission
+    if (!canEditEmployers) return false;
     // Employer admins can edit employers in their company
     if (isEmployerAdmin && currentUser?.employer_id === employerUser?.employer_id) return true;
     return false;

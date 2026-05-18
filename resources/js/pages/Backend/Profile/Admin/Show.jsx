@@ -44,9 +44,22 @@ export default function Show({ user: adminUser }) {
 
   // Check permissions for admin management
   const isSuperAdmin = hasRole('super-admin');
-  const canViewAdmins = hasAnyPermission(['admin.view', 'admin.manage']);
-  const canEditAdmins = hasAnyPermission(['admin.update', 'admin.manage']);
-  const canDeleteAdmins = hasAnyPermission(['admin.destroy', 'admin.manage']);
+  const canViewAdmins = hasAnyPermission([
+    'admin.view',
+    'admin.manage',
+    'admin_profile.view'
+  ]);
+  const canEditAdmins = hasAnyPermission([
+    'admin.update',
+    'admin.manage',
+    'admin_profile.edit',
+    'admin_profile.update'
+  ]);
+  const canDeleteAdmins = hasAnyPermission([
+    'admin.destroy',
+    'admin.manage'
+  ]);
+
 
   // Check if viewing self
   const isViewingSelf = currentUser?.id === adminUser?.id;
@@ -55,7 +68,11 @@ export default function Show({ user: adminUser }) {
   const isTargetSuperAdmin = adminUser?.roles?.some(role => role.slug === 'super-admin') || false;
 
   // Check if user can edit this admin
-  const canEditTargetAdmin = canEditAdmins && (isSuperAdmin || (!isTargetSuperAdmin && !isViewingSelf) || isViewingSelf);
+  const canEditTargetAdmin = canEditAdmins && (
+    isViewingSelf ||
+    isSuperAdmin ||
+    (!isTargetSuperAdmin && !isViewingSelf)
+  );
 
   // Check if user can delete this admin
   const canDeleteTargetAdmin = canDeleteAdmins && !isViewingSelf && (isSuperAdmin || !isTargetSuperAdmin);
