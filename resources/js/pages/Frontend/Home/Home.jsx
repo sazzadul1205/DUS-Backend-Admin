@@ -3,8 +3,7 @@
 // Inertia
 import { Head } from "@inertiajs/react";
 
-
-// Components
+// Layout
 import PublicLayout from "../../../layouts/PublicLayout";
 
 // Sections
@@ -18,7 +17,6 @@ import OurProgramsSection from "./OurProgramsSection/OurProgramsSection";
 import ProgramImpactSection from "./ProgramImpactSection/ProgramImpactSection";
 import UpcomingEventsSection from "./UpcomingEventsSection/UpcomingEventsSection";
 
-// resources/js/Pages/Frontend/Home.jsx
 export default function Home({
   bannerData,
   aboutUsData,
@@ -33,8 +31,6 @@ export default function Home({
   navbarData,
   footerData
 }) {
-  // No need to define data here anymore - it comes from controller!
-
   return (
     <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData}>
       <Head title="DUS - Dwip Unnayan Society | Empowering Communities" />
