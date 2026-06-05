@@ -1,19 +1,27 @@
+// pages/About/HeroFigureSection/HeroFigureSection.jsx
+
+// React
 import React from 'react';
+
+// Components
 import ArrowIcon from '../../../../components/Shared/ArrowIcon';
 
 const HeroFigureSection = ({
-  data,
-  sectionId,
-  layout = 'text-left', // 'text-left' or 'text-right'
-  customClassName = ''
+  data,                   /// Data object containing section content and image details
+  sectionId,              // Optional section ID for anchor linking
+  bgImage = null,         // Customizable background image
+  bgOverlay = null,       // Customizable overlay for background image
+  layout = 'text-left',   // 'text-left' or 'text-right'
+  bgColor = 'bg-white',   // Customizable background color
+  customClassName = '',   // Custom class name for additional styling
 }) => {
   // No default data - expects data to be passed from parent
   if (!data) {
-    console.warn('CommonSection: No data provided');
+    console.warn('HeroFigureSection: No data provided');
     return null;
   }
 
-  // Destructure data for easier access`
+  // Destructure data for easier access
   const {
     section,
     content,
@@ -28,8 +36,7 @@ const HeroFigureSection = ({
     const contentKeys = Object.keys(content).filter(key =>
       key !== 'functions' &&
       content[key] &&
-      typeof content[key] === 'object' &&
-      content[key].title
+      typeof content[key] === 'object'
     );
 
     return contentKeys.map((key, blockIndex) => {
@@ -38,11 +45,20 @@ const HeroFigureSection = ({
       const listGap = block.listGap || 'gap-2'; // Default gap-2 (8px), can be overridden
       const listItemGap = block.listItemGap || 'ml-2'; // Left/right gap for list items, default ml-2 (8px)
 
+      // Check if block has content to render
+      const hasParagraphs = block.paragraphs && block.paragraphs.length > 0;
+      const hasItems = block.items && block.items.length > 0;
+
+      if (!hasParagraphs && !hasItems) return null;
+
       return (
         <div key={`content-block-${blockIndex}`}>
-          <p className='font-700 pb-5'>
-            {block.title}
-          </p>
+          {/* Only render title if it exists */}
+          {block.title && (
+            <p className='font-700 pb-5'>
+              {block.title}
+            </p>
+          )}
 
           {isList ? (
             // Render as list with dots
@@ -77,7 +93,8 @@ const HeroFigureSection = ({
 
   // Text content component
   const TextContent = () => (
-    <div className='w-full lg:w-1/2 flex flex-col justify-between'>
+    <div className='w-full lg:w-1/2 flex flex-col justify-between relative z-10'>
+      {/* Only render section title if it exists */}
       {section?.title && (
         <h1 className='bricolage-grotesque font-700 text-[32px] sm:text-[36px] lg:text-[40px] text-black pb-2'>
           {section.title}
@@ -88,7 +105,8 @@ const HeroFigureSection = ({
         {renderContentBlocks()}
       </div>
 
-      {content?.functions && (
+      {/* Only render button if functions exists */}
+      {content?.functions && content?.functions.buttonText && content?.functions.link && (
         <div className='pt-8'>
           <button
             onClick={() => window.location.href = content.functions.link}
@@ -104,8 +122,8 @@ const HeroFigureSection = ({
 
   // Image component
   const ImageComponent = () => (
-    image && (
-      <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0'>
+    image && image.src && (
+      <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0 relative z-10'>
         <img
           src={image.src}
           alt={image.alt || 'Section image'}
@@ -115,22 +133,43 @@ const HeroFigureSection = ({
     )
   );
 
+  // Generate background style
+  const getBackgroundStyle = () => {
+    if (bgImage) {
+      return {
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      };
+    }
+    return {};
+  };
+
   return (
     <section
       id={sectionId}
-      className={`flex flex-col lg:flex-row justify-between items-stretch bg-white gap-8 lg:gap-15 px-5 sm:px-10 md:px-20 lg:px-50 py-10 sm:py-15 md:py-25 lg:py-37.5 ${customClassName}`}
+      className={`relative ${bgColor} ${customClassName}`}
+      style={getBackgroundStyle()}
     >
-      {isImageLeft ? (
-        <>
-          <ImageComponent />
-          <TextContent />
-        </>
-      ) : (
-        <>
-          <TextContent />
-          <ImageComponent />
-        </>
+      {/* Background overlay if bgImage is provided */}
+      {bgImage && bgOverlay && (
+        <div className={`absolute inset-0 ${bgOverlay}`}></div>
       )}
+
+      <div className={`flex flex-col lg:flex-row justify-between items-stretch gap-8 lg:gap-15 px-5 sm:px-10 md:px-20 lg:px-50 py-10 sm:py-15 md:py-25 lg:py-37.5 relative z-10`}>
+        {isImageLeft ? (
+          <>
+            <ImageComponent />
+            <TextContent />
+          </>
+        ) : (
+          <>
+            <TextContent />
+            <ImageComponent />
+          </>
+        )}
+      </div>
     </section>
   );
 };

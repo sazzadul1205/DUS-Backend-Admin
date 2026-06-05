@@ -8,8 +8,10 @@ import PublicLayout from '../../../layouts/PublicLayout';
 
 // Sections
 import LegalSection from "./LegalSection/LegalSection";
+import CardsSection from "./CardsSection/CardsSection";
 import BannerSection from "./BannerSection/BannerSection";
 import HeroFigureSection from "./HeroFigureSection/HeroFigureSection";
+import FAQSection from "./FAQSection/FAQSection";
 
 const About = ({
   topBarData,
@@ -93,6 +95,22 @@ const About = ({
     }
   };
 
+  const legalData = {
+    background: {
+      src: 'https://placehold.co/1920x589',
+      alt: 'Background'
+    },
+    overlay: {
+      darkOverlay: 'bg-black/40',
+    },
+    textBox: {
+      title: 'Legal Status and Org.',
+      titleLine2: 'Affiliations',
+      buttonText: 'Learn More Affiliations',
+      buttonLink: '/about/legal'
+    }
+  }
+
   const interventionalData = {
     section: {
       title: 'Interventional Approaches and DUS Priorities'
@@ -129,7 +147,7 @@ const About = ({
     }
   };
 
-  const EvolutionaryChanges = {
+  const EvolutionaryChangesData = {
     section: {
       title: 'Evolutionary Changes and Footings'
     },
@@ -182,8 +200,173 @@ const About = ({
     }
   };
 
+  const GovernanceData = {
+    section: {
+      title: 'Governance'
+    },
+    content: {
+      governance: {
+        paragraphs: [
+          'DUS believes in democratic practice and public-private participation to achieve its goal, purpose and objectives and accordingly the internal management system has been framed comprising the following structures:',
+          'General Body: The General Body consists of 31 members who are the permanent resident of the coastal community. Of them 30% are women. The social and professional status of the members include teachers, lawyers, social workers, freedom fighters and community leaders.',
+          'Executive Committee: DUS has an Executive Committee of 7 members duly elected by the General Body for a period of three years.  DUS is represented by its Executive Director who is the Member Secretary of the Executive Committee. ED and his core staff members are appointed by the board. Executive Director is treated as the Chief Executive of the organization. The Executive Director is the overall authority to implement the projects and programs on behalf of the Executive Comm',
+        ],
+      },
+      functions: {
+        buttonText: 'Learn More About Governance',
+        link: '/about/functions'
+      }
+    },
+    image: {
+      src: 'https://placehold.co/730x730',
+      alt: 'Interventional Approaches',
+      className: 'w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl'
+    }
+  };
+
+  const CardsData = {
+    section: {
+      title: 'Cards Section'
+    },
+    cards: [
+      {
+        id: 'operational-areas',
+        image: {
+          src: 'https://placehold.co/335x440',
+          alt: 'Operational Areas',
+          className: 'mx-auto object-contain'
+        },
+        title: 'Operational Areas',
+        buttonText: 'Explore Our Areas of Operation',
+        buttonLink: '/about/operational-areas',
+        bgColor: 'bg-[#F5F5F5]',
+        cardBgColor: 'bg-white'
+      },
+      {
+        id: 'achievements',
+        image: {
+          src: 'https://placehold.co/670x420',
+          alt: 'Our Achievements',
+          className: 'mx-auto object-contain'
+        },
+        title: 'Our Achievements',
+        buttonText: 'Explore Our Evolution',
+        buttonLink: '/about/achievements',
+        bgColor: 'bg-[#F5F5F5]',
+        cardBgColor: 'bg-white'
+      }
+    ]
+  };
+
+  const ProgramsData = {
+    section: {
+      title: 'Programs/Activities',
+    },
+    content: {
+      'Micro-Finance Program': {
+        title: 'Micro-Finance Program',
+        paragraphs: [
+          'Micro finance Program is the core program of all DUS activities. DUS has been implementing its major program in partnership with Palli Karma Sahayak Foundation (PKSF) since 2000. It provides collateral free micro-credit to its around 40K+ group members where 97 percent are female. Under this program, DUS has savings scheme for poor women who has no access in mainstream banks due to lack of capital and assets.  ',
+          'Most of the targeted beneficiaries of DUS are poor women, marginal farmers and small micro entrepreneurs. Major borrowers are women who used these loan funds to promote various income generating activities for their earnings and employments. As a result, micro finance program has positive impact on poverty reduction especially at grass rote level, income enhancement, consumption, the promotion of rural businesses, education and health and finally the empowerment of women and their employment in rural island communities.'
+        ]
+      },
+      "Jagoron": {
+        title: 'Jagoron',
+        paragraphs: [
+          'Jagoron is the name of a credit instrument of PKSF to initiate household based enterprise development in Bangladesh. As a Partner Organization of PKSF, DUS is implementing this program which is now comprised with Rural Micro finance and Urban Micro finance. Rural Micro finance is that types of loan which allows rural women to finance their small scale agriculture production at homestead level. ',
+          'RMC Loans are allowed as working capital loans to promote poor and disadvantaged households in income earnings. RMC loan range from 10K to 59K to allowed for one year and service charge is 24% (Reducing Balancing Method)/12.0% (Flat Rate Method) per year. The weekly savings of RMC members are 10/= per week.'
+        ],
+      },
+      functions: {
+        buttonText: 'Learn More About Programs',
+        link: '/about/programs'
+      }
+    },
+    image: {
+      src: 'https://placehold.co/730x730',
+      alt: 'Interventional Approaches',
+      className: 'w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl'
+    }
+  };
+
+  const TrainingData = {
+    section: {
+      title: 'Training and Other Facilities',
+    },
+    content: {
+      'training': {
+        paragraphs: [
+          'DUS believes that training is a key element of the development approach which focuses on people and their participation. Training has been introduced as an essential element of DUS’s intervention strategy.',
+          'DUS takes up need based training programs, prepares module and training curriculum. The training programs generally involve flip chart, posters, handouts, cards & charts, audiocassettes, videocassettes, original model, curriculum, modules, photographs etc. DUS has already developed a training and communication Unit fully equipped with all possible physical and human resources. DUS is organized different type of training since last two decades:',
+          'DUS is organized different type of training for its staffs as well as beneficiaries. DUS always prepare its yearly training plan which is incorporated basic skill development training for staffs, MIS, ToT general, Branch management and Finance management etc.',
+          'DUS conducts it’s skill development training through identification of people who need skill training. This is done by conducting survey to identify marketable skills, developing modules of livelihood skills program, conducting training to the selected people, select graduates of the skill program to receive capital, linking other graduates to employment or credit program, following up the graduates to see whether they are able to achieve sustainable livelihood. The skills training programs include tree nursery management, sustainable agriculture, poultry and cattle rearing etc.',
+          'Leadership development training is a very important intervention of DUS. Leadership development training is intended for the group members under different project interventions. The training programs focus financial management of community fund, conflict management, and bottom-up planning for sustainable rural livelihoods.',
+        ]
+      },
+      functions: {
+        buttonText: 'Learn More About Dus Facilities',
+        link: '/about/facilities'
+      }
+    },
+    image: {
+      src: 'https://placehold.co/730x730',
+      alt: 'Interventional Approaches',
+      className: 'w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl'
+    }
+  };
+
+  const FAQData = {
+    section: {
+      title: 'Key Questions Answered About Our Us',
+      subtitle: 'Explore our Frequently Asked Questions for answers about our charity\'s mission, projects, and how to help.'
+    },
+    faqs: [
+      {
+        id: 1,
+        question: 'What is the mission of your charity?',
+        answer: 'Any company that is using spreadsheets and emails to manage the people side of their business is wasting time on admin and making life more difficult for themselves. A well-designed HR system like PiHR automates menial tasks allowing business owners to focus on the strategic work of growing the business. It improves the recruitment process, enriches payroll management, provides real-time feedback, improves employees, improves data security, helps make decisions.',
+      },
+      {
+        id: 2,
+        question: 'Who benefits from your programs?',
+        answer: 'Our programs benefit underprivileged communities, women and children, disaster-affected families, and landless poor in coastal areas of Bangladesh.',
+      },
+      {
+        id: 3,
+        question: 'Can I make a recurring donation?',
+        answer: 'Yes, you can make recurring donations monthly, quarterly, or annually. Visit our donation page to set up your recurring contribution.',
+      },
+      {
+        id: 4,
+        question: 'Can I visit the projects I support?',
+        answer: 'Yes, we welcome donors to visit our project sites. Please contact our office in advance to arrange a visit and meet the communities you are supporting.',
+      },
+      {
+        id: 5,
+        question: 'How can I get involved?',
+        answer: 'You can get involved by donating, volunteering, sponsoring a child, or becoming a community ambassador. Visit our "Get Involved" page for more details.',
+      },
+      {
+        id: 6,
+        question: 'How can I make a donation?',
+        answer: 'You can make a donation online through our secure payment portal, bank transfer, or by visiting our office. We accept one-time and recurring donations.',
+      },
+      {
+        id: 7,
+        question: 'How do you maintain accountability?',
+        answer: 'We maintain transparency through regular audits, annual reports, community feedback mechanisms, and public disclosure of our financial statements.',
+      },
+      {
+        id: 8,
+        question: 'Are donations tax-deductible?',
+        answer: 'Yes, donations to DUS are tax-deductible under applicable tax laws. You will receive a receipt for your donation for tax purposes.',
+      }
+    ]
+  };
+
+
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData}>
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} >
       <Head title="DUS - Dwip Unnayan Society | Empowering Communities" />
 
       <BannerSection bannerData={bannerData} />
@@ -198,6 +381,7 @@ const About = ({
         layout="text-right"
         data={visionAndMissionData}
         sectionId="vision-and-mission"
+        bgColor="bg-[#F5F5F5]"
       />
 
       <HeroFigureSection
@@ -206,15 +390,38 @@ const About = ({
         sectionId="interventional-approaches"
       />
 
-      <LegalSection />
+      <LegalSection legalData={legalData} />
 
       <HeroFigureSection
         layout="text-left"
-        data={EvolutionaryChanges}
+        data={EvolutionaryChangesData}
         sectionId="evolutionary-changes"
       />
 
-    </PublicLayout>
+      <HeroFigureSection
+        layout="text-right"
+        data={GovernanceData}
+        sectionId="governance"
+        bgColor="bg-[#F5F5F5]"
+      />
+
+      <CardsSection cardsData={CardsData} />
+
+      <HeroFigureSection
+        layout="text-right"
+        data={ProgramsData}
+        sectionId="programs-activities"
+        bgColor="bg-[#F5F5F5]"
+      />
+
+      <HeroFigureSection
+        layout="text-left"
+        data={TrainingData}
+        sectionId="training"
+      />
+
+      <FAQSection faqData={FAQData} />
+    </PublicLayout >
   );
 };
 

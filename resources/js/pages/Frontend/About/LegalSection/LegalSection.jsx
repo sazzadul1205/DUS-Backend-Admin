@@ -1,23 +1,12 @@
+// pages/About/LegalSection/LegalSection.jsx
+
+// React
 import React from 'react';
+
+// Components
 import ArrowIcon from '../../../../components/Shared/ArrowIcon';
 
-const LegalSection = () => {
-
-  const legalData = {
-    background: {
-      src: 'https://placehold.co/1920x589',
-      alt: 'Background'
-    },
-    overlay: {
-      darkOverlay: 'bg-black/40',
-    },
-    textBox: {
-      title: 'Legal Status and Org.',
-      titleLine2: 'Affiliations',
-      buttonText: 'Learn More Affiliations',
-      buttonLink: '/about/legal'
-    }
-  }
+const LegalSection = ({ legalData }) => {
 
   return (
     <section

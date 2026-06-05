@@ -1,8 +1,9 @@
+// pages/About/BannerSection/BannerSection.jsx
+
+// React
 import React from 'react';
 
 const BannerSection = ({ bannerData }) => {
-
-
   return (
     <section
       id="banner"
