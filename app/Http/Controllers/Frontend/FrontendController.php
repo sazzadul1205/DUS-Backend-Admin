@@ -20,14 +20,14 @@ class FrontendController extends Controller
         // Top Bar Data (static paths - these are in public/images)
         $topBarData = [
             'contactInfo' => [
-                'email' => ['text' => 'dus.eddus@gmail.com', 'icon' => '/images/TopBar/Email.svg', 'alt' => 'Email'],
-                'phone' => ['text' => '+880 1761-493412', 'icon' => '/images/TopBar/Phone.svg', 'alt' => 'Phone'],
-                'hours' => ['text' => 'Sun - Thu 9:00AM - 5:00PM', 'icon' => '/images/TopBar/Clock.svg', 'alt' => 'Clock']
+                'email' => ['text' => 'dus.eddus@gmail.com', 'icon' => $storageUrl . '/images/TopBar/Email.svg', 'alt' => 'Email'],
+                'phone' => ['text' => '+880 1761-493412', 'icon' => $storageUrl . '/images/TopBar/Phone.svg', 'alt' => 'Phone'],
+                'hours' => ['text' => 'Sun - Thu 9:00AM - 5:00PM', 'icon' => $storageUrl . '/images/TopBar/Clock.svg', 'alt' => 'Clock']
             ],
             'languages' => [
-                ['code' => 'us', 'name' => 'English', 'flag' => '/images/Flags/united-states.png'],
-                ['code' => 'bd', 'name' => 'Bengali', 'flag' => '/images/Flags/bangladesh.png'],
-                ['code' => 'fr', 'name' => 'French', 'flag' => '/images/Flags/france.png'],
+                ['code' => 'us', 'name' => 'English', 'flag' => $storageUrl . '/images/Flags/united-states.png'],
+                ['code' => 'bd', 'name' => 'Bengali', 'flag' => $storageUrl . '/images/Flags/bangladesh.png'],
+                ['code' => 'fr', 'name' => 'French', 'flag' => $storageUrl . '/images/Flags/france.png'],
             ],
             'userMenu' => [
                 'guest' => [
@@ -55,7 +55,7 @@ class FrontendController extends Controller
         // Navbar Data
         $navbarData = [
             'logo' => [
-                'src' => '/images/Icon.svg',
+                'src' => $storageUrl . '/images/Icon.svg',
                 'alt' => 'DUS Logo',
                 'className' => 'h-17.5 w-auto',
                 'href' => '/'
@@ -76,10 +76,9 @@ class FrontendController extends Controller
             ]
         ];
 
-        // Footer Data
         $footerData = [
             'logo' => [
-                'src' => '/images/Icon-bottom.svg',
+                'src' => $storageUrl . '/images/Icon-bottom.svg',
                 'alt' => 'DUS Logo',
                 'className' => 'h-41.25 w-auto'
             ],
@@ -110,36 +109,37 @@ class FrontendController extends Controller
                 ]
             ],
             'quickLinks' => [
-                'About Us',
-                'Community Radio',
-                'Evaluation',
-                'Working Area',
-                'Publication',
-                'Mission & Visions',
-                'Blogs',
-                'Contact Us'
+                ['name' => 'About Us', 'url' => '/about-us'],
+                ['name' => 'Community Radio', 'url' => '/community-radio'],
+                ['name' => 'Evaluation', 'url' => '/evaluation'],
+                ['name' => 'Working Area', 'url' => '/working-area'],
+                ['name' => 'Publication', 'url' => '/publication'],
+                ['name' => 'Mission & Visions', 'url' => '/mission-visions'],
+                ['name' => 'Blogs', 'url' => '/blogs'],
+                ['name' => 'Contact Us', 'url' => '/contact-us']
             ],
             'programs' => [
-                'Micro-Finance Program',
-                'Disaster Management',
-                'Community Radio',
-                'Education',
-                'ICT for Development',
-                'Health Program',
-                'Livelihood',
-                'Member Facilities',
-                'Social Development',
-                'Legal Support',
-                'Agriculture',
-                'Water and Sanitation',
-                'Research and Documentation',
-                'Training Facilities',
-                'Tourism'
+                ['name' => 'Micro-Finance Program', 'url' => '/programs/micro-finance'],
+                ['name' => 'Disaster Management', 'url' => '/programs/disaster-management'],
+                ['name' => 'Community Radio', 'url' => '/programs/community-radio'],
+                ['name' => 'Education', 'url' => '/programs/education'],
+                ['name' => 'ICT for Development', 'url' => '/programs/ict-development'],
+                ['name' => 'Health Program', 'url' => '/programs/health'],
+                ['name' => 'Livelihood', 'url' => '/programs/livelihood'],
+                ['name' => 'Member Facilities', 'url' => '/programs/member-facilities'],
+                ['name' => 'Social Development', 'url' => '/programs/social-development'],
+                ['name' => 'Legal Support', 'url' => '/programs/legal-support'],
+                ['name' => 'Agriculture', 'url' => '/programs/agriculture'],
+                ['name' => 'Water and Sanitation', 'url' => '/programs/water-sanitation'],
+                ['name' => 'Research and Documentation', 'url' => '/programs/research-documentation'],
+                ['name' => 'Training Facilities', 'url' => '/programs/training'],
+                ['name' => 'Tourism', 'url' => '/programs/tourism']
             ],
             'newsletter' => [
                 'title' => 'Subscribe to Our Newsletter',
                 'placeholder' => 'Enter your email address',
-                'buttonText' => 'Subscribe'
+                'buttonText' => 'Subscribe',
+                'apiEndpoint' => '/api/subscribe-newsletter'
             ],
             'bottomFooter' => [
                 'copyright' => '© 2026 Dwip Unnayan. All rights reserved.',
@@ -149,11 +149,11 @@ class FrontendController extends Controller
                 ]
             ]
         ];
-
         return [
             'topBarData' => $topBarData,
             'navbarData' => $navbarData,
             'footerData' => $footerData,
+            'storageUrl' => $storageUrl
         ];
     }
 

@@ -15,7 +15,7 @@ const iconMap = {
   FaXTwitter: FaXTwitter
 };
 
-const Footer = ({ footerData }) => {
+const Footer = ({ footerData, storageUrl }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -35,13 +35,22 @@ const Footer = ({ footerData }) => {
 
     setIsSubmitting(true);
 
-    // Simulate API call - replace with actual API endpoint
-    setTimeout(() => {
-      setSubmitMessage('Successfully subscribed!');
-      setEmail('');
+    // Simulate API call - replace with actual API endpoint if provided
+    const apiEndpoint = footerData.newsletter.apiEndpoint || '/api/subscribe-newsletter';
+
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        setSubmitMessage('Successfully subscribed!');
+        setEmail('');
+        setIsSubmitting(false);
+        setTimeout(() => setSubmitMessage(''), 3000);
+      }, 1000);
+    } catch (error) {
+      setSubmitMessage('Subscription failed. Please try again.');
       setIsSubmitting(false);
       setTimeout(() => setSubmitMessage(''), 3000);
-    }, 1000);
+    }
   };
 
   // Split programs into two columns
@@ -68,7 +77,7 @@ const Footer = ({ footerData }) => {
               <img
                 src={footerData.logo.src}
                 alt={footerData.logo.alt}
-                className="h-20 lg:h-41.25 w-auto"
+                className={footerData.logo.className}
                 loading="lazy"
               />
             </div>
@@ -156,16 +165,16 @@ const Footer = ({ footerData }) => {
                   {footerData.quickLinks.map((link, index) => (
                     <li key={index} className='flex items-center group'>
                       <img
-                        src="/images/link.svg"
+                        src={`${storageUrl}/images/link.svg`}
                         alt=""
                         className='mr-3 w-2.5 h-auto opacity-70 group-hover:opacity-100 transition-opacity'
                         aria-hidden="true"
                       />
                       <Link
-                        href={`/${link.toLowerCase().replace(/\s+/g, '-')}`}
+                        href={link.url}
                         className="hover:text-[#009BE2] transition-colors cursor-pointer text-white font-400 text-[14px]"
                       >
-                        {link}
+                        {link.name}
                       </Link>
                     </li>
                   ))}
@@ -179,16 +188,16 @@ const Footer = ({ footerData }) => {
                   {firstProgramColumn.map((program, index) => (
                     <li key={index} className='flex items-center group'>
                       <img
-                        src="/images/link.svg"
+                        src={`${storageUrl}/images/link.svg`}
                         alt=""
                         className='mr-3 w-2.5 h-auto opacity-70 group-hover:opacity-100 transition-opacity'
                         aria-hidden="true"
                       />
                       <Link
-                        href={`/programs/${program.toLowerCase().replace(/\s+/g, '-')}`}
+                        href={program.url}
                         className="hover:text-[#009BE2] transition-colors cursor-pointer text-white font-400 text-[14px]"
                       >
-                        {program}
+                        {program.name}
                       </Link>
                     </li>
                   ))}
@@ -204,16 +213,16 @@ const Footer = ({ footerData }) => {
                   {secondProgramColumn.map((program, index) => (
                     <li key={index} className='flex items-center group'>
                       <img
-                        src="/images/link.svg"
+                        src={`${storageUrl}/images/link.svg`}
                         alt=""
                         className='mr-3 w-2.5 h-auto opacity-70 group-hover:opacity-100 transition-opacity'
                         aria-hidden="true"
                       />
                       <Link
-                        href={`/programs/${program.toLowerCase().replace(/\s+/g, '-')}`}
+                        href={program.url}
                         className="hover:text-[#009BE2] transition-colors cursor-pointer text-white font-400 text-[14px]"
                       >
-                        {program}
+                        {program.name}
                       </Link>
                     </li>
                   ))}
@@ -244,16 +253,16 @@ const Footer = ({ footerData }) => {
                     {footerData.quickLinks.map((link, index) => (
                       <li key={index} className='flex items-center group'>
                         <img
-                          src="/images/link.svg"
+                          src={`${storageUrl}/images/link.svg`}
                           alt=""
                           className='mr-3 w-2.5 h-auto opacity-70 group-hover:opacity-100 transition-opacity'
                           aria-hidden="true"
                         />
                         <Link
-                          href={`/${link.toLowerCase().replace(/\s+/g, '-')}`}
+                          href={link.url}
                           className="hover:text-[#009BE2] transition-colors cursor-pointer text-white font-400 text-[14px]"
                         >
-                          {link}
+                          {link.name}
                         </Link>
                       </li>
                     ))}
@@ -282,16 +291,16 @@ const Footer = ({ footerData }) => {
                     {footerData.programs.map((program, index) => (
                       <li key={index} className='flex items-center group'>
                         <img
-                          src="/images/link.svg"
+                          src={`${storageUrl}/images/link.svg`}
                           alt=""
                           className='mr-3 w-2.5 h-auto opacity-70 group-hover:opacity-100 transition-opacity'
                           aria-hidden="true"
                         />
                         <Link
-                          href={`/programs/${program.toLowerCase().replace(/\s+/g, '-')}`}
+                          href={program.url}
                           className="hover:text-[#009BE2] transition-colors cursor-pointer text-white font-400 text-[14px]"
                         >
-                          {program}
+                          {program.name}
                         </Link>
                       </li>
                     ))}

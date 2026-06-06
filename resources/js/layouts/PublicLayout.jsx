@@ -11,13 +11,13 @@ import Navbar from '../components/Shared/Navbar';
 import TopBar from '../components/Shared/TopBar';
 import Footer from '../components/Shared/Footer';
 
-const PublicLayout = ({ children, topBarData, navbarData, footerData }) => {
+const PublicLayout = ({ children, topBarData, navbarData, footerData, storageUrl }) => {
   return (
     <div className='bg-white' >
-      <TopBar topBarData={topBarData} />
+      <TopBar topBarData={topBarData} storageUrl={storageUrl} />
       <Navbar navbarData={navbarData} />
       <main className=" mx-auto">{children}</main>
-      <Footer footerData={footerData} />
+      <Footer footerData={footerData} storageUrl={storageUrl} />
     </div>
   );
 };

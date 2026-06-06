@@ -18,6 +18,7 @@ const About = ({
   topBarData,
   navbarData,
   footerData,
+  storageUrl,
 
   // Page Pacific
   faqData,
@@ -34,7 +35,7 @@ const About = ({
 }) => {
 
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} >
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} >
       <Head title="About Us | DUS - Dwip Unnayan Society | Empowering Communities" />
 
       <BannerSection bannerData={bannerData} sectionId='about-us-banner' />

@@ -14,8 +14,7 @@ const ProjectsPrograms = ({
   topBarData,
   navbarData,
   footerData,
-
-
+  storageUrl,
 }) => {
 
   // Banner Data
@@ -38,7 +37,8 @@ const ProjectsPrograms = ({
 
 
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} >
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} storageUrl={storageUrl} >
+
       <Head title="Projects Programs | DUS - Dwip Unnayan Society | Empowering Communities" />
 
 

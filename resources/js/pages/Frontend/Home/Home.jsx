@@ -22,6 +22,7 @@ export default function Home({
   topBarData,
   navbarData,
   footerData,
+  storageUrl,
 
   // Page Pacific
   jobsData,
@@ -36,7 +37,8 @@ export default function Home({
 
 }) {
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData}>
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} >
+
       <Head title="Home | DUS - Dwip Unnayan Society | Empowering Communities" />
 
       <BannerSection bannerData={bannerData} />

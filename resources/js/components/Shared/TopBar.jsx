@@ -17,7 +17,7 @@ const iconMap = {
   FaXTwitter: FaXTwitter
 };
 
-const TopBar = ({ topBarData }) => {
+const TopBar = ({ topBarData, storageUrl }) => {
   // Get auth from usePage
   const { auth } = usePage().props;
   const user = auth?.user;
@@ -31,7 +31,7 @@ const TopBar = ({ topBarData }) => {
   const [selectedLanguage, setSelectedLanguage] = useState({
     code: 'us',
     name: 'English',
-    flag: '/images/Flags/united-states.png'
+    flag: `${storageUrl}/images/link.svg`
   });
 
   // Refs
@@ -282,10 +282,11 @@ const TopBar = ({ topBarData }) => {
       <div className='lg:hidden bg-[#080C14] px-4 py-2 relative z-50'>
         {/* Mobile Header with Logo and Menu Button */}
         <div className='flex justify-between items-center'>
+
           {/* Mobile Logo */}
           <Link href="/" className="flex items-center">
             <img
-              src="/images/Icon.svg"
+              src={`${storageUrl}/images/Icon.svg`}
               alt="DUS Logo"
               className="h-8 w-auto"
             />

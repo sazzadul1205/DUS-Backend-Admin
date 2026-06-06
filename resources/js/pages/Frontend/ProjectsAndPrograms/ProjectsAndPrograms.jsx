@@ -16,6 +16,7 @@ const ProjectsAndPrograms = ({
   topBarData,
   navbarData,
   footerData,
+  storageUrl,
 
   // Page Pacific
   faqData,
@@ -24,7 +25,8 @@ const ProjectsAndPrograms = ({
 
 }) => {
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} >
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} >
+
       <Head title="About Us | DUS - Dwip Unnayan Society | Empowering Communities" />
 
       <BannerSection bannerData={bannerData} sectionId='about-us-banner' />

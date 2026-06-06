@@ -16,6 +16,7 @@ const ProjectsAndProgramsDetails = ({
   topBarData,
   navbarData,
   footerData,
+  storageUrl,
 
   // Page specific data
   slug,
@@ -32,7 +33,7 @@ const ProjectsAndProgramsDetails = ({
 
 
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData}>
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} >
       <Head title={`${programData.title} | DUS - Dwip Unnayan Society`} />
 
       {/* Banner */}

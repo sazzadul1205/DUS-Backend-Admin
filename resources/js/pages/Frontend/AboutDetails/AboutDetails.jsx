@@ -16,6 +16,7 @@ const AboutDetails = ({
   topBarData,
   navbarData,
   footerData,
+  storageUrl,
 
   // Page specific data
   slug,
@@ -31,7 +32,7 @@ const AboutDetails = ({
   };
 
   return (
-    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData}>
+    <PublicLayout topBarData={topBarData} navbarData={navbarData} footerData={footerData} storageUrl={storageUrl} >
       <Head title={`${subPageData.title} | DUS - Dwip Unnayan Society`} />
 
       {/* Banner */}
