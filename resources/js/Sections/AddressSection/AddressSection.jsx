@@ -1,7 +1,18 @@
+// js/Sections/AddressSection/AddressSection.jsx
+
 "use client";
 
 import React, { useState } from "react";
 import { FaArrowRight } from "react-icons/fa6";
+
+// Utility function to check if value exists (SAME as other sections)
+const hasValue = (value) => {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+};
 
 const OfficeStar = ({ active }) => (
   <svg
@@ -40,26 +51,40 @@ const BuildingIcon = ({ className = "", ...props }) => (
   </svg>
 );
 
+const AddressSection = ({
+  officesLocation,
+  bgColor = 'bg-[#F5F5F5]',
+  paddingY = 'py-10 sm:py-14 lg:py-37.5',
+  paddingX = 'px-4 sm:px-6 lg:px-50',
+  sectionClassName = '',
+  sectionId = 'address-section',
+}) => {
+  // Early return if no data
+  if (!hasValue(officesLocation) || officesLocation.length === 0) {
+    return null;
+  }
 
-export default function AddressSection({ officesLocation }) {
   const [activeOffice, setActiveOffice] = useState(officesLocation[0]);
 
   return (
-    <section className="bg-[#F5F5F5] px-4 sm:px-6 lg:px-50 py-10 sm:py-14 lg:py-37.5">
+    <section
+      id={sectionId}
+      className={`${bgColor} ${paddingX} ${paddingY} ${sectionClassName}`}
+    >
       {/* Tabs */}
       <div className="max-w-200 mx-auto rounded-[18px] bg-white p-4">
         <div className="flex flex-wrap justify-between gap-3">
-          {officesLocation.map((officesLocation) => (
+          {officesLocation.map((office) => (
             <button
-              key={officesLocation.id}
-              onClick={() => setActiveOffice(officesLocation)}
-              className={`flex items-center justify-center gap-2 sm:gap-3 rounded-2xl px-4 sm:px-5 py-3 sm:py-5 text-[16px] sm:text-[18px] md:text-[24px] font-semibold transition-all shrink-0 cursor-pointer ${activeOffice.id === officesLocation.id
-                ? 'bg-[#FAFAFA] text-[#1396E8]'
-                : 'bg-white text-[#111827] hover:bg-gray-50'
+              key={office.id}
+              onClick={() => setActiveOffice(office)}
+              className={`flex items-center justify-center gap-2 sm:gap-3 rounded-2xl px-4 sm:px-5 py-3 sm:py-5 text-[16px] sm:text-[18px] md:text-[24px] font-semibold transition-all shrink-0 cursor-pointer ${activeOffice.id === office.id
+                  ? 'bg-[#FAFAFA] text-[#1396E8]'
+                  : 'bg-white text-[#111827] hover:bg-gray-50'
                 }`}
             >
-              <OfficeStar active={activeOffice.id === officesLocation.id} />
-              <span>{officesLocation.label}</span>
+              <OfficeStar active={activeOffice.id === office.id} />
+              <span>{office.label}</span>
             </button>
           ))}
         </div>
@@ -68,42 +93,48 @@ export default function AddressSection({ officesLocation }) {
       {/* Dynamic Map */}
       <div className="relative pt-12">
         <div className="w-full max-w-380 mx-auto rounded-2xl overflow-hidden shadow-lg">
-          <iframe
-            src={activeOffice.mapUrl}
-            className="w-full h-100 md:h-228.75 border-0"
-            loading="lazy"
-            allowFullScreen
-            title={`${activeOffice.label} Location Map`}
-          />
+          {hasValue(activeOffice.mapUrl) && (
+            <iframe
+              src={activeOffice.mapUrl}
+              className="w-full h-100 md:h-228.75 border-0"
+              loading="lazy"
+              allowFullScreen
+              title={`${activeOffice.label} Location Map`}
+            />
+          )}
         </div>
 
         {/* Dynamic Address Card */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 w-[90%] md:w-192.5 z-10">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-white py-6 px-7 rounded-2xl shadow-xl">
-            <div className='bg-[#F4F8FF] rounded-full p-3.5 shrink-0'>
-              <BuildingIcon />
-            </div>
+        {hasValue(activeOffice.address) && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 w-[90%] md:w-192.5 z-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-white py-6 px-7 rounded-2xl shadow-xl">
+              <div className='bg-[#F4F8FF] rounded-full p-3.5 shrink-0'>
+                <BuildingIcon />
+              </div>
 
-            <div className="flex-1 w-full">
-              <h3 className="font-semibold text-[12px] uppercase tracking-wide text-gray-500 mb-1">
-                Address
-              </h3>
-              <p className="text-[#009BE2] text-[16px] md:text-[20px] font-medium wrap-break-word">
-                {activeOffice.address}
-              </p>
-            </div>
+              <div className="flex-1 w-full">
+                <h3 className="font-semibold text-[12px] uppercase tracking-wide text-gray-500 mb-1">
+                  Address
+                </h3>
+                <p className="text-[#009BE2] text-[16px] md:text-[20px] font-medium wrap-break-word">
+                  {activeOffice.address}
+                </p>
+              </div>
 
-            <a
-              href={`https://www.google.com/maps?q=${encodeURIComponent(activeOffice.address)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 hover:translate-x-1 transition-transform"
-            >
-              <FaArrowRight className="text-[#C2C2C2] hover:text-[#009BE2] transition-colors text-xl" />
-            </a>
+              <a
+                href={`https://www.google.com/maps?q=${encodeURIComponent(activeOffice.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 hover:translate-x-1 transition-transform"
+              >
+                <FaArrowRight className="text-[#C2C2C2] hover:text-[#009BE2] transition-colors text-xl" />
+              </a>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );
-}
+};
+
+export default AddressSection;

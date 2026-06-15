@@ -12,7 +12,14 @@ const hasValue = (value) => {
   return true;
 };
 
-const ProgramImpactSection = ({ impactData }) => {
+const ProgramImpactSection = ({
+  impactData,
+  bgColor = 'bg-white',
+  paddingY = 'py-12 sm:py-16 md:py-25 lg:py-37.5',
+  paddingX = 'px-5 sm:px-10 md:px-20 lg:px-75',
+  sectionClassName = '',
+  sectionId = 'program-impact',
+}) => {
   const [index, setIndex] = useState(0);
 
   // Early return if no data (SAME pattern)
@@ -32,8 +39,10 @@ const ProgramImpactSection = ({ impactData }) => {
   const goToSlide = (i) => setIndex(i);
 
   return (
-    <div className='bg-white py-12 sm:py-16 md:py-25 lg:py-37.5 px-5 sm:px-10 md:px-20 lg:px-75'>
-
+    <section
+      id={sectionId}
+      className={`${bgColor} ${paddingX} ${paddingY} ${sectionClassName}`}
+    >
       {/* Carousel - Only show if images exist */}
       {hasImages && (
         <div className="w-full flex flex-col items-center pb-8 sm:pb-10 lg:pb-15">
@@ -89,7 +98,7 @@ const ProgramImpactSection = ({ impactData }) => {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
