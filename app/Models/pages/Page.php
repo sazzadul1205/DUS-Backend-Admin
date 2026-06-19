@@ -1,0 +1,80 @@
+<?php
+// app/Models/pages/Page.php
+
+namespace App\Models\pages;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Schema\Builder;
+
+class Page extends Model
+{
+    use SoftDeletes;
+
+    /**
+     * Table name
+     */
+    protected $table = 'pages';
+
+    /**
+     * Fillable fields
+     */
+    protected $fillable = [
+        'slug',
+        'name',
+        'title',
+        'description',
+        'is_active',
+    ];
+
+    /**
+     * Cast fields
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
+    /* ==========================================
+     | RELATIONSHIPS
+     |========================================== */
+
+    /**
+     * Get the section configs for the page
+     */
+    public function sectionConfigs(): HasMany
+    {
+        return $this->hasMany(SectionConfig::class, 'page_slug', 'slug');
+    }
+
+    /**
+     * Get the custom section data for the page
+     */
+    public function customSectionData(): HasMany
+    {
+        return $this->hasMany(CustomSectionData::class, 'page_slug', 'slug');
+    }
+
+    /* ==========================================
+     | SCOPES
+     |========================================== */
+
+    /**
+     * Scope active pages
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope by slug
+     */
+    public function scopeSlug(Builder $query, string $slug): Builder
+    {
+        return $query->where('slug', $slug);
+    }
+}

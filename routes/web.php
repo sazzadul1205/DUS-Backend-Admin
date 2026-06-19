@@ -3,6 +3,8 @@
 // routes/web.php
 
 // Inertia
+
+use App\Http\Controllers\Api\ContentApiController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
@@ -453,3 +455,18 @@ require __DIR__ . '/auth.php';
 Route::get('/asset/{path}', [FrontendController::class, 'asset'])
     ->where('path', '.*')
     ->name('asset');
+
+
+
+
+// routes/api.php
+Route::prefix('data')->group(function () {
+    Route::get('pages.json', [ContentApiController::class, 'pages']);
+    Route::get('section_configs.json', [ContentApiController::class, 'sectionConfigs']);
+    Route::get('shared_data.json', [ContentApiController::class, 'sharedData']);
+    Route::get('custom_section_data.json', [ContentApiController::class, 'customSectionData']);
+    Route::get('programs.json', [ContentApiController::class, 'programs']);
+    Route::get('blogs.json', [ContentApiController::class, 'blogs']);
+    Route::get('about_content.json', [ContentApiController::class, 'aboutContent']);
+    Route::get('jobs.json', [ContentApiController::class, 'jobs']);
+});
