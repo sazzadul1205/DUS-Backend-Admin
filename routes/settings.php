@@ -1,4 +1,5 @@
 <?php
+// routes/settings.php
 
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;

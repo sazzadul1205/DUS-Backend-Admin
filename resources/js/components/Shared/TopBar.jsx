@@ -59,7 +59,7 @@ const TopBar = ({ topBarData, storageUrl }) => {
     ],
     authenticated: [
       { divider: true },
-      { label: 'Dashboard', route: 'dashboard', type: 'link' },
+      { label: 'Dashboard', route: 'backend.dashboard', type: 'link' },
       { label: 'Logout', type: 'button', action: 'logout' }
     ]
   };

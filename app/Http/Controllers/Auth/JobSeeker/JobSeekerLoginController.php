@@ -1,7 +1,6 @@
 <?php
-// app/Http/Controllers/Auth/JobSeekerLoginController.php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Auth\JobSeeker;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
@@ -20,7 +19,7 @@ class JobSeekerLoginController extends Controller
    */
   public function create(Request $request): Response
   {
-    return Inertia::render('auth/job-seeker-login', [
+    return Inertia::render('auth/JobSeeker/Login', [
       'canResetPassword' => Route::has('password.request'),
       'googleAuthEnabled' => $this->googleAuthEnabled(),
       'status' => $request->session()->get('status'),

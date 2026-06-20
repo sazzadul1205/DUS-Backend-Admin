@@ -1,7 +1,6 @@
 <?php
-// app/Http/Controllers/Auth/AdminLoginController.php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Auth\AdminStaff;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
@@ -19,7 +18,7 @@ class AdminLoginController extends Controller
    */
   public function create(Request $request): Response
   {
-    return Inertia::render('auth/admin-login', [
+    return Inertia::render('auth/AdminStaff/Login', [
       'canResetPassword' => Route::has('password.request'),
       'status' => $request->session()->get('status'),
     ]);

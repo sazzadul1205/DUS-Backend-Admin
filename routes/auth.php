@@ -1,40 +1,29 @@
 <?php
 // routes/auth.php
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
-use App\Http\Controllers\Auth\EmailVerificationNotificationController;
-use App\Http\Controllers\Auth\EmailVerificationPromptController;
-use App\Http\Controllers\Auth\EmailVerifiedController;
-use App\Http\Controllers\Auth\GoogleAuthController;
-use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\VerifyEmailController;
-use App\Http\Controllers\Auth\JobSeekerLoginController;
-use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\Shared\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\Shared\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\Shared\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\Shared\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\Shared\EmailVerifiedController;
+use App\Http\Controllers\Auth\Shared\GoogleAuthController;
+use App\Http\Controllers\Auth\Shared\NewPasswordController;
+use App\Http\Controllers\Auth\Shared\PasswordResetLinkController;
+use App\Http\Controllers\Auth\Shared\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    // Registration (only for job seekers)
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-    Route::post('register', [RegisteredUserController::class, 'store']);
-
     // ============================================
-    // REMOVED: Old login routes
-    // These are now handled in web.php
+    // GOOGLE AUTH (Job Seekers only)
     // ============================================
-    // Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    // Route::post('login', [AuthenticatedSessionController::class, 'store']);
-
-    // Google Auth (only for job seekers)
     Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirect'])
         ->name('auth.google.redirect');
     Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])
         ->name('auth.google.callback');
 
-    // Password Reset
+    // ============================================
+    // PASSWORD RESET (Both Job Seekers & Admin)
+    // ============================================
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
@@ -46,7 +35,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    // Email Verification
+    // ============================================
+    // EMAIL VERIFICATION (Job Seekers only)
+    // ============================================
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
@@ -58,12 +49,16 @@ Route::middleware('auth')->group(function () {
     Route::get('email/verified', [EmailVerifiedController::class, 'index'])
         ->name('verification.verified');
 
-    // Confirm Password
+    // ============================================
+    // CONFIRM PASSWORD (Both Job Seekers & Admin)
+    // ============================================
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
-    // Logout
+    // ============================================
+    // LOGOUT (Both Job Seekers & Admin)
+    // ============================================
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });

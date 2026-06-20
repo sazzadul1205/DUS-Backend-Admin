@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Auth\Shared;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApplicantProfile;
@@ -32,7 +32,7 @@ class EmailVerificationPromptController extends Controller
         }
 
         // Not verified - show the verification page
-        return Inertia::render('auth/verify-email', [
+        return Inertia::render('auth/JobSeeker/VerifyEmail', [
             'status' => $request->session()->get('status'),
         ]);
     }

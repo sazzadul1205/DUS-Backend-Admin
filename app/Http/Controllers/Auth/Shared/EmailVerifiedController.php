@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Auth\Shared;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +20,7 @@ class EmailVerifiedController extends Controller
       return redirect()->route('verification.notice');
     }
 
-    return Inertia::render('auth/email-verified', [
+    return Inertia::render('auth/JobSeeker/EmailVerified', [
       'status' => $request->session()->get('status'),
     ]);
   }

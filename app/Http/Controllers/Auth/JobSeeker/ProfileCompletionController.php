@@ -1,7 +1,6 @@
 <?php
-// app/Http/Controllers/Profile/ProfileCompletionController.php
 
-namespace App\Http\Controllers\Profile;
+namespace App\Http\Controllers\Auth\JobSeeker;
 
 // inertia
 use Inertia\Inertia;
@@ -155,7 +154,7 @@ class ProfileCompletionController extends Controller
             ];
         }
 
-        return Inertia::render('auth/completeProfile', [
+        return Inertia::render('auth/JobSeeker/CompleteProfile', [
             'applicantProfile' => $profileData,
         ]);
     }

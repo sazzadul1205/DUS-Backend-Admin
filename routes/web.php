@@ -14,7 +14,7 @@ use App\Http\Controllers\JobListing\PublicJobListingController;
 // Controllers - Profile
 use App\Http\Controllers\Profile\ApplicantProfileController;
 use App\Http\Controllers\Profile\EmployerProfileController;
-use App\Http\Controllers\Profile\ProfileCompletionController;
+use App\Http\Controllers\Auth\JobSeeker\ProfileCompletionController;
 
 // Controllers
 use App\Http\Controllers\Backend\LocationController;
@@ -35,10 +35,11 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 
 // ============================================
-// AUTH CONTROLLERS
+// AUTH CONTROLLERS - UPDATED PATHS
 // ============================================
-use App\Http\Controllers\Auth\JobSeekerLoginController;
-use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\AdminStaff\AdminLoginController;
+use App\Http\Controllers\Auth\JobSeeker\JobSeekerLoginController;
+use App\Http\Controllers\Auth\JobSeeker\JobSeekerRegisterController;
 
 // Laravel
 use Illuminate\Http\Request;
@@ -48,9 +49,6 @@ use Illuminate\Support\Facades\Storage;
 |--------------------------------------------------------------------------
 | ============================================
 | DEFAULT ROUTE - BACKEND DASHBOARD
-| ============================================
-| The app now redirects directly to the backend dashboard
-| Frontend routes are preserved and accessible via their URLs
 | ============================================
 */
 
@@ -88,10 +86,10 @@ Route::get('/unauthorized', function () {
 })->name('unauthorized.access');
 
 // ============================================
-// FRONTEND PUBLIC ROUTES (Keep all of these)
+// FRONTEND PUBLIC ROUTES
 // ============================================
 
-// Home page (main landing page) - Redirected to backend, but still accessible via /home
+// Home page
 Route::get('/home', [HomeController::class, 'home'])->name('home');
 
 // About pages
@@ -114,27 +112,40 @@ Route::get('/jobs', [PublicJobListingController::class, 'index'])->name('public.
 Route::get('/jobs/{slug}', [PublicJobListingController::class, 'show'])->name('public.jobs.show');
 
 // ============================================
-// SEPARATE LOGIN ROUTES
+// SEPARATE LOGIN ROUTES - UPDATED
 // ============================================
 Route::middleware('guest')->group(function () {
-    // Admin Login - DEFAULT ENTRY
+    // ============================================
+    // ADMIN / STAFF LOGIN - DEFAULT
+    // ============================================
     Route::get('/login/admin', [AdminLoginController::class, 'create'])
         ->name('admin.login');
     Route::post('/login/admin', [AdminLoginController::class, 'store']);
 
-    // Job Seeker Login
+    // ============================================
+    // JOB SEEKER LOGIN
+    // ============================================
     Route::get('/login/job-seeker', [JobSeekerLoginController::class, 'create'])
         ->name('job-seeker.login');
     Route::post('/login/job-seeker', [JobSeekerLoginController::class, 'store']);
 
-    // Default login redirects to admin login (changed from job-seeker)
+    // ============================================
+    // DEFAULT LOGIN - Redirects to Admin Login
+    // ============================================
     Route::get('/login', function () {
         return redirect()->route('admin.login');
     })->name('login');
+
+    // ============================================
+    // JOB SEEKER REGISTRATION
+    // ============================================
+    Route::get('/register', [JobSeekerRegisterController::class, 'create'])
+        ->name('register');
+    Route::post('/register', [JobSeekerRegisterController::class, 'store']);
 });
 
 // ============================================
-// Profile Completion Route
+// Profile Completion Route (Job Seekers only)
 // ============================================
 
 Route::middleware(['auth'])->group(function () {
@@ -168,6 +179,11 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
     })->name('backend.dashboard');
+
+    // Backward-compatible route name for existing frontend links/components
+    Route::get('/dashboard', function () {
+        return Inertia::render('dashboard');
+    })->name('dashboard');
 
     /*
     | Backend (Admin/Employer Panel)
