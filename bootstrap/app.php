@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\JobListingController;
+use App\Http\Controllers\JobListing\JobListingController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
