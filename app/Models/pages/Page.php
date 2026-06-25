@@ -6,9 +6,9 @@ namespace App\Models\pages;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Schema\Builder;
+use Illuminate\Database\Eloquent\Builder;
 
-class Page extends Model
+class Page extends Model  // ✅ FIXED: Changed from Blog to Page
 {
     use SoftDeletes;
 

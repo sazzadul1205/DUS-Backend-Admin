@@ -6,7 +6,8 @@ namespace App\Models\pages;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Schema\Builder;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\pages\Page;  // ✅ ADD THIS IMPORT
 
 class SectionConfig extends Model
 {

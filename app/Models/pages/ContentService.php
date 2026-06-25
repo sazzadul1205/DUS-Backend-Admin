@@ -106,15 +106,23 @@ class ContentService
   }
 
   /**
-   * Get related blogs
+   * Get related blogs with tag matching
+   * FIXED: Now uses the $tags parameter for filtering
    */
   public function getRelatedBlogs(int $blogId, array $tags = [], int $limit = 3): Collection
   {
-    return Blog::active()
-      ->where('id', '!=', $blogId)
-      ->latest()
-      ->limit($limit)
-      ->get();
+    $query = Blog::active()->where('id', '!=', $blogId);
+
+    // Filter by tags if provided
+    if (!empty($tags)) {
+      $query->where(function ($q) use ($tags) {
+        foreach ($tags as $tag) {
+          $q->orWhereJsonContains('tags', $tag);
+        }
+      });
+    }
+
+    return $query->latest()->limit($limit)->get();
   }
 
     /* ==========================================
