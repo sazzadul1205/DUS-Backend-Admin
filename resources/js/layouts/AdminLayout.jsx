@@ -427,9 +427,6 @@ const AdminLayout = ({ children }) => {
       }
     }
 
-    // ✅ ==========================================
-    // ✅ CMS MANAGEMENT DROPDOWN - USING DIRECT URLs (FIXED)
-    // ✅ ==========================================
     if (hasAnyPermission([
       'cms.dashboard', 'pages.view', 'pages.manage',
       'about.view', 'about.manage', 'blogs.view', 'blogs.manage',
@@ -441,7 +438,7 @@ const AdminLayout = ({ children }) => {
       // CMS Dashboard
       if (hasPermission('cms.dashboard')) {
         cmsSubItems.push({
-          name: 'CMS Dashboard',
+          name: 'Dashboard',
           href: '/backend/admin', // Direct URL
           icon: FiHome,
         });
@@ -473,7 +470,7 @@ const AdminLayout = ({ children }) => {
         });
         if (hasPermission('about.create')) {
           cmsSubItems.push({
-            name: 'Create About Content',
+            name: 'Create About',
             href: '/backend/admin/about/create',
             icon: FiPlusCircle,
             highlight: true,
@@ -518,13 +515,13 @@ const AdminLayout = ({ children }) => {
       // Custom Sections
       if (hasAnyPermission(['custom-sections.view', 'custom-sections.manage'])) {
         cmsSubItems.push({
-          name: 'Custom Sections',
+          name: 'Custom',
           href: '/backend/admin/custom-sections',
           icon: FaCog,
         });
         if (hasPermission('custom-sections.create')) {
           cmsSubItems.push({
-            name: 'Create Custom Section',
+            name: 'Create Custom',
             href: '/backend/admin/custom-sections/create',
             icon: FiPlusCircle,
             highlight: true,
@@ -622,6 +619,7 @@ const AdminLayout = ({ children }) => {
   };
 
   // Render menu item
+  // Render menu item
   const renderMenuItem = (item) => {
     if (item.isDropdown) {
       const isOpen = openMenus[item.dropdownKey];
@@ -632,23 +630,23 @@ const AdminLayout = ({ children }) => {
           <button
             onClick={() => toggleMenu(item.dropdownKey)}
             className={`
-              w-full flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group
-              ${isDropdownItemActive
+            w-full flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group whitespace-nowrap
+            ${isDropdownItemActive
                 ? colors.active + ' font-semibold'
                 : 'text-gray-700 hover:bg-gray-100'
               }
-            `}
+          `}
             title={item.description}
           >
-            <div className="flex items-center gap-3">
-              <item.icon className={`w-5 h-5 ${isDropdownItemActive ? colors.text : 'text-gray-400 group-hover:text-gray-600'}`} />
-              {!isCollapsed && <span className="font-medium">{item.name}</span>}
+            <div className="flex items-center gap-3 min-w-0">
+              <item.icon className={`w-5 h-5 shrink-0 ${isDropdownItemActive ? colors.text : 'text-gray-400 group-hover:text-gray-600'}`} />
+              {!isCollapsed && <span className="font-medium truncate">{item.name}</span>}
             </div>
             {!isCollapsed && (
               isOpen ? (
-                <FiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownItemActive ? colors.text : ''}`} />
+                <FiChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isDropdownItemActive ? colors.text : ''}`} />
               ) : (
-                <FiChevronRight className={`w-4 h-4 transition-transform duration-200 ${isDropdownItemActive ? colors.text : ''}`} />
+                <FiChevronRight className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isDropdownItemActive ? colors.text : ''}`} />
               )
             )}
           </button>
@@ -674,26 +672,26 @@ const AdminLayout = ({ children }) => {
         key={item.name}
         href={item.routeName ? route(item.routeName, item.routeParams || {}) : item.href}
         className={`
-          flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 mb-1 relative group
-          ${isMenuItemActive
+        flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 mb-1 relative group whitespace-nowrap
+        ${isMenuItemActive
             ? colors.active + ' font-semibold shadow-sm'
             : 'text-gray-700 hover:bg-gray-100'
           }
-        `}
+      `}
         title={item.description}
       >
-        <item.icon className={`w-5 h-5 ${isMenuItemActive ? colors.text : 'text-gray-400 group-hover:text-gray-600'}`} />
-        {!isCollapsed && <span className="flex-1">{item.name}</span>}
+        <item.icon className={`w-5 h-5 shrink-0 ${isMenuItemActive ? colors.text : 'text-gray-400 group-hover:text-gray-600'}`} />
+        {!isCollapsed && <span className="flex-1 truncate">{item.name}</span>}
         {!isCollapsed && item.badgeCount > 0 && (
-          <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
+          <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center shrink-0">
             {item.badgeCount > 99 ? '99+' : item.badgeCount}
           </span>
         )}
         {isMenuItemActive && !isCollapsed && (
-          <span className={`absolute left-0 w-1 h-8 ${colors.bg} rounded-r-full`}></span>
+          <span className={`absolute left-0 w-1 h-8 ${colors.bg} rounded-r-full shrink-0`}></span>
         )}
         {isMenuItemActive && isCollapsed && (
-          <span className={`absolute right-0 w-1.5 h-1.5 rounded-full ${colors.bg}`}></span>
+          <span className={`absolute right-0 w-1.5 h-1.5 rounded-full ${colors.bg} shrink-0`}></span>
         )}
       </Link>
     );
