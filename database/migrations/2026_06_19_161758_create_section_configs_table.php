@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('page_slug', 100);
             $table->string('section_key', 100);
             $table->string('component', 100);
-            $table->string('data_table', 100);
+            $table->string('data_table', 100)->nullable();
             $table->string('data_key', 100);
             $table->string('prop_name', 100);
             $table->integer('display_order')->default(0);

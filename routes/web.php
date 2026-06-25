@@ -16,7 +16,7 @@ use App\Http\Controllers\Profile\ApplicantProfileController;
 use App\Http\Controllers\Profile\EmployerProfileController;
 use App\Http\Controllers\Auth\JobSeeker\ProfileCompletionController;
 
-// Controllers
+// Controllers - Backend
 use App\Http\Controllers\Backend\LocationController;
 use App\Http\Controllers\Backend\ApplyController;
 use App\Http\Controllers\Backend\JobCategoryController;
@@ -24,22 +24,40 @@ use App\Http\Controllers\Backend\ApplicationsController;
 use App\Http\Controllers\Backend\NotificationController;
 use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\UserController;
+
+// Controllers - Frontend
 use App\Http\Controllers\Frontend\AboutController;
 use App\Http\Controllers\Frontend\BlogController;
 use App\Http\Controllers\Frontend\ContactController;
 use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Frontend\ProjectsProgramsController;
+
+// Controllers - Profile (Admin/Employer)
 use App\Http\Controllers\Profile\AdminProfileController;
+
+// Controllers - Settings
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 
-// ============================================
-// AUTH CONTROLLERS - UPDATED PATHS
-// ============================================
+// Controllers - Auth
 use App\Http\Controllers\Auth\AdminStaff\AdminLoginController;
 use App\Http\Controllers\Auth\JobSeeker\JobSeekerLoginController;
 use App\Http\Controllers\Auth\JobSeeker\JobSeekerRegisterController;
+
+// Controllers - Auth Shared
+use App\Http\Controllers\Auth\Shared\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\Shared\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\Shared\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\Shared\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\Shared\EmailVerifiedController;
+use App\Http\Controllers\Auth\Shared\GoogleAuthController;
+use App\Http\Controllers\Auth\Shared\NewPasswordController;
+use App\Http\Controllers\Auth\Shared\PasswordResetLinkController;
+use App\Http\Controllers\Auth\Shared\VerifyEmailController;
+
+// Controllers - CMS
+use App\Http\Controllers\Cms\CmsController;
 
 // Laravel
 use Illuminate\Http\Request;
@@ -47,25 +65,17 @@ use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
-| ============================================
 | DEFAULT ROUTE - Redirect to Job Seeker Login
-| ============================================
+|--------------------------------------------------------------------------
 */
 
-// Redirect root to job seeker login page
 Route::get('/', function () {
     return redirect()->route('job-seeker.login');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Frontend Routes (Preserved - Accessible via their URLs)
+| FRONTEND PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
 
@@ -77,6 +87,11 @@ Route::get('/storage/{path}', function ($path) {
     return response()->file($disk->path($path));
 })->where('path', '.*')->name('storage.file');
 
+// Asset route for serving assets
+Route::get('/asset/{path}', [FrontendController::class, 'asset'])
+    ->where('path', '.*')
+    ->name('asset');
+
 // Unauthorized access page
 Route::get('/unauthorized', function () {
     return Inertia::render('UnauthorizedAccess', [
@@ -84,10 +99,6 @@ Route::get('/unauthorized', function () {
         'message' => session('error', 'You do not have permission to access this page.')
     ]);
 })->name('unauthorized.access');
-
-// ============================================
-// FRONTEND PUBLIC ROUTES
-// ============================================
 
 // Home page
 Route::get('/home', [HomeController::class, 'home'])->name('home');
@@ -111,22 +122,23 @@ Route::get('/contact', [ContactController::class, 'contactUs'])->name('frontend.
 Route::get('/jobs', [PublicJobListingController::class, 'index'])->name('public.jobs.index');
 Route::get('/jobs/{slug}', [PublicJobListingController::class, 'show'])->name('public.jobs.show');
 
-// ============================================
-// SEPARATE LOGIN ROUTES - UPDATED
-// ============================================
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATION ROUTES
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('guest')->group(function () {
     // ============================================
     // ADMIN / STAFF LOGIN
     // ============================================
-    Route::get('/login/admin', [AdminLoginController::class, 'create'])
-        ->name('admin.login');
+    Route::get('/login/admin', [AdminLoginController::class, 'create'])->name('admin.login');
     Route::post('/login/admin', [AdminLoginController::class, 'store']);
 
     // ============================================
-    // JOB SEEKER LOGIN - THIS IS THE PRIMARY LOGIN
+    // JOB SEEKER LOGIN
     // ============================================
-    Route::get('/login/job-seeker', [JobSeekerLoginController::class, 'create'])
-        ->name('job-seeker.login');
+    Route::get('/login/job-seeker', [JobSeekerLoginController::class, 'create'])->name('job-seeker.login');
     Route::post('/login/job-seeker', [JobSeekerLoginController::class, 'store']);
 
     // ============================================
@@ -139,14 +151,54 @@ Route::middleware('guest')->group(function () {
     // ============================================
     // JOB SEEKER REGISTRATION
     // ============================================
-    Route::get('/register', [JobSeekerRegisterController::class, 'create'])
-        ->name('register');
+    Route::get('/register', [JobSeekerRegisterController::class, 'create'])->name('register');
     Route::post('/register', [JobSeekerRegisterController::class, 'store']);
+
+    // ============================================
+    // GOOGLE AUTH (Job Seekers only)
+    // ============================================
+    Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+    Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
+    // ============================================
+    // PASSWORD RESET
+    // ============================================
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('reset-password', [NewPasswordController::class, 'store'])->name('password.store');
 });
 
-// ============================================
-// Profile Completion Route (Job Seekers only)
-// ============================================
+Route::middleware('auth')->group(function () {
+    // ============================================
+    // EMAIL VERIFICATION (Job Seekers only)
+    // ============================================
+    Route::get('verify-email', EmailVerificationPromptController::class)->name('verification.notice');
+    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+    Route::get('email/verified', [EmailVerifiedController::class, 'index'])->name('verification.verified');
+
+    // ============================================
+    // CONFIRM PASSWORD
+    // ============================================
+    Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])->name('password.confirm');
+    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
+
+    // ============================================
+    // LOGOUT
+    // ============================================
+    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+});
+
+/*
+|--------------------------------------------------------------------------
+| PROFILE COMPLETION ROUTES (Job Seekers only)
+|--------------------------------------------------------------------------
+*/
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/complete-profile', [ProfileCompletionController::class, 'show'])->name('profile.complete');
@@ -167,14 +219,14 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated + VERIFIED Routes (MAIN APP AREA - BACKEND)
+| AUTHENTICATED + VERIFIED ROUTES (MAIN APP AREA - BACKEND)
 |--------------------------------------------------------------------------
 */
 
 Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
     /*
-    | Dashboard - THIS IS THE DEFAULT LANDING PAGE
+    | Dashboard - Default Landing Page
     */
     Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
@@ -187,10 +239,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Roles Management 
+        | ROLES MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('roles')->name('roles.')->group(function () {
             Route::get('/', [RoleController::class, 'index'])->name('index');
             Route::get('/create', [RoleController::class, 'create'])->name('create');
@@ -211,10 +262,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Locations Management
+        | LOCATIONS MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('locations')->name('locations.')->group(function () {
             Route::get('/', [LocationController::class, 'index'])->name('index');
             Route::post('/', [LocationController::class, 'store'])->name('store');
@@ -232,10 +282,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Job Categories Management
+        | JOB CATEGORIES MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('categories')->name('categories.')->group(function () {
             Route::patch('{category}/toggle', [JobCategoryController::class, 'toggleActive'])->name('toggle');
             Route::patch('{category}/restore', [JobCategoryController::class, 'restore'])->name('restore');
@@ -254,10 +303,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Job Listings Management
+        | JOB LISTINGS MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('listing')->name('listing.')->group(function () {
             Route::patch('{jobListing}/toggle-active', [JobListingController::class, 'toggleActive'])->name('toggle-active');
             Route::patch('{jobListing}/restore', [JobListingController::class, 'restore'])->name('restore');
@@ -277,20 +325,18 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Statistics
+        | STATISTICS
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('statistics')->name('statistics.')->group(function () {
             Route::get('/', [JobListingController::class, 'statistics'])->name('index');
         });
 
         /*
         |--------------------------------------------------------------------------
-        | Public Job Listings Management (Backend viewing)
+        | PUBLIC JOB LISTINGS (Backend viewing)
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('public-jobs')->name('public-jobs.')->group(function () {
             Route::get('/', [PublicJobListingController::class, 'index'])->name('index');
             Route::get('{slug}', [PublicJobListingController::class, 'show'])->name('show');
@@ -298,10 +344,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Apply To Job Routes
+        | APPLY TO JOB
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('apply')->name('apply.')->group(function () {
             Route::get('/', [ApplyController::class, 'index'])->name('index');
             Route::get('/create/{slug}', [ApplyController::class, 'create'])->name('create');
@@ -318,10 +363,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Applicant Profile Routes (User-specific - for own profile)
+        | APPLICANT PROFILE (User Own)
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('applicant')->name('applicant.')->group(function () {
             Route::delete('/profile/{applicantProfile}', [ApplicantProfileController::class, 'destroy'])->name('profile.destroy');
             Route::get('/profile/{applicantProfile}/download-cv', [ApplicantProfileController::class, 'downloadCV'])->name('profile.download-cv');
@@ -338,10 +382,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Applicant Profile Management (Admin - All Profiles)
+        | APPLICANT PROFILE MANAGEMENT (Admin)
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('applicant-profiles')->name('applicant-profile.')->group(function () {
             Route::get('/', [ApplicantProfileController::class, 'index'])->name('index');
             Route::get('/{id}', [ApplicantProfileController::class, 'show'])->name('show');
@@ -358,10 +401,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Employer Profile Routes
+        | EMPLOYER PROFILE
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('employer')->name('employer.')->group(function () {
             Route::get('/profile/{id?}', [EmployerProfileController::class, 'show'])->whereNumber('id')->name('profile.show');
             Route::get('/profile/edit', [EmployerProfileController::class, 'edit'])->name('profile.edit');
@@ -371,10 +413,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Admin Profile Routes
+        | ADMIN PROFILE
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('admin-profile')->name('admin-profile.')->group(function () {
             Route::get('/edit', [AdminProfileController::class, 'edit'])->name('edit');
             Route::patch('/', [AdminProfileController::class, 'update'])->name('update');
@@ -383,10 +424,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Applications Management
+        | APPLICATIONS MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('applications')->name('applications.')->group(function () {
             Route::get('/', [ApplicationsController::class, 'index'])->name('index');
             Route::get('/job/{jobId}', [ApplicationsController::class, 'jobApplications'])->name('job');
@@ -406,10 +446,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Users Management
+        | USERS MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('index');
             Route::post('/', [UserController::class, 'store'])->name('store');
@@ -424,19 +463,85 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Notifications Management
+        | NOTIFICATIONS MANAGEMENT
         |--------------------------------------------------------------------------
         */
-
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [NotificationController::class, 'index'])->name('index');
             Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
             Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | CMS MANAGEMENT (INERTIA.JS ADMIN INTERFACE)
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('admin')->name('cms.')->group(function () {
+
+            // CMS DASHBOARD
+            Route::get('/', [CmsController::class, 'dashboard'])->name('dashboard');
+
+            // PAGE MANAGEMENT
+            Route::get('/pages', [CmsController::class, 'pages'])->name('pages');
+            Route::get('/pages/create', [CmsController::class, 'createPage'])->name('pages.create');
+            Route::post('/pages', [CmsController::class, 'storePage'])->name('pages.store');
+            Route::get('/pages/{id}/edit', [CmsController::class, 'editPage'])->name('pages.edit');
+            Route::put('/pages/{id}', [CmsController::class, 'updatePage'])->name('pages.update');
+            Route::delete('/pages/{id}', [CmsController::class, 'destroyPage'])->name('pages.destroy');
+
+            // SECTION CONFIG MANAGEMENT
+            Route::get('/pages/{pageId}/sections', [CmsController::class, 'pageSections'])->name('pages.sections');
+            Route::post('/pages/{pageId}/sections', [CmsController::class, 'storeSectionConfig'])->name('sections.store');
+            Route::put('/pages/{pageId}/sections/{sectionId}', [CmsController::class, 'updateSectionConfig'])->name('sections.update');
+            Route::delete('/pages/{pageId}/sections/{sectionId}', [CmsController::class, 'destroySectionConfig'])->name('sections.destroy');
+
+            // ABOUT CONTENT MANAGEMENT
+            Route::get('/about', [CmsController::class, 'aboutContent'])->name('about');
+            Route::get('/about/create', [CmsController::class, 'createAboutContent'])->name('about.create');
+            Route::post('/about', [CmsController::class, 'storeAboutContent'])->name('about.store');
+            Route::get('/about/{id}/edit', [CmsController::class, 'editAboutContent'])->name('about.edit');
+            Route::put('/about/{id}', [CmsController::class, 'updateAboutContent'])->name('about.update');
+            Route::delete('/about/{id}', [CmsController::class, 'destroyAboutContent'])->name('about.destroy');
+
+            // BLOG MANAGEMENT
+            Route::get('/blogs', [CmsController::class, 'blogs'])->name('blogs');
+            Route::get('/blogs/create', [CmsController::class, 'createBlog'])->name('blogs.create');
+            Route::post('/blogs', [CmsController::class, 'storeBlog'])->name('blogs.store');
+            Route::get('/blogs/{id}/edit', [CmsController::class, 'editBlog'])->name('blogs.edit');
+            Route::put('/blogs/{id}', [CmsController::class, 'updateBlog'])->name('blogs.update');
+            Route::delete('/blogs/{id}', [CmsController::class, 'destroyBlog'])->name('blogs.destroy');
+
+            // PROGRAM MANAGEMENT
+            Route::get('/programs', [CmsController::class, 'programs'])->name('programs');
+            Route::get('/programs/create', [CmsController::class, 'createProgram'])->name('programs.create');
+            Route::post('/programs', [CmsController::class, 'storeProgram'])->name('programs.store');
+            Route::get('/programs/{id}/edit', [CmsController::class, 'editProgram'])->name('programs.edit');
+            Route::put('/programs/{id}', [CmsController::class, 'updateProgram'])->name('programs.update');
+            Route::delete('/programs/{id}', [CmsController::class, 'destroyProgram'])->name('programs.destroy');
+
+            // CUSTOM SECTION DATA MANAGEMENT
+            Route::get('/custom-sections', [CmsController::class, 'customSectionData'])->name('custom-sections');
+            Route::get('/custom-sections/create', [CmsController::class, 'createCustomSection'])->name('custom-sections.create');
+            Route::post('/custom-sections', [CmsController::class, 'storeCustomSection'])->name('custom-sections.store');
+            Route::get('/custom-sections/{id}/edit', [CmsController::class, 'editCustomSection'])->name('custom-sections.edit');
+            Route::put('/custom-sections/{id}', [CmsController::class, 'updateCustomSection'])->name('custom-sections.update');
+            Route::delete('/custom-sections/{id}', [CmsController::class, 'destroyCustomSection'])->name('custom-sections.destroy');
+
+            // SHARED DATA MANAGEMENT
+            Route::get('/shared-data', [CmsController::class, 'sharedData'])->name('shared-data');
+            Route::get('/shared-data/create', [CmsController::class, 'createSharedData'])->name('shared-data.create');
+            Route::post('/shared-data', [CmsController::class, 'storeSharedData'])->name('shared-data.store');
+            Route::get('/shared-data/{id}/edit', [CmsController::class, 'editSharedData'])->name('shared-data.edit');
+            Route::put('/shared-data/{id}', [CmsController::class, 'updateSharedData'])->name('shared-data.update');
+            Route::delete('/shared-data/{id}', [CmsController::class, 'destroySharedData'])->name('shared-data.destroy');
+        });
     });
 
     /*
-    | Settings
+    |--------------------------------------------------------------------------
+    | SETTINGS ROUTES
+    |--------------------------------------------------------------------------
     */
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile');
@@ -446,24 +551,6 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
     });
 });
-
-/*
-|--------------------------------------------------------------------------
-| AUTH ROUTES
-|--------------------------------------------------------------------------
-*/
-
-require __DIR__ . '/auth.php';
-
-/*
-|--------------------------------------------------------------------------
-| ASSET ROUTE
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/asset/{path}', [FrontendController::class, 'asset'])
-    ->where('path', '.*')
-    ->name('asset');
 
 /*
 |--------------------------------------------------------------------------

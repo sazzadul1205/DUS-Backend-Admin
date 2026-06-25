@@ -1,5 +1,5 @@
 <?php
-// database/seeders/RBACSeeder.php - FIXED VERSION
+// database/seeders/RBACSeeder.php - UPDATED WITH CMS PERMISSIONS
 
 namespace Database\Seeders;
 
@@ -40,6 +40,76 @@ class RBACSeeder extends Seeder
       ['name' => 'Job Seeker Dashboard', 'slug' => 'dashboard.job_seeker', 'module' => 'dashboard', 'action' => 'job_seeker'],
       ['name' => 'Employer Dashboard', 'slug' => 'dashboard.employer', 'module' => 'dashboard', 'action' => 'employer'],
       ['name' => 'Admin Dashboard', 'slug' => 'dashboard.admin', 'module' => 'dashboard', 'action' => 'admin'],
+
+      // CMS Module - Dashboard & Management
+      ['name' => 'CMS Dashboard', 'slug' => 'cms.dashboard', 'module' => 'cms', 'action' => 'dashboard'],
+      ['name' => 'CMS Pages', 'slug' => 'cms.pages', 'module' => 'cms', 'action' => 'pages'],
+      ['name' => 'CMS About Content', 'slug' => 'cms.about', 'module' => 'cms', 'action' => 'about'],
+      ['name' => 'CMS Blogs', 'slug' => 'cms.blogs', 'module' => 'cms', 'action' => 'blogs'],
+      ['name' => 'CMS Programs', 'slug' => 'cms.programs', 'module' => 'cms', 'action' => 'programs'],
+      ['name' => 'CMS Custom Sections', 'slug' => 'cms.custom-sections', 'module' => 'cms', 'action' => 'custom_sections'],
+      ['name' => 'CMS Shared Data', 'slug' => 'cms.shared-data', 'module' => 'cms', 'action' => 'shared_data'],
+      ['name' => 'CMS Pages View', 'slug' => 'cms.pages.view', 'module' => 'cms', 'action' => 'pages_view'],
+      ['name' => 'CMS Pages Manage', 'slug' => 'cms.pages.manage', 'module' => 'cms', 'action' => 'pages_manage'],
+      ['name' => 'CMS About View', 'slug' => 'cms.about.view', 'module' => 'cms', 'action' => 'about_view'],
+      ['name' => 'CMS About Manage', 'slug' => 'cms.about.manage', 'module' => 'cms', 'action' => 'about_manage'],
+      ['name' => 'CMS Blogs View', 'slug' => 'cms.blogs.view', 'module' => 'cms', 'action' => 'blogs_view'],
+      ['name' => 'CMS Blogs Manage', 'slug' => 'cms.blogs.manage', 'module' => 'cms', 'action' => 'blogs_manage'],
+      ['name' => 'CMS Programs View', 'slug' => 'cms.programs.view', 'module' => 'cms', 'action' => 'programs_view'],
+      ['name' => 'CMS Programs Manage', 'slug' => 'cms.programs.manage', 'module' => 'cms', 'action' => 'programs_manage'],
+      ['name' => 'CMS Custom Sections View', 'slug' => 'cms.custom-sections.view', 'module' => 'cms', 'action' => 'custom_sections_view'],
+      ['name' => 'CMS Custom Sections Manage', 'slug' => 'cms.custom-sections.manage', 'module' => 'cms', 'action' => 'custom_sections_manage'],
+      ['name' => 'CMS Shared Data View', 'slug' => 'cms.shared-data.view', 'module' => 'cms', 'action' => 'shared_data_view'],
+      ['name' => 'CMS Shared Data Manage', 'slug' => 'cms.shared-data.manage', 'module' => 'cms', 'action' => 'shared_data_manage'],
+
+      // CMS Page CRUD Permissions
+      ['name' => 'View Pages', 'slug' => 'pages.view', 'module' => 'pages', 'action' => 'view'],
+      ['name' => 'Create Page', 'slug' => 'pages.create', 'module' => 'pages', 'action' => 'create'],
+      ['name' => 'Update Page', 'slug' => 'pages.update', 'module' => 'pages', 'action' => 'update'],
+      ['name' => 'Delete Page', 'slug' => 'pages.destroy', 'module' => 'pages', 'action' => 'destroy'],
+      ['name' => 'Manage Pages', 'slug' => 'pages.manage', 'module' => 'pages', 'action' => 'manage'],
+
+      // CMS About CRUD Permissions
+      ['name' => 'View About Content', 'slug' => 'about.view', 'module' => 'about', 'action' => 'view'],
+      ['name' => 'Create About Content', 'slug' => 'about.create', 'module' => 'about', 'action' => 'create'],
+      ['name' => 'Update About Content', 'slug' => 'about.update', 'module' => 'about', 'action' => 'update'],
+      ['name' => 'Delete About Content', 'slug' => 'about.destroy', 'module' => 'about', 'action' => 'destroy'],
+      ['name' => 'Manage About Content', 'slug' => 'about.manage', 'module' => 'about', 'action' => 'manage'],
+
+      // CMS Blog CRUD Permissions
+      ['name' => 'View Blogs', 'slug' => 'blogs.view', 'module' => 'blogs', 'action' => 'view'],
+      ['name' => 'Create Blog', 'slug' => 'blogs.create', 'module' => 'blogs', 'action' => 'create'],
+      ['name' => 'Update Blog', 'slug' => 'blogs.update', 'module' => 'blogs', 'action' => 'update'],
+      ['name' => 'Delete Blog', 'slug' => 'blogs.destroy', 'module' => 'blogs', 'action' => 'destroy'],
+      ['name' => 'Manage Blogs', 'slug' => 'blogs.manage', 'module' => 'blogs', 'action' => 'manage'],
+
+      // CMS Program CRUD Permissions
+      ['name' => 'View Programs', 'slug' => 'programs.view', 'module' => 'programs', 'action' => 'view'],
+      ['name' => 'Create Program', 'slug' => 'programs.create', 'module' => 'programs', 'action' => 'create'],
+      ['name' => 'Update Program', 'slug' => 'programs.update', 'module' => 'programs', 'action' => 'update'],
+      ['name' => 'Delete Program', 'slug' => 'programs.destroy', 'module' => 'programs', 'action' => 'destroy'],
+      ['name' => 'Manage Programs', 'slug' => 'programs.manage', 'module' => 'programs', 'action' => 'manage'],
+
+      // CMS Custom Sections CRUD Permissions
+      ['name' => 'View Custom Sections', 'slug' => 'custom-sections.view', 'module' => 'custom_sections', 'action' => 'view'],
+      ['name' => 'Create Custom Section', 'slug' => 'custom-sections.create', 'module' => 'custom_sections', 'action' => 'create'],
+      ['name' => 'Update Custom Section', 'slug' => 'custom-sections.update', 'module' => 'custom_sections', 'action' => 'update'],
+      ['name' => 'Delete Custom Section', 'slug' => 'custom-sections.destroy', 'module' => 'custom_sections', 'action' => 'destroy'],
+      ['name' => 'Manage Custom Sections', 'slug' => 'custom-sections.manage', 'module' => 'custom_sections', 'action' => 'manage'],
+
+      // CMS Shared Data CRUD Permissions
+      ['name' => 'View Shared Data', 'slug' => 'shared-data.view', 'module' => 'shared_data', 'action' => 'view'],
+      ['name' => 'Create Shared Data', 'slug' => 'shared-data.create', 'module' => 'shared_data', 'action' => 'create'],
+      ['name' => 'Update Shared Data', 'slug' => 'shared-data.update', 'module' => 'shared_data', 'action' => 'update'],
+      ['name' => 'Delete Shared Data', 'slug' => 'shared-data.destroy', 'module' => 'shared_data', 'action' => 'destroy'],
+      ['name' => 'Manage Shared Data', 'slug' => 'shared-data.manage', 'module' => 'shared_data', 'action' => 'manage'],
+
+      // CMS Section Config Permissions
+      ['name' => 'View Sections', 'slug' => 'sections.view', 'module' => 'sections', 'action' => 'view'],
+      ['name' => 'Create Section', 'slug' => 'sections.create', 'module' => 'sections', 'action' => 'create'],
+      ['name' => 'Update Section', 'slug' => 'sections.update', 'module' => 'sections', 'action' => 'update'],
+      ['name' => 'Delete Section', 'slug' => 'sections.destroy', 'module' => 'sections', 'action' => 'destroy'],
+      ['name' => 'Manage Sections', 'slug' => 'sections.manage', 'module' => 'sections', 'action' => 'manage'],
 
       // Job Listings Module - Core CRUD
       ['name' => 'View Job Listings', 'slug' => 'job_listings.view', 'module' => 'job_listings', 'action' => 'view'],
@@ -399,6 +469,26 @@ class RBACSeeder extends Seeder
         'updated_by' => $createdBy,
       ],
       [
+        'name' => 'CMS Admin',
+        'slug' => 'cms-admin',
+        'description' => 'CMS administrator with full CMS access',
+        'level' => 80,
+        'is_default' => false,
+        'is_active' => true,
+        'created_by' => $createdBy,
+        'updated_by' => $createdBy,
+      ],
+      [
+        'name' => 'CMS Editor',
+        'slug' => 'cms-editor',
+        'description' => 'CMS editor with create/update permissions',
+        'level' => 70,
+        'is_default' => false,
+        'is_active' => true,
+        'created_by' => $createdBy,
+        'updated_by' => $createdBy,
+      ],
+      [
         'name' => 'Job Seeker',
         'slug' => 'job-seeker',
         'description' => 'Regular job seeker who can apply to jobs',
@@ -433,6 +523,8 @@ class RBACSeeder extends Seeder
     $employerAdminRoleId = DB::table('roles')->where('slug', 'employer-admin')->value('id');
     $hrManagerRoleId = DB::table('roles')->where('slug', 'hr-manager')->value('id');
     $recruiterRoleId = DB::table('roles')->where('slug', 'recruiter')->value('id');
+    $cmsAdminRoleId = DB::table('roles')->where('slug', 'cms-admin')->value('id');
+    $cmsEditorRoleId = DB::table('roles')->where('slug', 'cms-editor')->value('id');
     $jobSeekerRoleId = DB::table('roles')->where('slug', 'job-seeker')->value('id');
 
     // Clear existing role_permissions for these roles
@@ -442,6 +534,8 @@ class RBACSeeder extends Seeder
       $employerAdminRoleId,
       $hrManagerRoleId,
       $recruiterRoleId,
+      $cmsAdminRoleId,
+      $cmsEditorRoleId,
       $jobSeekerRoleId,
     ])->delete();
 
@@ -468,8 +562,174 @@ class RBACSeeder extends Seeder
       );
     }
 
-    // Employer Admin permissions
-    // Employer Admin permissions
+    // CMS Admin permissions (Full CMS access)
+    $cmsAdminPermissionSlugs = [
+      // Dashboard
+      'dashboard.view',
+      'dashboard.stats.view',
+      'dashboard.admin',
+
+      // CMS Permissions - Full Access
+      'cms.dashboard',
+      'cms.pages',
+      'cms.about',
+      'cms.blogs',
+      'cms.programs',
+      'cms.custom-sections',
+      'cms.shared-data',
+      'cms.pages.view',
+      'cms.pages.manage',
+      'cms.about.view',
+      'cms.about.manage',
+      'cms.blogs.view',
+      'cms.blogs.manage',
+      'cms.programs.view',
+      'cms.programs.manage',
+      'cms.custom-sections.view',
+      'cms.custom-sections.manage',
+      'cms.shared-data.view',
+      'cms.shared-data.manage',
+
+      // Page CRUD
+      'pages.view',
+      'pages.create',
+      'pages.update',
+      'pages.destroy',
+      'pages.manage',
+
+      // About CRUD
+      'about.view',
+      'about.create',
+      'about.update',
+      'about.destroy',
+      'about.manage',
+
+      // Blog CRUD
+      'blogs.view',
+      'blogs.create',
+      'blogs.update',
+      'blogs.destroy',
+      'blogs.manage',
+
+      // Program CRUD
+      'programs.view',
+      'programs.create',
+      'programs.update',
+      'programs.destroy',
+      'programs.manage',
+
+      // Custom Sections CRUD
+      'custom-sections.view',
+      'custom-sections.create',
+      'custom-sections.update',
+      'custom-sections.destroy',
+      'custom-sections.manage',
+
+      // Shared Data CRUD
+      'shared-data.view',
+      'shared-data.create',
+      'shared-data.update',
+      'shared-data.destroy',
+      'shared-data.manage',
+
+      // Section Config
+      'sections.view',
+      'sections.create',
+      'sections.update',
+      'sections.destroy',
+      'sections.manage',
+
+      // Other modules needed for CMS
+      'categories.view',
+      'category.view',
+      'locations.view',
+      'location.view',
+      'notifications.view',
+    ];
+
+    foreach ($cmsAdminPermissionSlugs as $slug) {
+      $permId = DB::table('permissions')->where('slug', $slug)->value('id');
+      if ($permId) {
+        DB::table('role_permissions')->updateOrInsert(
+          ['role_id' => $cmsAdminRoleId, 'permission_id' => $permId],
+          ['granted' => true, 'created_at' => now(), 'updated_at' => now()]
+        );
+      }
+    }
+
+    // CMS Editor permissions (Create/Update only, no delete)
+    $cmsEditorPermissionSlugs = [
+      // Dashboard
+      'dashboard.view',
+      'dashboard.stats.view',
+
+      // CMS Permissions - Limited Access
+      'cms.dashboard',
+      'cms.pages',
+      'cms.about',
+      'cms.blogs',
+      'cms.programs',
+      'cms.custom-sections',
+      'cms.shared-data',
+      'cms.pages.view',
+      'cms.about.view',
+      'cms.blogs.view',
+      'cms.programs.view',
+      'cms.custom-sections.view',
+      'cms.shared-data.view',
+
+      // Page CRUD (No Delete)
+      'pages.view',
+      'pages.create',
+      'pages.update',
+
+      // About CRUD (No Delete)
+      'about.view',
+      'about.create',
+      'about.update',
+
+      // Blog CRUD (No Delete)
+      'blogs.view',
+      'blogs.create',
+      'blogs.update',
+
+      // Program CRUD (No Delete)
+      'programs.view',
+      'programs.create',
+      'programs.update',
+
+      // Custom Sections CRUD (No Delete)
+      'custom-sections.view',
+      'custom-sections.create',
+      'custom-sections.update',
+
+      // Shared Data CRUD (No Delete)
+      'shared-data.view',
+      'shared-data.create',
+      'shared-data.update',
+
+      // Section Config (No Delete)
+      'sections.view',
+      'sections.create',
+      'sections.update',
+
+      // Other modules
+      'categories.view',
+      'locations.view',
+      'notifications.view',
+    ];
+
+    foreach ($cmsEditorPermissionSlugs as $slug) {
+      $permId = DB::table('permissions')->where('slug', $slug)->value('id');
+      if ($permId) {
+        DB::table('role_permissions')->updateOrInsert(
+          ['role_id' => $cmsEditorRoleId, 'permission_id' => $permId],
+          ['granted' => true, 'created_at' => now(), 'updated_at' => now()]
+        );
+      }
+    }
+
+    // Employer Admin permissions (existing)
     $employerAdminPermissionSlugs = [
       'dashboard.view',
       'dashboard.stats.view',
@@ -521,7 +781,6 @@ class RBACSeeder extends Seeder
       'statistics.dashboard',
       'report.jobs',
       'report.applications',
-      // Applicant Profile permissions for employer - FULL ACCESS
       'applicant-profiles.view',
       'applicant-profiles.view.any',
       'applicant-profiles.show',
@@ -541,8 +800,7 @@ class RBACSeeder extends Seeder
       }
     }
 
-    // HR Manager permissions
-    // HR Manager permissions
+    // HR Manager permissions (existing)
     $hrManagerPermissionSlugs = [
       'dashboard.view',
       'dashboard.employer',
@@ -570,7 +828,6 @@ class RBACSeeder extends Seeder
       'employer_profile.update_password',
       'notifications.view',
       'notifications.mark_read',
-      // Applicant Profile permissions for HR Manager - FULL ACCESS
       'applicant-profiles.view',
       'applicant-profiles.view.any',
       'applicant-profiles.show',
@@ -590,7 +847,7 @@ class RBACSeeder extends Seeder
       }
     }
 
-    // Recruiter permissions
+    // Recruiter permissions (existing)
     $recruiterPermissionSlugs = [
       'dashboard.view',
       'job_listings.view',
@@ -615,7 +872,6 @@ class RBACSeeder extends Seeder
       'employer_profile.update',
       'employer_profile.update_password',
       'notifications.view',
-      // Applicant Profile permissions for Recruiter - VIEW ACCESS
       'applicant-profiles.view',
       'applicant-profiles.show',
       'applicant-profiles.filter',
@@ -632,7 +888,7 @@ class RBACSeeder extends Seeder
       }
     }
 
-    // Job Seeker permissions
+    // Job Seeker permissions (existing)
     $jobSeekerPermissionSlugs = [
       'dashboard.view',
       'dashboard.job_seeker',
@@ -725,11 +981,22 @@ class RBACSeeder extends Seeder
       $employerAdminRoleId,
       $hrManagerRoleId,
       $recruiterRoleId,
+      $cmsAdminRoleId,
+      $cmsEditorRoleId,
       $jobSeekerRoleId,
     ])->delete();
 
     $moduleAccess = [
+      // Super Admin - Full Access
       ['role_id' => $superAdminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'cms', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'pages', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'about', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'blogs', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'programs', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'custom_sections', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'shared_data', 'access_level' => 'manage'],
+      ['role_id' => $superAdminRoleId, 'module' => 'sections', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'job_listings', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'public_jobs', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'applications', 'access_level' => 'manage'],
@@ -750,7 +1017,16 @@ class RBACSeeder extends Seeder
       ['role_id' => $superAdminRoleId, 'module' => 'statistics', 'access_level' => 'manage'],
       ['role_id' => $superAdminRoleId, 'module' => 'reports', 'access_level' => 'manage'],
 
+      // Admin - Full Access
       ['role_id' => $adminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'cms', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'pages', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'about', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'blogs', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'programs', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'custom_sections', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'shared_data', 'access_level' => 'manage'],
+      ['role_id' => $adminRoleId, 'module' => 'sections', 'access_level' => 'manage'],
       ['role_id' => $adminRoleId, 'module' => 'job_listings', 'access_level' => 'manage'],
       ['role_id' => $adminRoleId, 'module' => 'public_jobs', 'access_level' => 'manage'],
       ['role_id' => $adminRoleId, 'module' => 'applications', 'access_level' => 'manage'],
@@ -771,6 +1047,35 @@ class RBACSeeder extends Seeder
       ['role_id' => $adminRoleId, 'module' => 'statistics', 'access_level' => 'manage'],
       ['role_id' => $adminRoleId, 'module' => 'reports', 'access_level' => 'manage'],
 
+      // CMS Admin - Full CMS Access
+      ['role_id' => $cmsAdminRoleId, 'module' => 'dashboard', 'access_level' => 'read'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'cms', 'access_level' => 'manage'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'pages', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'about', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'blogs', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'programs', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'custom_sections', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'shared_data', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'sections', 'access_level' => 'write'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'categories', 'access_level' => 'read'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'locations', 'access_level' => 'read'],
+      ['role_id' => $cmsAdminRoleId, 'module' => 'notifications', 'access_level' => 'read'],
+
+      // CMS Editor - Limited CMS Access
+      ['role_id' => $cmsEditorRoleId, 'module' => 'dashboard', 'access_level' => 'read'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'cms', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'pages', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'about', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'blogs', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'programs', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'custom_sections', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'shared_data', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'sections', 'access_level' => 'write'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'categories', 'access_level' => 'read'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'locations', 'access_level' => 'read'],
+      ['role_id' => $cmsEditorRoleId, 'module' => 'notifications', 'access_level' => 'read'],
+
+      // Employer Admin - Existing
       ['role_id' => $employerAdminRoleId, 'module' => 'dashboard', 'access_level' => 'write'],
       ['role_id' => $employerAdminRoleId, 'module' => 'job_listings', 'access_level' => 'write'],
       ['role_id' => $employerAdminRoleId, 'module' => 'applications', 'access_level' => 'write'],
@@ -780,8 +1085,9 @@ class RBACSeeder extends Seeder
       ['role_id' => $employerAdminRoleId, 'module' => 'notifications', 'access_level' => 'write'],
       ['role_id' => $employerAdminRoleId, 'module' => 'statistics', 'access_level' => 'read'],
       ['role_id' => $employerAdminRoleId, 'module' => 'reports', 'access_level' => 'read'],
-      ['role_id' => $employerAdminRoleId, 'module' => 'applicant_profiles', 'access_level' => 'write'],  // Changed from 'read' to 'write'
+      ['role_id' => $employerAdminRoleId, 'module' => 'applicant_profiles', 'access_level' => 'write'],
 
+      // HR Manager - Existing
       ['role_id' => $hrManagerRoleId, 'module' => 'dashboard', 'access_level' => 'write'],
       ['role_id' => $hrManagerRoleId, 'module' => 'job_listings', 'access_level' => 'write'],
       ['role_id' => $hrManagerRoleId, 'module' => 'applications', 'access_level' => 'write'],
@@ -789,8 +1095,9 @@ class RBACSeeder extends Seeder
       ['role_id' => $hrManagerRoleId, 'module' => 'locations', 'access_level' => 'read'],
       ['role_id' => $hrManagerRoleId, 'module' => 'employer_profile', 'access_level' => 'write'],
       ['role_id' => $hrManagerRoleId, 'module' => 'notifications', 'access_level' => 'read'],
-      ['role_id' => $hrManagerRoleId, 'module' => 'applicant_profiles', 'access_level' => 'write'],  // Changed from 'read' to 'write'
+      ['role_id' => $hrManagerRoleId, 'module' => 'applicant_profiles', 'access_level' => 'write'],
 
+      // Recruiter - Existing
       ['role_id' => $recruiterRoleId, 'module' => 'dashboard', 'access_level' => 'read'],
       ['role_id' => $recruiterRoleId, 'module' => 'job_listings', 'access_level' => 'write'],
       ['role_id' => $recruiterRoleId, 'module' => 'applications', 'access_level' => 'write'],
@@ -800,6 +1107,7 @@ class RBACSeeder extends Seeder
       ['role_id' => $recruiterRoleId, 'module' => 'notifications', 'access_level' => 'read'],
       ['role_id' => $recruiterRoleId, 'module' => 'applicant_profiles', 'access_level' => 'read'],
 
+      // Job Seeker - Existing
       ['role_id' => $jobSeekerRoleId, 'module' => 'dashboard', 'access_level' => 'read'],
       ['role_id' => $jobSeekerRoleId, 'module' => 'public_jobs', 'access_level' => 'read'],
       ['role_id' => $jobSeekerRoleId, 'module' => 'apply', 'access_level' => 'write'],
@@ -830,6 +1138,10 @@ class RBACSeeder extends Seeder
         $roleSlug = 'admin';
       } elseif ($user->email === 'hrmanager@company.com') {
         $roleSlug = 'hr-manager';
+      } elseif ($user->email === 'cmsadmin@jobportal.com') {
+        $roleSlug = 'cms-admin';
+      } elseif ($user->email === 'cmseditor@jobportal.com') {
+        $roleSlug = 'cms-editor';
       } elseif (str_contains($user->email, '@company.com')) {
         $roleSlug = 'employer-admin';
       }
