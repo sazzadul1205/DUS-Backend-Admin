@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/Cms/CmsController.php
+// app/Http/Controllers/Cms/PageController.php
 
 namespace App\Http\Controllers\Cms;
 
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class CmsController extends Controller
+class PageController extends Controller
 {
   /**
    * Protected pages that cannot be deleted or deactivated
@@ -43,7 +43,7 @@ class CmsController extends Controller
   /**
    * Display pages
    */
-  public function index(Request $request): Response
+  public function index(): Response
   {
     $items = Page::withTrashed()->get();
 
@@ -108,9 +108,26 @@ class CmsController extends Controller
   }
 
   /**
+   * Toggle page status
+   */
+  public function toggleStatus(int $id)
+  {
+    $page = Page::findOrFail($id);
+
+    if ($this->isProtected($page)) {
+      return back()->with('error', 'Cannot deactivate a protected page.');
+    }
+
+    $page->is_active = !$page->is_active;
+    $page->save();
+
+    return redirect()->back()->with('success', 'Page status updated successfully.');
+  }
+
+  /**
    * Soft delete a page
    */
-  public function destroy(Request $request, int $id)
+  public function destroy(int $id)
   {
     $page = Page::findOrFail($id);
 
@@ -126,7 +143,7 @@ class CmsController extends Controller
   /**
    * Restore a soft-deleted page
    */
-  public function restore(Request $request, int $id)
+  public function restore(int $id)
   {
     $page = Page::withTrashed()->findOrFail($id);
     $page->restore();
@@ -137,7 +154,7 @@ class CmsController extends Controller
   /**
    * Force delete a page
    */
-  public function forceDelete(Request $request, int $id)
+  public function forceDelete(int $id)
   {
     $page = Page::withTrashed()->findOrFail($id);
 

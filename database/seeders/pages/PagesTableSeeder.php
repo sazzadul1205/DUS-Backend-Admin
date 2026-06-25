@@ -64,7 +64,7 @@ class PagesTableSeeder extends Seeder
             ],
             [
                 'id' => 6,
-                'slug' => 'blogs',
+                'slug' => 'blog',
                 'name' => 'Blogs',
                 'title' => 'Blogs - DUS',
                 'description' => 'Latest news, stories, and updates from DUS',

@@ -193,7 +193,7 @@ class CustomSectionDataTableSeeder extends Seeder
       ],
       [
         'id' => 21,
-        'page_slug' => 'blogs',
+        'page_slug' => 'blog',
         'section_key' => 'banner',
         'data' => '{"background":{"src":"\/storage\/OurPrograms\/db1b2b6eae5fc260b4204f8257dadbd5a7aa0af7.png","alt":"Background"},"overlay":{"darkOverlay":"bg-black\/40 lg:bg-black\/50","gradient":"bg-gradient-to-r from-black\/85 via-black\/10 to-transparent"},"content":{"title":{"text":"Blog","className":"font-bold leading-tight"}}}',
         'is_active' => 1,

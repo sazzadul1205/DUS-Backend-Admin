@@ -434,25 +434,28 @@ const AdminLayout = ({ children }) => {
       'shared-data.view', 'shared-data.manage'
     ])) {
       const cmsSubItems = [];
-      
-      // Pages
-      if (hasAnyPermission(['pages.view'])) {
-        cmsSubItems.push({
-          name: 'Pages',
-          href: '/backend/admin/pages',
-          icon: FaFileAlt,
-        });
-    
-      }
 
-      // Shared Data
-      if (hasAnyPermission(['shared-data.view', 'shared-data.manage'])) {
-        cmsSubItems.push({
-          name: 'Shared Data',
-          href: '/backend/admin/shared-data',
-          icon: FaDatabase,
-        });
-      }
+      // // Pages
+      // if (hasAnyPermission(['pages.view'])) {
+      //   cmsSubItems.push({
+      //     name: 'Pages',
+      //     href: '/backend/admin/pages',
+      //     icon: FaFileAlt,
+      //   });
+
+      // }
+
+      // // Shared Data
+      // if (hasAnyPermission(['shared-data.view', 'shared-data.manage'])) {
+      //   cmsSubItems.push({
+      //     name: 'Shared Data',
+      //     href: '/backend/admin/shared-data',
+      //     icon: FaDatabase,
+      //   });
+      // }
+
+
+
 
       if (cmsSubItems.length > 0) {
         items.push({
@@ -484,6 +487,14 @@ const AdminLayout = ({ children }) => {
         icon: FiBell,
         badgeCount: notificationMeta.unread_count,
         description: 'System alerts',
+      });
+    }
+
+    if (hasPermission('0')) {
+      items.push({
+        name: 'Pages',
+        routeName: 'backend.cms.pages.index',
+        icon: FiSettings,
       });
     }
 
@@ -526,7 +537,6 @@ const AdminLayout = ({ children }) => {
     );
   };
 
-  // Render menu item
   // Render menu item
   const renderMenuItem = (item) => {
     if (item.isDropdown) {

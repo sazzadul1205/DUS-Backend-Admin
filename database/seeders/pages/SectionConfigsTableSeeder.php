@@ -509,7 +509,7 @@ class SectionConfigsTableSeeder extends Seeder
       ],
       [
         'id' => 32,
-        'page_slug' => 'blogs',
+        'page_slug' => 'blog',
         'section_key' => 'banner',
         'component' => 'PageBannerSection',
         'data_table' => 'custom_section_data',
@@ -525,7 +525,7 @@ class SectionConfigsTableSeeder extends Seeder
       ],
       [
         'id' => 33,
-        'page_slug' => 'blogs',
+        'page_slug' => 'blog',
         'section_key' => 'blog-section',
         'component' => 'BlogSection',
         'data_table' => 'blogs',
@@ -541,7 +541,7 @@ class SectionConfigsTableSeeder extends Seeder
       ],
       [
         'id' => 34,
-        'page_slug' => 'blogs',
+        'page_slug' => 'blog',
         'section_key' => 'faq',
         'component' => 'FAQSection',
         'data_table' => 'shared_data',

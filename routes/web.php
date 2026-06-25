@@ -58,7 +58,7 @@ use App\Http\Controllers\Auth\Shared\VerifyEmailController;
 
 // Controllers - CMS
 use App\Http\Controllers\Cms\CmsController;
-
+use App\Http\Controllers\Cms\PageController;
 // Laravel
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -477,64 +477,17 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         | CMS MANAGEMENT (INERTIA.JS ADMIN INTERFACE)
         |--------------------------------------------------------------------------
         */
-        Route::prefix('admin')->name('cms.')->group(function () {
-
-            // CMS DASHBOARD
-            Route::get('/', [CmsController::class, 'dashboard'])->name('dashboard');
-
-            // PAGE MANAGEMENT
-            Route::get('/pages', [CmsController::class, 'pages'])->name('pages');
-            Route::get('/pages/create', [CmsController::class, 'createPage'])->name('pages.create');
-            Route::post('/pages', [CmsController::class, 'storePage'])->name('pages.store');
-            Route::get('/pages/{id}/edit', [CmsController::class, 'editPage'])->name('pages.edit');
-            Route::put('/pages/{id}', [CmsController::class, 'updatePage'])->name('pages.update');
-            Route::delete('/pages/{id}', [CmsController::class, 'destroyPage'])->name('pages.destroy');
-
-            // SECTION CONFIG MANAGEMENT
-            Route::get('/pages/{pageId}/sections', [CmsController::class, 'pageSections'])->name('pages.sections');
-            Route::post('/pages/{pageId}/sections', [CmsController::class, 'storeSectionConfig'])->name('sections.store');
-            Route::put('/pages/{pageId}/sections/{sectionId}', [CmsController::class, 'updateSectionConfig'])->name('sections.update');
-            Route::delete('/pages/{pageId}/sections/{sectionId}', [CmsController::class, 'destroySectionConfig'])->name('sections.destroy');
-
-            // ABOUT CONTENT MANAGEMENT
-            Route::get('/about', [CmsController::class, 'aboutContent'])->name('about');
-            Route::get('/about/create', [CmsController::class, 'createAboutContent'])->name('about.create');
-            Route::post('/about', [CmsController::class, 'storeAboutContent'])->name('about.store');
-            Route::get('/about/{id}/edit', [CmsController::class, 'editAboutContent'])->name('about.edit');
-            Route::put('/about/{id}', [CmsController::class, 'updateAboutContent'])->name('about.update');
-            Route::delete('/about/{id}', [CmsController::class, 'destroyAboutContent'])->name('about.destroy');
-
-            // BLOG MANAGEMENT
-            Route::get('/blogs', [CmsController::class, 'blogs'])->name('blogs');
-            Route::get('/blogs/create', [CmsController::class, 'createBlog'])->name('blogs.create');
-            Route::post('/blogs', [CmsController::class, 'storeBlog'])->name('blogs.store');
-            Route::get('/blogs/{id}/edit', [CmsController::class, 'editBlog'])->name('blogs.edit');
-            Route::put('/blogs/{id}', [CmsController::class, 'updateBlog'])->name('blogs.update');
-            Route::delete('/blogs/{id}', [CmsController::class, 'destroyBlog'])->name('blogs.destroy');
-
-            // PROGRAM MANAGEMENT
-            Route::get('/programs', [CmsController::class, 'programs'])->name('programs');
-            Route::get('/programs/create', [CmsController::class, 'createProgram'])->name('programs.create');
-            Route::post('/programs', [CmsController::class, 'storeProgram'])->name('programs.store');
-            Route::get('/programs/{id}/edit', [CmsController::class, 'editProgram'])->name('programs.edit');
-            Route::put('/programs/{id}', [CmsController::class, 'updateProgram'])->name('programs.update');
-            Route::delete('/programs/{id}', [CmsController::class, 'destroyProgram'])->name('programs.destroy');
-
-            // CUSTOM SECTION DATA MANAGEMENT
-            Route::get('/custom-sections', [CmsController::class, 'customSectionData'])->name('custom-sections');
-            Route::get('/custom-sections/create', [CmsController::class, 'createCustomSection'])->name('custom-sections.create');
-            Route::post('/custom-sections', [CmsController::class, 'storeCustomSection'])->name('custom-sections.store');
-            Route::get('/custom-sections/{id}/edit', [CmsController::class, 'editCustomSection'])->name('custom-sections.edit');
-            Route::put('/custom-sections/{id}', [CmsController::class, 'updateCustomSection'])->name('custom-sections.update');
-            Route::delete('/custom-sections/{id}', [CmsController::class, 'destroyCustomSection'])->name('custom-sections.destroy');
-
-            // SHARED DATA MANAGEMENT
-            Route::get('/shared-data', [CmsController::class, 'sharedData'])->name('shared-data');
-            Route::get('/shared-data/create', [CmsController::class, 'createSharedData'])->name('shared-data.create');
-            Route::post('/shared-data', [CmsController::class, 'storeSharedData'])->name('shared-data.store');
-            Route::get('/shared-data/{id}/edit', [CmsController::class, 'editSharedData'])->name('shared-data.edit');
-            Route::put('/shared-data/{id}', [CmsController::class, 'updateSharedData'])->name('shared-data.update');
-            Route::delete('/shared-data/{id}', [CmsController::class, 'destroySharedData'])->name('shared-data.destroy');
+        Route::prefix('cms')->name('cms.')->group(function () {
+            // Page Management
+            Route::prefix('pages')->name('pages.')->group(function () {
+                Route::get('/', [PageController::class, 'index'])->name('index');
+                Route::post('/store', [PageController::class, 'store'])->name('store');
+                Route::put('/update/{id}', [PageController::class, 'update'])->name('update');
+                Route::post('/toggle-status/{id}', [PageController::class, 'toggleStatus'])->name('toggle-status');
+                Route::delete('/destroy/{id}', [PageController::class, 'destroy'])->name('destroy');
+                Route::post('/restore/{id}', [PageController::class, 'restore'])->name('restore');
+                Route::delete('/force-delete/{id}', [PageController::class, 'forceDelete'])->name('force-delete');
+            });
         });
     });
 
