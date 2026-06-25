@@ -1407,9 +1407,6 @@ export default function Index({
                         {getSortIcon('created_at')}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1588,29 +1585,6 @@ export default function Index({
                             <div className="text-xs text-blue-600 mt-1">
                               {profile.applications_count} application(s)
                             </div>
-                          )}
-                        </td>
-
-                        {/* STATUS */}
-                        <td className="px-6 py-4">
-                          {!trashed ? (
-                            <div className="flex flex-col gap-1">
-                              {profile.email_verified ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  <FaCheckCircle size={10} />
-                                  Verified
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  <FaClock size={10} />
-                                  Unverified
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-500">
-                              Deleted
-                            </span>
                           )}
                         </td>
 
