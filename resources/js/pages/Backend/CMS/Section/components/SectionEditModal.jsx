@@ -1,23 +1,37 @@
+/* eslint-disable no-undef */
 // resources/js/pages/Backend/CMS/Section/components/SectionEditModal.jsx
 
-// React
+/**
+ * SectionEditModal - Modal for editing section configuration
+ * Features:
+ * - Edit section key, status, and custom props
+ * - Read-only display of component and data source
+ * - Integrated SectionDataViewer for data preview
+ * - Form validation and error handling
+ */
+
 import { router } from '@inertiajs/react';
 import React, { useState, useEffect } from 'react';
-
-// Icons
 import { FaTimes, FaSave, FaSpinner } from 'react-icons/fa';
-
-// Components
 import SectionDataViewer from './SectionDataViewer';
-
-// Utils
 import { showToast } from '../utils/toastHelper';
 import { getComponentLabel } from '../utils/sectionHelpers';
 import { DEFAULT_CONFIG, SECTION_CONFIGS } from '../utils/SectionConfigData';
 
-// Helper function to check if section has data
+// Helper: Check if section has data
 const hasSectionData = (section) => {
   return section?.data !== null && section?.data !== undefined;
+};
+
+// Constants for data table display labels
+const DATA_TABLE_LABELS = {
+  custom_section_data: 'Custom Data',
+  shared_data: 'Shared Data',
+  blogs: 'Blogs',
+  programs: 'Programs',
+  about_content: 'About Content',
+  jobs: 'Jobs',
+  our_programs: 'Our Programs',
 };
 
 const SectionEditModal = ({
@@ -27,6 +41,7 @@ const SectionEditModal = ({
   pageId,
   onSuccess
 }) => {
+  // Form state
   const [formData, setFormData] = useState({
     section_key: '',
     component: '',
@@ -38,7 +53,9 @@ const SectionEditModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Get section config
+  /**
+   * Get section configuration for custom props
+   */
   const getSectionConfig = () => {
     if (!section) return DEFAULT_CONFIG;
     return SECTION_CONFIGS[section.component] || DEFAULT_CONFIG;
@@ -65,19 +82,27 @@ const SectionEditModal = ({
     }
   }, [isOpen]);
 
+  // Early return if modal is closed or no section
   if (!isOpen || !section) return null;
 
+  /**
+   * Handle form input changes
+   */
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
+  /**
+   * Handle custom property changes
+   */
   const handleCustomPropChange = (key, value) => {
     setFormData(prev => ({
       ...prev,
@@ -91,6 +116,9 @@ const SectionEditModal = ({
     }
   };
 
+  /**
+   * Handle form submission
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -104,6 +132,7 @@ const SectionEditModal = ({
     if (!formData.component.trim()) {
       newErrors.component = 'Component is required';
     }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
@@ -122,7 +151,6 @@ const SectionEditModal = ({
 
     // Send update request
     router.put(
-      // eslint-disable-next-line no-undef
       route('backend.cms.sections.update', { page: pageId, section: section.id }),
       submitData,
       {
@@ -148,28 +176,22 @@ const SectionEditModal = ({
 
   const sectionConfig = getSectionConfig();
 
-  // Helper to get display label for data table
+  /**
+   * Get display label for data table
+   */
   const getDataTableDisplayLabel = (table) => {
-    if (!table) return 'None';
-    const labels = {
-      'custom_section_data': 'Custom Data',
-      'shared_data': 'Shared Data',
-      'blogs': 'Blogs',
-      'programs': 'Programs',
-      'about_content': 'About Content',
-      'jobs': 'Jobs',
-      'our_programs': 'Our Programs',
-    };
-    return labels[table] || table;
+    return DATA_TABLE_LABELS[table] || table || 'None';
   };
 
-  // Get data summary and has data
   const hasData = hasSectionData(section);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slideUp"
@@ -178,7 +200,7 @@ const SectionEditModal = ({
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-200 bg-white rounded-t-2xl">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Edit Section</h2>
+            <h2 id="modal-title" className="text-xl font-bold text-gray-900">Edit Section</h2>
             <p className="text-sm text-gray-500 mt-1">
               {section.section_key} • ID: {section.id}
             </p>
@@ -187,6 +209,7 @@ const SectionEditModal = ({
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             disabled={isSubmitting}
+            aria-label="Close modal"
           >
             <FaTimes size={20} />
           </button>
@@ -194,7 +217,7 @@ const SectionEditModal = ({
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Section Key */}
+          {/* Section Key - Editable */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Section Key <span className="text-red-500">*</span>
@@ -207,6 +230,7 @@ const SectionEditModal = ({
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${errors.section_key ? 'border-red-500' : 'border-gray-300'
                 }`}
               placeholder="e.g., home_banner"
+              aria-invalid={!!errors.section_key}
             />
             {errors.section_key && (
               <p className="mt-1 text-sm text-red-500">{errors.section_key}</p>
@@ -252,7 +276,7 @@ const SectionEditModal = ({
             <p className="mt-1 text-xs text-gray-400">🔒 Auto-generated based on section configuration</p>
           </div>
 
-          {/* Status */}
+          {/* Status - Toggle */}
           <div className="p-4 bg-gray-50 rounded-lg">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -267,7 +291,7 @@ const SectionEditModal = ({
             </label>
           </div>
 
-          {/* Custom Props - Section specific */}
+          {/* Custom Props - Section specific configuration */}
           {sectionConfig.fields.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Section Configuration</h3>
@@ -281,6 +305,7 @@ const SectionEditModal = ({
                         {field.label}
                       </label>
 
+                      {/* Color Picker Field */}
                       {field.type === 'color' && (
                         <div className="flex items-center gap-3">
                           <input
@@ -288,6 +313,7 @@ const SectionEditModal = ({
                             value={currentValue.startsWith('#') ? currentValue : '#ffffff'}
                             onChange={(e) => handleCustomPropChange(field.key, e.target.value)}
                             className="w-12 h-12 border border-gray-300 rounded-lg cursor-pointer"
+                            aria-label={`Select color for ${field.label}`}
                           />
                           <input
                             type="text"
@@ -300,11 +326,13 @@ const SectionEditModal = ({
                         </div>
                       )}
 
+                      {/* Select Dropdown Field */}
                       {field.type === 'select' && field.options && (
                         <select
                           value={currentValue}
                           onChange={(e) => handleCustomPropChange(field.key, e.target.value)}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                          aria-label={`Select ${field.label}`}
                         >
                           {field.options.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -314,6 +342,7 @@ const SectionEditModal = ({
                         </select>
                       )}
 
+                      {/* Text Input Field */}
                       {field.type === 'text' && (
                         <input
                           type="text"
@@ -321,9 +350,11 @@ const SectionEditModal = ({
                           onChange={(e) => handleCustomPropChange(field.key, e.target.value)}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                           placeholder={field.default || `Enter ${field.label.toLowerCase()}`}
+                          aria-label={`Enter ${field.label}`}
                         />
                       )}
 
+                      {/* Number Input Field */}
                       {field.type === 'number' && (
                         <input
                           type="number"
@@ -331,9 +362,11 @@ const SectionEditModal = ({
                           onChange={(e) => handleCustomPropChange(field.key, parseInt(e.target.value) || 0)}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                           placeholder={field.default?.toString() || '0'}
+                          aria-label={`Enter ${field.label}`}
                         />
                       )}
 
+                      {/* Textarea Field */}
                       {field.type === 'textarea' && (
                         <textarea
                           value={currentValue}
@@ -341,6 +374,7 @@ const SectionEditModal = ({
                           rows={4}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm"
                           placeholder={field.default || `Enter ${field.label.toLowerCase()}`}
+                          aria-label={`Enter ${field.label}`}
                         />
                       )}
                     </div>
@@ -353,12 +387,10 @@ const SectionEditModal = ({
           {/* Section Data Viewer */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Section Data</h3>
-            <SectionDataViewer
-              section={section}
-              hasSectionData={hasData}            />
+            <SectionDataViewer section={section} hasSectionData={hasData} />
           </div>
 
-          {/* Actions */}
+          {/* Actions - Footer Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
             <button
               type="button"
@@ -371,9 +403,7 @@ const SectionEditModal = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2 rounded-lg text-white transition-colors flex items-center gap-2 ${isSubmitting
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
+              className={`px-6 py-2 rounded-lg text-white transition-colors flex items-center gap-2 ${isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
             >
               {isSubmitting ? (

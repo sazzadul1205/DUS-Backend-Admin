@@ -19,45 +19,85 @@ use Inertia\Inertia;
 class SectionController extends Controller
 {
   /**
+   * Extract clean data from CustomSectionData model
+   */
+  protected function extractCustomSectionData($customData)
+  {
+    if (!$customData) {
+      return null;
+    }
+
+    $rawData = $customData->data;
+
+    if (is_string($rawData)) {
+      $decodedData = json_decode($rawData, true);
+      if ($decodedData !== null) {
+        // Extract nested 'data' if exists, otherwise use the decoded data
+        return $decodedData['data'] ?? $decodedData;
+      }
+      return $rawData;
+    }
+
+    return $rawData;
+  }
+
+  /**
+   * Extract clean data from SharedData model
+   */
+  protected function extractSharedData($shared)
+  {
+    if (!$shared) {
+      return null;
+    }
+
+    $rawData = $shared->data ?? $shared;
+
+    if (is_string($rawData)) {
+      $decodedData = json_decode($rawData, true);
+      if ($decodedData !== null) {
+        return $decodedData['data'] ?? $decodedData;
+      }
+      return $rawData;
+    }
+
+    return $rawData;
+  }
+
+  /**
    * Display a listing of sections for a specific page.
-   *
-   * @param int $pageId
-   * @return \Inertia\Response
    */
   public function index(int $pageId)
   {
-    // Get the page with trashed included (matches PageController behavior)
     $page = Page::withTrashed()->findOrFail($pageId);
 
-    // Get all section configurations for this page, ordered by display_order
     $sectionConfigs = SectionConfig::where('page_slug', $page->slug)
       ->orderBy('display_order')
       ->get();
 
-    // Get custom section data for this page
     $customSectionData = CustomSectionData::where('page_slug', $page->slug)
       ->get()
       ->keyBy('section_key');
 
-    // Get shared data for sections that use shared_data table
     $sharedData = SharedData::whereIn('type', $sectionConfigs->pluck('section_key'))
       ->get()
       ->keyBy('type');
 
-    // Build sections array with all data combined
     $sections = [];
 
     foreach ($sectionConfigs as $config) {
       $section = $config->toArray();
 
-      // Attach data based on data_table
       switch ($config->data_table) {
         case 'custom_section_data':
-          $section['data'] = $customSectionData->get($config->section_key);
+          $section['data'] = $this->extractCustomSectionData(
+            $customSectionData->get($config->section_key)
+          );
           break;
 
         case 'shared_data':
-          $section['data'] = $sharedData->get($config->section_key);
+          $section['data'] = $this->extractSharedData(
+            $sharedData->get($config->section_key)
+          );
           break;
 
         case 'blogs':
@@ -69,9 +109,10 @@ class SectionController extends Controller
           break;
 
         case 'about_content':
-          $section['data'] = AboutContent::where('slug', $config->section_key)
+          $aboutContent = AboutContent::where('slug', $config->section_key)
             ->active()
             ->first();
+          $section['data'] = $aboutContent ? $aboutContent->data : null;
           break;
 
         default:
@@ -82,7 +123,7 @@ class SectionController extends Controller
       $sections[] = $section;
     }
 
-    // Return the data to Inertia with combined sections
+    // Remove the dd() and return the data
     return Inertia::render('Backend/CMS/Section/Index', [
       'page' => $page,
       'sections' => $sections,

@@ -1,25 +1,40 @@
+/* eslint-disable no-undef */
 // resources/js/pages/Backend/CMS/Section/hooks/useSectionHelpers.js
+
+/**
+ * useSectionHelpers - Custom hook for section management
+ * Features:
+ * - Section state management
+ * - Expand/collapse functionality
+ * - Preview toggle
+ * - Drag & drop reordering
+ * - Move up/down functionality
+ * - Edit modal state management
+ */
 
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { showToast } from '../utils/toastHelper';
 
 export const useSectionHelpers = (initialSections, pageId) => {
+  // State
   const [sections, setSections] = useState(initialSections);
   const [expandedSections, setExpandedSections] = useState({});
   const [previewSections, setPreviewSections] = useState({});
   const [isReordering, setIsReordering] = useState(false);
   const [dragError, setDragError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [editingSection, setEditingSection] = useState(null); // Add this
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // Add this
+  const [editingSection, setEditingSection] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Update sections when prop changes
   useEffect(() => {
     setSections(initialSections);
   }, [initialSections]);
 
-  // Toggle section expansion (data view)
+  /**
+   * Toggle section expansion (data view)
+   */
   const toggleExpand = (sectionId) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -27,7 +42,9 @@ export const useSectionHelpers = (initialSections, pageId) => {
     }));
   };
 
-  // Toggle section preview (visual preview)
+  /**
+   * Toggle section preview (visual preview)
+   */
   const togglePreview = (sectionId) => {
     setPreviewSections((prev) => ({
       ...prev,
@@ -35,18 +52,34 @@ export const useSectionHelpers = (initialSections, pageId) => {
     }));
   };
 
-  // Check if section can be moved (not fixed)
+  /**
+   * Check if section can be moved (not fixed)
+   */
   const canMove = (section) => {
     return !section.is_fixed_section;
   };
 
-  // Check if section has data
+  /**
+   * Check if section has data
+   */
   const hasData = (section) => {
     return section.data !== null && section.data !== undefined;
   };
 
-  // Get data summary for display
+  /**
+   * Get data summary for display
+   */
   const getDataSummary = (section) => {
+    // Special handling for shared_data
+    if (section.data_table === 'shared_data') {
+      return 'Shared Data';
+    }
+
+    // Special handling for content sections
+    if (section.section_key === 'content' || section.component === 'ContentSection') {
+      return 'Content Section';
+    }
+
     if (!section.data) return 'No data';
     if (Array.isArray(section.data)) {
       return `${section.data.length} items`;
@@ -68,18 +101,26 @@ export const useSectionHelpers = (initialSections, pageId) => {
   // EDIT MODAL HANDLERS
   // ============================================================
 
+  /**
+   * Open edit modal for a section
+   */
   const handleEditClick = (section) => {
     setEditingSection(section);
     setIsEditModalOpen(true);
   };
 
+  /**
+   * Close edit modal
+   */
   const handleEditClose = () => {
     setIsEditModalOpen(false);
     setEditingSection(null);
   };
 
+  /**
+   * Handle successful edit - refresh data
+   */
   const handleEditSuccess = () => {
-    // Refresh the sections data
     router.reload({ only: ['sections'] });
   };
 
@@ -87,6 +128,9 @@ export const useSectionHelpers = (initialSections, pageId) => {
   // DRAG & DROP REORDERING
   // ============================================================
 
+  /**
+   * Handle drag start - store dragged index
+   */
   const handleDragStart = (e, index) => {
     const section = sections[index];
     if (!canMove(section)) {
@@ -99,15 +143,24 @@ export const useSectionHelpers = (initialSections, pageId) => {
     e.currentTarget.style.opacity = '0.5';
   };
 
+  /**
+   * Handle drag end - reset visual state
+   */
   const handleDragEnd = (e) => {
     e.currentTarget.style.opacity = '1';
   };
 
+  /**
+   * Handle drag over - allow drop
+   */
   const handleDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
 
+  /**
+   * Handle drop - reorder sections
+   */
   const handleDrop = (e, dropIndex) => {
     e.preventDefault();
 
@@ -153,7 +206,6 @@ export const useSectionHelpers = (initialSections, pageId) => {
 
     // Send to server
     router.post(
-      // eslint-disable-next-line no-undef
       route('backend.cms.sections.update-order', pageId),
       { orders },
       {
@@ -181,6 +233,9 @@ export const useSectionHelpers = (initialSections, pageId) => {
   // MOVE UP/DOWN HANDLERS (Alternative to drag & drop)
   // ============================================================
 
+  /**
+   * Move section up (simulates drop)
+   */
   const handleMoveUp = (index) => {
     if (index === 0) return;
     const section = sections[index];
@@ -188,7 +243,6 @@ export const useSectionHelpers = (initialSections, pageId) => {
       showToast('warning', 'Cannot Move', 'This section is fixed and cannot be moved.', 2500);
       return;
     }
-    // Simulate a drop at index - 1
     const fakeEvent = {
       preventDefault: () => {},
       dataTransfer: {
@@ -198,6 +252,9 @@ export const useSectionHelpers = (initialSections, pageId) => {
     handleDrop(fakeEvent, index - 1);
   };
 
+  /**
+   * Move section down (simulates drop)
+   */
   const handleMoveDown = (index) => {
     if (index === sections.length - 1) return;
     const section = sections[index];
@@ -205,7 +262,6 @@ export const useSectionHelpers = (initialSections, pageId) => {
       showToast('warning', 'Cannot Move', 'This section is fixed and cannot be moved.', 2500);
       return;
     }
-    // Simulate a drop at index + 1
     const fakeEvent = {
       preventDefault: () => {},
       dataTransfer: {
@@ -215,6 +271,7 @@ export const useSectionHelpers = (initialSections, pageId) => {
     handleDrop(fakeEvent, index + 1);
   };
 
+  // Return all hooks
   return {
     sections,
     expandedSections,

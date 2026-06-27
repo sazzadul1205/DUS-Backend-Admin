@@ -1,5 +1,15 @@
 // resources/js/pages/Backend/CMS/Section/Index.jsx
 
+/**
+ * Index - Main Section Management Page
+ * Features:
+ * - Authenticated layout wrapper
+ * - Section header with stats
+ * - Section table with all sections
+ * - Footer with summary
+ * - Edit modal for section editing
+ */
+
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '../../../../layouts/AuthenticatedLayout';
@@ -11,12 +21,13 @@ import { useSectionHelpers } from './hooks/useSectionHelpers';
 import SectionHeader from './components/SectionHeader';
 import SectionTable from './components/SectionTable';
 import SectionFooter from './components/SectionFooter';
-import SectionEditModal from './components/SectionEditModal'; // Add this
+import SectionEditModal from './components/SectionEditModal';
 
 // Utils
 import { getSectionStats } from './utils/sectionHelpers';
 
 const Index = ({ page, sections: initialSections }) => {
+  // Use custom hook for section management
   const {
     sections,
     expandedSections,
@@ -42,13 +53,16 @@ const Index = ({ page, sections: initialSections }) => {
     handleEditSuccess,
   } = useSectionHelpers(initialSections, page.id);
 
+  // Calculate statistics for header
   const stats = getSectionStats(sections);
 
   return (
     <AuthenticatedLayout>
+      {/* Page Title */}
       <Head title={`Sections - ${page.name}`} />
 
       <div className="p-6">
+        {/* Header with Stats */}
         <SectionHeader
           page={page}
           sections={sections}
@@ -57,6 +71,7 @@ const Index = ({ page, sections: initialSections }) => {
           dragError={dragError}
         />
 
+        {/* Main Table */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <SectionTable
             sections={sections}
@@ -75,13 +90,14 @@ const Index = ({ page, sections: initialSections }) => {
             handleDragEnd={handleDragEnd}
             handleDragOver={handleDragOver}
             handleDrop={handleDrop}
-            onEditClick={handleEditClick} // Add this
+            onEditClick={handleEditClick}
           />
         </div>
 
+        {/* Footer with Summary */}
         <SectionFooter sections={sections} hasData={hasData} />
 
-        {/* Edit Modal - Add this */}
+        {/* Edit Modal */}
         <SectionEditModal
           isOpen={isEditModalOpen}
           onClose={handleEditClose}
