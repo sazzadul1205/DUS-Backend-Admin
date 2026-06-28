@@ -1,4 +1,4 @@
-// resources/js/pages/Backend/CMS/Section/components/modals/editors/HomeBannerEditor.jsx
+// resources/js/pages/Backend/CMS/Section/components/modals/Editors/HomeBannerEditor.jsx
 
 import React, { useState, useEffect } from 'react';
 import { FaUpload, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
