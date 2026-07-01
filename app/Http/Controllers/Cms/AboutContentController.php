@@ -209,13 +209,13 @@ class AboutContentController extends Controller
   }
 
   /**
-   * Force delete
+   * Force delete – also deletes embedded images from content
    */
   public function forceDelete(int $id)
   {
     $about = AboutContent::withTrashed()->findOrFail($id);
 
-    // Delete associated image
+    // Delete main image
     if ($about->image && !filter_var($about->image, FILTER_VALIDATE_URL)) {
       $oldPath = str_replace('/storage/', '', $about->image);
       if (Storage::disk('public')->exists($oldPath)) {
@@ -223,13 +223,16 @@ class AboutContentController extends Controller
       }
     }
 
-    // Delete associated icon
+    // Delete icon
     if ($about->icon && !filter_var($about->icon, FILTER_VALIDATE_URL)) {
       $oldPath = str_replace('/storage/', '', $about->icon);
       if (Storage::disk('public')->exists($oldPath)) {
         Storage::disk('public')->delete($oldPath);
       }
     }
+
+    // 👇 NEW: Delete images embedded in the content
+    $this->deleteImagesFromContent($about->full_content);
 
     $about->forceDelete();
 
@@ -308,5 +311,27 @@ class AboutContentController extends Controller
     }
 
     return 'png';
+  }
+
+  /**
+   * Delete images embedded in HTML content (only from editor-images folder)
+   */
+  protected function deleteImagesFromContent(?string $content): void
+  {
+    if (empty($content)) return;
+
+    // Find all img src attributes
+    preg_match_all('/<img[^>]+src="([^"]+)"/i', $content, $matches);
+    if (empty($matches[1])) return;
+
+    foreach ($matches[1] as $src) {
+      // Only delete if it's from our editor-images folder
+      if (str_starts_with($src, '/storage/editor-images/')) {
+        $relativePath = str_replace('/storage/', '', $src);
+        if (Storage::disk('public')->exists($relativePath)) {
+          Storage::disk('public')->delete($relativePath);
+        }
+      }
+    }
   }
 }

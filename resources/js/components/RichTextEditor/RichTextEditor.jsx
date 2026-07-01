@@ -3,20 +3,13 @@
  * 
  * A WYSIWYG (What You See Is What You Get) text editor for blog content.
  * Generates clean HTML with Tailwind CSS classes matching the blog seeder format.
- * Supports text formatting, lists, headers, colors.
+ * Supports text formatting, lists, headers, colors, and image insertion.
  * 
  * @param {string} value - HTML content to display/edit
  * @param {function} onChange - Callback function when content changes
  * @param {string} height - Height of the editor (default: '400px')
  * @param {string} className - Additional CSS classes
  * @param {string} placeholder - Placeholder text when empty
- * 
- * @example
- * <RichTextEditor
- *   value={formData.content}
- *   onChange={(html) => setFormData({...formData, content: html})}
- *   height="500px"
- * />
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -27,11 +20,10 @@ import {
   FaListUl,
   FaListOl,
   FaPalette,
-  // FaImage, // Commented out - image functionality disabled
-  // FaHeading, // Commented out - not currently used
-  // FaParagraph, // Commented out - not currently used
+  FaImage,
 } from 'react-icons/fa';
-// import Swal from 'sweetalert2'; // Commented out - image functionality disabled
+import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const RichTextEditor = ({
   value = '',
@@ -39,9 +31,10 @@ const RichTextEditor = ({
   height = '400px',
   className = '',
   placeholder = 'Write something...',
+  onImageUploaded,
 }) => {
   // ============================================================
-  // REFS - Used to access DOM elements directly
+  // REFS
   // ============================================================
 
   const editorRef = useRef(null);
@@ -49,10 +42,10 @@ const RichTextEditor = ({
   const savedRangeRef = useRef(null);
   const isInitialized = useRef(false);
   const typingTimeout = useRef(null);
-  // const fileInputRef = useRef(null); // Commented out - image functionality disabled
+  const fileInputRef = useRef(null);
 
   // ============================================================
-  // STATE - Component state management
+  // STATE
   // ============================================================
 
   const [activeFormats, setActiveFormats] = useState({
@@ -64,13 +57,21 @@ const RichTextEditor = ({
   });
 
   const [showColorPicker, setShowColorPicker] = useState(false);
-  // Default color matches the seeder's text color: #333333
   const [selectedColor, setSelectedColor] = useState('#333333');
-  // const [showImageOptions, setShowImageOptions] = useState(false); // Commented out - image functionality disabled
-  // const [uploadingImage, setUploadingImage] = useState(false); // Commented out - image functionality disabled
+
+  // Image insertion states
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageSettings, setImageSettings] = useState({
+    url: '',
+    width: 400,
+    alignment: 'center', // 'left' | 'center' | 'right'
+    alt: '',
+  });
+  const [showImageSettingsModal, setShowImageSettingsModal] = useState(false);
 
   // ============================================================
-  // STYLES - Button styling constants
+  // STYLES
   // ============================================================
 
   const btnClass = "p-1.5 rounded transition flex items-center justify-center text-gray-700 min-w-[36px]";
@@ -139,14 +140,6 @@ const RichTextEditor = ({
     }, 100);
   }, [onChange]);
 
-  // const handleContentChange = () => {
-  //   if (editorRef.current) {
-  //     const html = editorRef.current.innerHTML;
-  //     isInternalUpdate.current = true;
-  //     onChange(html);
-  //   }
-  // };
-
   // ============================================================
   // COMMAND EXECUTION
   // ============================================================
@@ -166,7 +159,7 @@ const RichTextEditor = ({
   }, [onChange, restoreSelection, updateActiveFormats]);
 
   // ============================================================
-  // HEADER HANDLER - Generates clean header HTML with Tailwind
+  // HEADER / LIST / COLOR HANDLERS (unchanged)
   // ============================================================
 
   const handleHeader = useCallback((level) => {
@@ -176,16 +169,13 @@ const RichTextEditor = ({
     el.focus();
     restoreSelection();
 
-    // Get the selected text
     const selection = window.getSelection();
     const selectedText = selection.toString() || ' ';
 
     if (level === 'normal') {
-      // Generate paragraph with Tailwind classes matching the seeder
       const pHtml = `<p class="font-400 text-base sm:text-lg lg:text-xl text-[#333333] leading-relaxed mb-4">${selectedText}</p>`;
       document.execCommand('insertHTML', false, pHtml);
     } else {
-      // Generate header with Tailwind classes matching the seeder
       const headerClasses = {
         1: 'font-700 text-2xl sm:text-3xl lg:text-4xl text-[#080C14] mt-8 mb-4',
         2: 'font-700 text-xl sm:text-2xl lg:text-3xl text-[#080C14] mt-8 mb-4',
@@ -195,7 +185,6 @@ const RichTextEditor = ({
         6: 'font-700 text-sm sm:text-base lg:text-base text-[#080C14] mt-4 mb-2',
         7: 'font-700 text-xs sm:text-sm lg:text-sm text-[#080C14] mt-4 mb-2',
       };
-
       const hHtml = `<h${level} class="${headerClasses[level] || headerClasses[1]}">${selectedText}</h${level}>`;
       document.execCommand('insertHTML', false, hHtml);
     }
@@ -206,10 +195,6 @@ const RichTextEditor = ({
     updateActiveFormats();
   }, [onChange, restoreSelection, updateActiveFormats]);
 
-  // ============================================================
-  // LIST HANDLER - Generates clean list HTML with Tailwind
-  // ============================================================
-
   const handleList = useCallback((type) => {
     const el = editorRef.current;
     if (!el) return;
@@ -217,13 +202,10 @@ const RichTextEditor = ({
     el.focus();
     restoreSelection();
 
-    // Use execCommand for lists
     const cmd = type === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
     document.execCommand(cmd, false, null);
 
-    // Clean up the list HTML to match seeder format
     let html = el.innerHTML;
-
     if (type === 'ul') {
       html = html.replace(/<ul>/g, '<ul class="list-disc pl-6 space-y-3 mb-6">');
       html = html.replace(/<li>/g, '<li class="font-400 text-base sm:text-lg lg:text-xl text-[#333333] leading-relaxed">');
@@ -238,10 +220,6 @@ const RichTextEditor = ({
     updateActiveFormats();
   }, [onChange, restoreSelection, updateActiveFormats]);
 
-  // ============================================================
-  // COLOR HANDLER - Applies color matching seeder
-  // ============================================================
-
   const handleColor = useCallback((color) => {
     setSelectedColor(color);
     exec('foreColor', color);
@@ -249,18 +227,18 @@ const RichTextEditor = ({
   }, [exec]);
 
   // ============================================================
-  // IMAGE HANDLING - COMMENTED OUT
+  // IMAGE INSERTION (NEW)
   // ============================================================
 
-  /*
   const handleImageUpload = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validate
     if (!file.type.startsWith('image/')) {
       Swal.fire({
         icon: 'error',
@@ -282,106 +260,112 @@ const RichTextEditor = ({
     }
 
     setUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageUrl = event.target.result;
-      insertImageWithLayout(imageUrl);
-      setUploadingImage(false);
-      setShowImageOptions(false);
-    };
-    reader.onerror = () => {
-      setUploadingImage(false);
+    setShowImageOptions(false);
+
+    try {
+      // Read as base64
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Upload to server
+      const response = await axios.post(
+        // eslint-disable-next-line no-undef
+        route('admin.upload-editor-image'),
+        { image: base64 },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      const url = response.data.url;
+
+      if (onImageUploaded) {
+        onImageUploaded(url);
+      }
+
+      // Open settings modal with the URL
+      setImageSettings({
+        url,
+        width: 400,
+        alignment: 'center',
+        alt: file.name.split('.')[0] || 'Image',
+      });
+      setShowImageSettingsModal(true);
+    } catch (error) {
+      console.error('Upload error:', error);
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: 'Failed to read the image file.',
+        title: 'Upload Failed',
+        text: 'Could not upload image. Please try again.',
         confirmButtonColor: '#3b82f6',
       });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } finally {
+      setUploadingImage(false);
+      e.target.value = ''; // reset input
+    }
   };
 
-  const insertImageWithLayout = (imageUrl) => {
+  const insertImageWithSettings = () => {
+    const { url, width, alignment, alt } = imageSettings;
+
+    if (!url) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Image',
+        text: 'Please upload an image first.',
+        confirmButtonColor: '#3b82f6',
+      });
+      return;
+    }
+
     const el = editorRef.current;
     if (!el) return;
 
     el.focus();
     restoreSelection();
 
-    const imgHtml = `<img src="${imageUrl}" alt="Blog image" class="w-full h-auto rounded-lg my-4" />`;
+    // Build alignment classes
+    let alignClass = '';
+    let wrapperStyle = '';
+    if (alignment === 'left') {
+      alignClass = 'float-left mr-4';
+    } else if (alignment === 'right') {
+      alignClass = 'float-right ml-4';
+    } else { // center
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      wrapperStyle = 'text-align: center;';
+    }
 
-    const fullWidthHtml = `
-      <div class="my-4 w-full">
-        ${imgHtml}
-      </div>
-    `;
+    // Build image HTML
+    const imgTag = `<img src="${url}" alt="${alt || 'Image'}" style="width: ${width}px; max-width: 100%; height: auto;" class="rounded-lg ${alignClass}" />`;
 
-    document.execCommand('insertHTML', false, fullWidthHtml);
-    handleContentChange();
+    // Wrap in a div if centered
+    let finalHtml = imgTag;
+    if (alignment === 'center') {
+      finalHtml = `<div style="text-align: center; margin: 1rem 0;">${imgTag}</div>`;
+    } else {
+      // For left/right we add a small margin via class already, and we wrap in a div with clearfix? not needed.
+      // Add a paragraph wrapper or just insert directly.
+      // We'll insert as a block with some margin.
+      finalHtml = `<div style="margin: 1rem 0;" class="clearfix">${imgTag}</div>`;
+    }
+
+    document.execCommand('insertHTML', false, finalHtml);
+
+    // Update content
+    const html = el.innerHTML;
+    isInternalUpdate.current = true;
+    onChange(html);
+
+    // Close modal
+    setShowImageSettingsModal(false);
+    setImageSettings({ url: '', width: 400, alignment: 'center', alt: '' });
   };
-
-  const insertTwoImages = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = e.target.files;
-      if (files.length < 2) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Need 2 Images',
-          text: 'Please select 2 images for side-by-side layout.',
-          confirmButtonColor: '#3b82f6',
-        });
-        return;
-      }
-
-      const readers = [];
-      const imageUrls = [];
-
-      for (let i = 0; i < Math.min(files.length, 2); i++) {
-        const reader = new FileReader();
-        readers.push(reader);
-        reader.onload = (event) => {
-          imageUrls.push(event.target.result);
-          if (imageUrls.length === 2) {
-            insertSideBySideImages(imageUrls);
-          }
-        };
-        reader.readAsDataURL(files[i]);
-      }
-    };
-    input.click();
-  };
-
-  const insertSideBySideImages = (imageUrls) => {
-    const el = editorRef.current;
-    if (!el) return;
-
-    el.focus();
-    restoreSelection();
-
-    const imagesHtml = imageUrls.map(url => `
-      <div class="flex-1 min-w-0">
-        <img src="${url}" alt="Blog image" class="w-full h-auto rounded-lg" />
-      </div>
-    `).join('');
-
-    const sideBySideHtml = `
-      <div class="flex gap-3 my-4 flex-wrap">
-        ${imagesHtml}
-      </div>
-    `;
-
-    document.execCommand('insertHTML', false, sideBySideHtml);
-    handleContentChange();
-  };
-  */
 
   // ============================================================
-  // LIFECYCLE EFFECTS
+  // LIFECYCLE EFFECTS (unchanged)
   // ============================================================
 
   useEffect(() => {
@@ -435,13 +419,12 @@ const RichTextEditor = ({
   const getButtonClass = (key) =>
     `${btnClass} ${activeFormats[key] ? activeBtnClass : inactiveBtnClass}`;
 
-  // Color palette - first color matches seeder default (#333333)
   const colors = [
     '#333333', '#080C14', '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
     '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#000080',
     '#FF1493', '#4B0082', '#556B2F', '#8B4513', '#2F4F4F', '#DC143C',
     '#00CED1', '#808080', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-    '#FFEAA7', '#009BE2' // Added the DUS brand blue
+    '#FFEAA7', '#009BE2'
   ];
 
   // ============================================================
@@ -450,13 +433,11 @@ const RichTextEditor = ({
 
   return (
     <div className={`border border-gray-300 rounded-lg overflow-visible bg-white shadow-sm ${className}`}>
-      {/* 
-        TOOLBAR 
-      */}
+      {/* Toolbar */}
       <div className="border-b bg-gray-50 px-3 py-2 overflow-visible">
         <div className="flex items-center gap-2 min-w-min flex-wrap overflow-visible">
 
-          {/* ===== HEADERS DROPDOWN ===== */}
+          {/* Headers */}
           <div className="flex items-center gap-1 border-r border-gray-300 pr-3 mr-3">
             <select
               onChange={(e) => handleHeader(e.target.value)}
@@ -474,7 +455,7 @@ const RichTextEditor = ({
             </select>
           </div>
 
-          {/* ===== TEXT FORMATTING ===== */}
+          {/* Formatting */}
           <div className="flex items-center gap-1 border-r border-gray-300 pr-3 mr-3">
             <button
               type="button"
@@ -505,7 +486,7 @@ const RichTextEditor = ({
             </button>
           </div>
 
-          {/* ===== TEXT COLOR ===== */}
+          {/* Color */}
           <div className="flex items-center gap-1 border-r border-gray-300 pr-3 mr-3 relative">
             <button
               type="button"
@@ -554,8 +535,7 @@ const RichTextEditor = ({
             )}
           </div>
 
-          {/* ===== IMAGE UPLOAD - COMMENTED OUT ===== */}
-          {/*
+          {/* Image Insertion */}
           <div className="flex items-center gap-1 border-r border-gray-300 pr-3 mr-3 relative">
             <button
               type="button"
@@ -579,20 +559,13 @@ const RichTextEditor = ({
                   type="button"
                   onClick={handleImageUpload}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded transition flex items-center gap-2"
+                  disabled={uploadingImage}
                 >
                   <FaImage size={14} className="text-blue-500" />
-                  Single Image (Full Width)
-                </button>
-                <button
-                  type="button"
-                  onClick={insertTwoImages}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded transition flex items-center gap-2 border-t border-gray-100"
-                >
-                  <FaImage size={14} className="text-green-500" />
-                  2 Images Side by Side
+                  Upload & Insert Image
                 </button>
                 <div className="text-xs text-gray-400 px-3 py-1 border-t border-gray-100 mt-1">
-                  Max 5MB per image
+                  Max 5MB • JPG, PNG, GIF, WebP
                 </div>
               </div>
             )}
@@ -605,9 +578,8 @@ const RichTextEditor = ({
               className="hidden"
             />
           </div>
-          */}
 
-          {/* ===== LISTS ===== */}
+          {/* Lists */}
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -629,17 +601,10 @@ const RichTextEditor = ({
             </button>
           </div>
 
-          {/* 
-            ===== FUTURE EXTENSIONS =====
-            Add more toolbar items here...
-          */}
-
         </div>
       </div>
 
-      {/* 
-        ===== EDITOR CONTENT AREA =====
-      */}
+      {/* Editor Content */}
       <div style={{ height, overflow: 'auto' }}>
         <div
           ref={editorRef}
@@ -655,19 +620,90 @@ const RichTextEditor = ({
         />
       </div>
 
-      {/* 
-        ===== STYLES =====
-        CSS styles matching the seeder format
-      */}
+      {/* Image Settings Modal */}
+      {showImageSettingsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">Image Settings</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Width (px)</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="1200"
+                  value={imageSettings.width}
+                  onChange={(e) => setImageSettings({ ...imageSettings, width: parseInt(e.target.value) || 400 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alignment</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="left"
+                      checked={imageSettings.alignment === 'left'}
+                      onChange={() => setImageSettings({ ...imageSettings, alignment: 'left' })}
+                    />
+                    Left
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="center"
+                      checked={imageSettings.alignment === 'center'}
+                      onChange={() => setImageSettings({ ...imageSettings, alignment: 'center' })}
+                    />
+                    Center
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="right"
+                      checked={imageSettings.alignment === 'right'}
+                      onChange={() => setImageSettings({ ...imageSettings, alignment: 'right' })}
+                    />
+                    Right
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alt Text</label>
+                <input
+                  type="text"
+                  value={imageSettings.alt}
+                  onChange={(e) => setImageSettings({ ...imageSettings, alt: e.target.value })}
+                  placeholder="Image description"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowImageSettingsModal(false)}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={insertImageWithSettings}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Insert Image
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        /* Placeholder text styling */
         .editor-placeholder:empty:before {
           content: attr(data-placeholder);
           color: #9ca3af;
           pointer-events: none;
         }
-        
-        /* Headers - matching the seeder */
         .editor-placeholder h1 {
           font-size: 2.25rem;
           font-weight: 700;
@@ -717,8 +753,6 @@ const RichTextEditor = ({
           margin-top: 1rem;
           margin-bottom: 0.5rem;
         }
-        
-        /* Paragraphs - matching the seeder */
         .editor-placeholder p {
           font-weight: 400;
           font-size: 1rem;
@@ -726,14 +760,10 @@ const RichTextEditor = ({
           line-height: 1.625;
           margin-bottom: 1rem;
         }
-        
-        /* Strong/Bold text - matching seeder */
         .editor-placeholder strong {
           color: #009BE2;
           font-weight: 700;
         }
-        
-        /* Lists - matching the seeder */
         .editor-placeholder ul {
           list-style-type: disc;
           padding-left: 1.5rem;
@@ -751,19 +781,16 @@ const RichTextEditor = ({
           line-height: 1.625;
           margin-bottom: 0.75rem;
         }
-        
-        /* Images - kept for future use */
         .editor-placeholder img {
           max-width: 100%;
           height: auto;
           border-radius: 0.5rem;
-          margin: 1rem 0;
         }
-        
-        /* 
-          ===== RESPONSIVE STYLES =====
-          Matching the seeder's responsive classes
-        */
+        .editor-placeholder .clearfix::after {
+          content: "";
+          display: table;
+          clear: both;
+        }
         @media (min-width: 640px) {
           .editor-placeholder p,
           .editor-placeholder li {
@@ -773,7 +800,6 @@ const RichTextEditor = ({
           .editor-placeholder h2 { font-size: 2rem; }
           .editor-placeholder h3 { font-size: 1.75rem; }
         }
-        
         @media (min-width: 1024px) {
           .editor-placeholder p,
           .editor-placeholder li {
@@ -783,10 +809,6 @@ const RichTextEditor = ({
           .editor-placeholder h2 { font-size: 2.25rem; }
           .editor-placeholder h3 { font-size: 2rem; }
         }
-        
-        /* 
-          ===== ADD CUSTOM STYLES HERE =====
-        */
       `}</style>
     </div>
   );

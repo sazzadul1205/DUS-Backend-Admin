@@ -194,7 +194,7 @@ class ProgramController extends Controller
   }
 
   /**
-   * Force delete a program
+   * Force delete a program – also deletes embedded images from content
    */
   public function forceDelete(int $id)
   {
@@ -207,6 +207,9 @@ class ProgramController extends Controller
         Storage::disk('public')->delete($oldPath);
       }
     }
+
+    // 👇 NEW: Delete images embedded in the content
+    $this->deleteImagesFromContent($program->full_content_html);
 
     $program->forceDelete();
 
@@ -244,23 +247,18 @@ class ProgramController extends Controller
   protected function uploadImage(string $base64String): string
   {
     try {
-      // Extract image data and extension
       $imageData = explode(',', $base64String);
       $imageData = $imageData[1] ?? $base64String;
       $imageContent = base64_decode($imageData);
       $extension = $this->getImageExtension($base64String);
 
-      // Generate unique filename
       $filename = Str::uuid() . '.' . $extension;
       $path = 'Programs/' . date('Y/m/d') . '/' . $filename;
 
-      // Store the image
       Storage::disk('public')->put($path, $imageContent);
 
-      // Return the public URL
       return '/storage/' . $path;
     } catch (\Exception $e) {
-      // If upload fails, return empty string
       return '';
     }
   }
@@ -291,4 +289,25 @@ class ProgramController extends Controller
 
     return 'png';
   }
+
+  /**
+   * Delete images embedded in HTML content (only from editor-images folder)
+   */
+  protected function deleteImagesFromContent(?string $content): void
+  {
+    if (empty($content)) return;
+
+    preg_match_all('/<img[^>]+src="([^"]+)"/i', $content, $matches);
+    if (empty($matches[1])) return;
+
+    foreach ($matches[1] as $src) {
+      if (str_starts_with($src, '/storage/editor-images/')) {
+        $relativePath = str_replace('/storage/', '', $src);
+        if (Storage::disk('public')->exists($relativePath)) {
+          Storage::disk('public')->delete($relativePath);
+        }
+      }
+    }
+  }
 }
+  

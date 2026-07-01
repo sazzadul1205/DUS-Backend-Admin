@@ -1,9 +1,9 @@
-/* eslint-disable import/order */
 // resources/js/pages/Backend/CMS/Programs/Index.jsx
 
 // React
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 // Icons
 import {
@@ -46,6 +46,9 @@ export default function Index({ items }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // 👇 NEW: Track editor images uploaded
+  const [uploadedEditorImages, setUploadedEditorImages] = useState([]);
+
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
@@ -80,21 +83,43 @@ export default function Index({ items }) {
   const openModal = (item = null) => {
     setEditingItem(item);
     if (item) {
-      setFormData({
-        ...item,
-      });
+      setFormData({ ...item });
     } else {
       setFormData(getFields());
     }
+    setUploadedEditorImages([]);
     setShowModal(true);
   };
 
-  const closeModal = () => {
+  const closeModal = (isSubmitSuccess = false) => {
     setShowModal(false);
     setEditingItem(null);
     setFormData({});
     setDragActive(false);
     setUploading(false);
+
+    if (!isSubmitSuccess && uploadedEditorImages.length > 0) {
+      deleteEditorImages(uploadedEditorImages);
+      setUploadedEditorImages([]);
+    } else if (isSubmitSuccess) {
+      setUploadedEditorImages([]);
+    }
+  };
+
+  const deleteEditorImages = async (urls) => {
+    try {
+      // eslint-disable-next-line no-undef
+      await axios.delete(route('admin.editor-image.delete'), {
+        data: { urls },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      console.error('Failed to delete editor images:', error);
+    }
+  };
+
+  const addUploadedImage = (url) => {
+    setUploadedEditorImages(prev => [...prev, url]);
   };
 
   // ============================================================
@@ -185,12 +210,10 @@ export default function Index({ items }) {
 
     const data = { ...formData };
 
-    // Remove slug if empty
     if (!data.slug || data.slug.trim() === '') {
       delete data.slug;
     }
 
-    // Convert boolean values properly
     data.is_featured = data.is_featured ? true : false;
     data.is_active = data.is_active ? true : false;
 
@@ -207,7 +230,7 @@ export default function Index({ items }) {
     router[method](url, data, {
       preserveScroll: true,
       onSuccess: () => {
-        closeModal();
+        closeModal(true);
         setLoading(false);
         router.reload({ preserveScroll: true });
       },
@@ -356,7 +379,6 @@ export default function Index({ items }) {
     }
   }, [flash]);
 
-  // Auto-generate slug when title changes
   useEffect(() => {
     if (formData.title && (!formData.slug || formData.slug === generateSlug(formData.title))) {
       setFormData(prev => ({
@@ -366,7 +388,6 @@ export default function Index({ items }) {
     }
   }, [formData.slug, formData.title]);
 
-  // Auto-generate breadcrumb when title changes
   useEffect(() => {
     if (formData.title && (!formData.breadcrumb || formData.breadcrumb === formData.title)) {
       setFormData(prev => ({
@@ -580,7 +601,7 @@ export default function Index({ items }) {
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold">{editingItem ? 'Edit' : 'Create'} Program</h2>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg transition">
+              <button onClick={() => closeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition">
                 <ImCross size={20} />
               </button>
             </div>
@@ -599,7 +620,7 @@ export default function Index({ items }) {
                 />
               </div>
 
-              {/* Slug - Auto-generated */}
+              {/* Slug */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SLUG</label>
                 <div className="flex gap-2">
@@ -635,7 +656,7 @@ export default function Index({ items }) {
                 <p className="text-xs text-gray-400 mt-1">Auto-generated from title. You can manually edit it.</p>
               </div>
 
-              {/* Full Content */}
+              {/* Full Content with onImageUploaded */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">FULL CONTENT</label>
                 <RichTextEditor
@@ -643,6 +664,7 @@ export default function Index({ items }) {
                   onChange={(html) => setFormData({ ...formData, full_content_html: html })}
                   placeholder="Write your program content here..."
                   height="400px"
+                  onImageUploaded={addUploadedImage}
                 />
               </div>
 
@@ -779,7 +801,7 @@ export default function Index({ items }) {
 
               {/* Form Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                <button type="button" onClick={() => closeModal(false)} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                   Cancel
                 </button>
                 <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">

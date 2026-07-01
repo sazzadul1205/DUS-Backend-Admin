@@ -1,9 +1,9 @@
-/* eslint-disable import/order */
 // resources/js/pages/Backend/CMS/Blogs/Index.jsx
 
 // React
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios'; // <-- add this
 
 // Icons
 import {
@@ -49,6 +49,9 @@ export default function Index({ items }) {
   // Tag input states
   const [tagInput, setTagInput] = useState('');
   const [tagSuggestions, setTagSuggestions] = useState([]);
+
+  // 👇 NEW: Track editor images uploaded
+  const [uploadedEditorImages, setUploadedEditorImages] = useState([]);
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -102,10 +105,12 @@ export default function Index({ items }) {
     }
     setTagInput('');
     setTagSuggestions([]);
+    setUploadedEditorImages([]); // reset on open
     setShowModal(true);
   };
 
-  const closeModal = () => {
+  // 👇 Modified closeModal to accept a success flag
+  const closeModal = (isSubmitSuccess = false) => {
     setShowModal(false);
     setEditingItem(null);
     setFormData({});
@@ -113,6 +118,32 @@ export default function Index({ items }) {
     setTagSuggestions([]);
     setDragActive(false);
     setUploading(false);
+
+    // If not a successful submit, delete any uploaded editor images
+    if (!isSubmitSuccess && uploadedEditorImages.length > 0) {
+      deleteEditorImages(uploadedEditorImages);
+      setUploadedEditorImages([]);
+    } else if (isSubmitSuccess) {
+      setUploadedEditorImages([]);
+    }
+  };
+
+  // 👇 NEW: Delete editor images
+  const deleteEditorImages = async (urls) => {
+    try {
+      // eslint-disable-next-line no-undef
+      await axios.delete(route('admin.editor-image.delete'), {
+        data: { urls },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      console.error('Failed to delete editor images:', error);
+    }
+  };
+
+  // 👇 NEW: Callback for RichTextEditor to track uploaded images
+  const addUploadedImage = (url) => {
+    setUploadedEditorImages(prev => [...prev, url]);
   };
 
   // ============================================================
@@ -260,50 +291,33 @@ export default function Index({ items }) {
 
     const data = { ...formData };
 
-    // Convert tags array to comma-separated string if needed
-    // The backend expects tags as array, so we keep it as array
-
-    // Remove slug if empty
     if (!data.slug || data.slug.trim() === '') {
       delete data.slug;
     }
 
-    // Convert boolean values properly
     data.is_featured = data.is_featured ? true : false;
     data.is_active = data.is_active ? true : false;
 
-    // Debug: Log the data being sent
-
-
-
-    // FIXED: Use correct route names and parameters
     let url, method;
 
     if (editingItem) {
-      // For update - FIXED: route name and parameter format
       url = window.route('backend.cms.blogs.update', { id: editingItem.id });
       method = 'put';
     } else {
-      // For store
       url = window.route('backend.cms.blogs.store');
       method = 'post';
     }
 
-
-
     router[method](url, data, {
       preserveScroll: true,
       onSuccess: () => {
-
-        closeModal();
+        closeModal(true); // ✅ success – close and keep images
         setLoading(false);
-        // Reload to show updated data
         router.reload({ preserveScroll: true });
       },
       onError: (errors) => {
         console.error('Errors:', errors);
         setLoading(false);
-        // Show validation errors
         if (errors) {
           const errorMessages = Object.values(errors).flat().join('\n');
           Swal.fire({
@@ -331,21 +345,17 @@ export default function Index({ items }) {
   };
 
   const toggleFeatured = (item) => {
-    // If trying to feature an item, remove featured from all others first
     if (!item.is_featured) {
       setFeatureToggling(item.id);
 
-      // First, un feature all other blogs
       const otherFeatured = items.filter(b => b.is_featured && b.id !== item.id && !b.deleted_at);
 
       if (otherFeatured.length > 0) {
-        // Un feature the current featured blog
         const currentFeatured = otherFeatured[0];
         const url = window.route('backend.cms.blogs.toggle-featured', { id: currentFeatured.id });
         router.post(url, {}, {
           preserveScroll: true,
           onSuccess: () => {
-            // Then feature the selected blog
             const featureUrl = window.route('backend.cms.blogs.toggle-featured', { id: item.id });
             router.post(featureUrl, {}, {
               preserveScroll: true,
@@ -362,7 +372,6 @@ export default function Index({ items }) {
       }
     }
 
-    // If un featuring or no other featured exists
     setFeatureToggling(item.id);
     const url = window.route('backend.cms.blogs.toggle-featured', { id: item.id });
     router.post(url, {}, {
@@ -451,7 +460,6 @@ export default function Index({ items }) {
     }
   }, [flash]);
 
-  // Auto-generate slug when title changes
   useEffect(() => {
     if (formData.title && (!formData.slug || formData.slug === generateSlug(formData.title))) {
       setFormData(prev => ({
@@ -469,7 +477,6 @@ export default function Index({ items }) {
     ? items.filter(item => item.deleted_at !== null)
     : items.filter(item => item.deleted_at === null);
 
-  // Featured count - only one featured allowed
   const featuredCount = items.filter(item => item.is_featured && !item.deleted_at).length;
 
   return (
@@ -653,7 +660,7 @@ export default function Index({ items }) {
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold">{editingItem ? 'Edit' : 'Create'} Blog</h2>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg transition">
+              <button onClick={() => closeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition">
                 <ImCross size={20} />
               </button>
             </div>
@@ -672,7 +679,7 @@ export default function Index({ items }) {
                 />
               </div>
 
-              {/* Slug - Auto-generated */}
+              {/* Slug */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SLUG</label>
                 <div className="flex gap-2">
@@ -707,7 +714,7 @@ export default function Index({ items }) {
                 />
               </div>
 
-              {/* Full Content */}
+              {/* Full Content with onImageUploaded */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">FULL CONTENT</label>
                 <RichTextEditor
@@ -715,6 +722,7 @@ export default function Index({ items }) {
                   onChange={(html) => setFormData({ ...formData, full_content: html })}
                   placeholder="Write your blog content here..."
                   height="400px"
+                  onImageUploaded={addUploadedImage}
                 />
               </div>
 
@@ -837,7 +845,7 @@ export default function Index({ items }) {
                 </div>
               </div>
 
-              {/* Tags - User Friendly */}
+              {/* Tags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">TAGS</label>
                 <div className="relative">
@@ -890,7 +898,7 @@ export default function Index({ items }) {
 
               {/* Form Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                <button type="button" onClick={() => closeModal(false)} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                   Cancel
                 </button>
                 <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">

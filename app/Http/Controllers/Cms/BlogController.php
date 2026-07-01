@@ -36,7 +36,7 @@ class BlogController extends Controller
       'slug' => 'nullable|string|unique:blogs,slug',
       'excerpt' => 'nullable|string',
       'full_content' => 'nullable|string',
-      'image' => 'nullable|string', // Changed from max:255 to allow base64 images
+      'image' => 'nullable|string',
       'date' => 'nullable|string|max:255',
       'author' => 'nullable|string|max:255',
       'read_time' => 'nullable|integer|min:1',
@@ -88,7 +88,7 @@ class BlogController extends Controller
       'slug' => 'nullable|string|unique:blogs,slug,' . $id,
       'excerpt' => 'nullable|string',
       'full_content' => 'nullable|string',
-      'image' => 'nullable|string', // Changed from max:255 to allow base64 images
+      'image' => 'nullable|string',
       'date' => 'nullable|string|max:255',
       'author' => 'nullable|string|max:255',
       'read_time' => 'nullable|integer|min:1',
@@ -172,7 +172,7 @@ class BlogController extends Controller
   }
 
   /**
-   * Force delete a blog
+   * Force delete a blog – also deletes embedded images from content
    */
   public function forceDelete(int $id)
   {
@@ -185,6 +185,9 @@ class BlogController extends Controller
         Storage::disk('public')->delete($oldPath);
       }
     }
+
+    // 👇 NEW: Delete images embedded in the content
+    $this->deleteImagesFromContent($blog->full_content);
 
     $blog->forceDelete();
 
@@ -222,23 +225,18 @@ class BlogController extends Controller
   protected function uploadImage(string $base64String): string
   {
     try {
-      // Extract image data and extension
       $imageData = explode(',', $base64String);
       $imageData = $imageData[1] ?? $base64String;
       $imageContent = base64_decode($imageData);
       $extension = $this->getImageExtension($base64String);
 
-      // Generate unique filename
       $filename = Str::uuid() . '.' . $extension;
       $path = 'Blogs/' . date('Y/m/d') . '/' . $filename;
 
-      // Store the image
       Storage::disk('public')->put($path, $imageContent);
 
-      // Return the public URL
       return '/storage/' . $path;
     } catch (\Exception $e) {
-      // If upload fails, return empty string
       return '';
     }
   }
@@ -268,5 +266,25 @@ class BlogController extends Controller
     }
 
     return 'png';
+  }
+
+  /**
+   * Delete images embedded in HTML content (only from editor-images folder)
+   */
+  protected function deleteImagesFromContent(?string $content): void
+  {
+    if (empty($content)) return;
+
+    preg_match_all('/<img[^>]+src="([^"]+)"/i', $content, $matches);
+    if (empty($matches[1])) return;
+
+    foreach ($matches[1] as $src) {
+      if (str_starts_with($src, '/storage/editor-images/')) {
+        $relativePath = str_replace('/storage/', '', $src);
+        if (Storage::disk('public')->exists($relativePath)) {
+          Storage::disk('public')->delete($relativePath);
+        }
+      }
+    }
   }
 }

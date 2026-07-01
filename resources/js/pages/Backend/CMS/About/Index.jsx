@@ -1,16 +1,16 @@
-/* eslint-disable import/order */
 // resources/js/pages/Backend/CMS/About/Index.jsx
 
 // React
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios'; // <-- add this import
 
 // Icons
 import {
   FaPlus, FaEdit, FaTrash, FaUndo, FaSpinner,
   FaToggleOn, FaToggleOff, FaStar, FaRegStar, FaSave, FaMagic, FaFileAlt,
   FaUpload, FaTimes, FaTag, FaHashtag,
-  FaInfoCircle, FaList, FaImage, // Changed from FaIcon to FaImage
+  FaInfoCircle, FaList, FaImage,
 } from 'react-icons/fa';
 import { ImCross } from "react-icons/im";
 
@@ -53,6 +53,9 @@ export default function Index({ items }) {
   // Tag input states
   const [tagInput, setTagInput] = useState('');
   const [tagSuggestions, setTagSuggestions] = useState([]);
+
+  // 👇 NEW: Track editor images uploaded
+  const [uploadedEditorImages, setUploadedEditorImages] = useState([]);
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -109,10 +112,12 @@ export default function Index({ items }) {
     }
     setTagInput('');
     setTagSuggestions([]);
+    setUploadedEditorImages([]); // reset on open
     setShowModal(true);
   };
 
-  const closeModal = () => {
+  // 👇 Modified closeModal to accept a success flag
+  const closeModal = (isSubmitSuccess = false) => {
     setShowModal(false);
     setEditingItem(null);
     setFormData({});
@@ -121,6 +126,32 @@ export default function Index({ items }) {
     setDragActive(false);
     setUploadingImage(false);
     setUploadingIcon(false);
+
+    // If not a successful submit, delete any uploaded editor images
+    if (!isSubmitSuccess && uploadedEditorImages.length > 0) {
+      deleteEditorImages(uploadedEditorImages);
+      setUploadedEditorImages([]);
+    } else if (isSubmitSuccess) {
+      setUploadedEditorImages([]);
+    }
+  };
+
+  // 👇 NEW: Delete editor images
+  const deleteEditorImages = async (urls) => {
+    try {
+      // eslint-disable-next-line no-undef
+      await axios.delete(route('admin.editor-image.delete'), {
+        data: { urls },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      console.error('Failed to delete editor images:', error);
+    }
+  };
+
+  // 👇 NEW: Callback for RichTextEditor to track uploaded images
+  const addUploadedImage = (url) => {
+    setUploadedEditorImages(prev => [...prev, url]);
   };
 
   // ============================================================
@@ -357,7 +388,7 @@ export default function Index({ items }) {
     router[method](url, data, {
       preserveScroll: true,
       onSuccess: () => {
-        closeModal();
+        closeModal(true); // ✅ success – close and keep images
         setLoading(false);
         router.reload({ preserveScroll: true });
       },
@@ -797,7 +828,8 @@ export default function Index({ items }) {
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold">{editingItem ? 'Edit' : 'Create'} About Content</h2>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg transition">
+              {/* Close button – pass false to delete images */}
+              <button onClick={() => closeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition">
                 <ImCross size={20} />
               </button>
             </div>
@@ -865,7 +897,7 @@ export default function Index({ items }) {
                 />
               </div>
 
-              {/* Full Content */}
+              {/* Full Content – with onImageUploaded */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">FULL CONTENT</label>
                 <RichTextEditor
@@ -873,6 +905,7 @@ export default function Index({ items }) {
                   onChange={(html) => setFormData({ ...formData, full_content: html })}
                   placeholder="Write your full content here..."
                   height="400px"
+                  onImageUploaded={addUploadedImage} // 👈 NEW
                 />
               </div>
 
@@ -1127,7 +1160,8 @@ export default function Index({ items }) {
 
               {/* Form Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                {/* Cancel button – pass false to delete images */}
+                <button type="button" onClick={() => closeModal(false)} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                   Cancel
                 </button>
                 <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">

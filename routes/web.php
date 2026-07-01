@@ -62,6 +62,7 @@ use App\Http\Controllers\Cms\SharedDataController;
 use App\Http\Controllers\Cms\BlogController as CmsBlogController;
 use App\Http\Controllers\Cms\ProgramController as CmsProgramController;
 use App\Http\Controllers\Cms\AboutContentController as CmsAboutContentController;
+use App\Http\Controllers\Cms\EditorImageUploadController;
 use App\Http\Controllers\Cms\SectionController as CmsSectionController;
 // Models
 use App\Models\pages\Page;
@@ -677,3 +678,9 @@ Route::get('/api/programs', function (Request $request) {
         'programs' => $programs
     ]);
 })->name('api.programs');
+
+
+Route::post('/admin/upload-editor-image', [EditorImageUploadController::class, 'upload'])
+    ->name('admin.upload-editor-image');
+Route::delete('/admin/editor-image', [EditorImageUploadController::class, 'deleteImages'])
+    ->name('admin.editor-image.delete');
