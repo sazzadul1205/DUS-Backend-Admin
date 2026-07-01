@@ -7,53 +7,54 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Query\Builder;
 
 class ContentApiController extends Controller
 {
+  /**
+   * Maximum items per page
+   */
+  private const MAX_PER_PAGE = 100;
+
+  /**
+   * Default items per page
+   */
+  private const DEFAULT_PER_PAGE = 15;
+
   /**
    * Get pages with query parameters
    */
   public function pages(Request $request): JsonResponse
   {
-    $query = DB::table('pages')->where('is_active', 1)
-      ->select('id', 'slug', 'name', 'title', 'description', 'is_active', 'created_at', 'updated_at');
+    try {
+      $query = DB::table('pages')
+        ->where('is_active', 1)
+        ->select('id', 'slug', 'name', 'title', 'description', 'is_active', 'created_at', 'updated_at');
 
-    if ($request->has('slug')) {
-      $query->where('slug', $request->slug);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'slug' => 'where',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple slugs
+      if ($request->has('slugs')) {
+        $slugs = array_filter(explode(',', $request->slugs));
+        if (!empty($slugs)) {
+          $query->whereIn('slug', $slugs);
+        }
+      }
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'slug', 'name', 'title', 'created_at', 'updated_at']);
+
+      // Return results
+      return $this->paginateOrGet($query, $request);
+    } catch (\Exception $e) {
+      Log::error('Pages API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch pages');
     }
-
-    if ($request->has('slugs')) {
-      $slugs = explode(',', $request->slugs);
-      $query->whereIn('slug', $slugs);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('name', 'like', $search)
-          ->orWhere('title', 'like', $search)
-          ->orWhere('description', 'like', $search);
-      });
-    }
-
-    $sortBy = $request->sort_by ?? 'id';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'slug', 'name', 'title', 'created_at', 'updated_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    $perPage = $request->per_page ?? 15;
-    $perPage = min(max($perPage, 1), 100);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -61,65 +62,51 @@ class ContentApiController extends Controller
    */
   public function sectionConfigs(Request $request): JsonResponse
   {
-    $query = DB::table('section_configs')
-      ->where('is_enabled', 1)
-      ->orderBy('display_order');
+    try {
+      $query = DB::table('section_configs')
+        ->where('is_enabled', 1)
+        ->orderBy('display_order');
 
-    if ($request->has('page_slug')) {
-      $query->where('page_slug', $request->page_slug);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'page_slug' => 'where',
+        'component' => 'where',
+        'data_table' => 'where',
+        'is_fixed_section' => 'whereInt',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple components
+      if ($request->has('components')) {
+        $components = array_filter(explode(',', $request->components));
+        if (!empty($components)) {
+          $query->whereIn('component', $components);
+        }
+      }
+
+      // Handle range filters
+      $this->applyRangeFilters($query, $request, [
+        'display_order' => ['min' => 'display_order_min', 'max' => 'display_order_max']
+      ]);
+
+      // Apply search on specific fields
+      if ($request->has('search')) {
+        $search = '%' . $request->search . '%';
+        $query->where(function ($q) use ($search) {
+          $q->where('component', 'like', $search)
+            ->orWhere('data_key', 'like', $search)
+            ->orWhere('section_key', 'like', $search);
+        });
+      }
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'display_order', 'component', 'page_slug', 'created_at']);
+
+      return $this->paginateOrGet($query, $request, self::DEFAULT_PER_PAGE * 3);
+    } catch (\Exception $e) {
+      Log::error('Section configs API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch section configs');
     }
-
-    if ($request->has('component')) {
-      $query->where('component', $request->component);
-    }
-
-    if ($request->has('components')) {
-      $components = explode(',', $request->components);
-      $query->whereIn('component', $components);
-    }
-
-    if ($request->has('data_table')) {
-      $query->where('data_table', $request->data_table);
-    }
-
-    if ($request->has('is_fixed_section')) {
-      $query->where('is_fixed_section', (int) $request->is_fixed_section);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('component', 'like', $search)
-          ->orWhere('data_key', 'like', $search)
-          ->orWhere('section_key', 'like', $search);
-      });
-    }
-
-    if ($request->has('display_order_min')) {
-      $query->where('display_order', '>=', (int) $request->display_order_min);
-    }
-    if ($request->has('display_order_max')) {
-      $query->where('display_order', '<=', (int) $request->display_order_max);
-    }
-
-    $sortBy = $request->sort_by ?? 'display_order';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'display_order', 'component', 'page_slug', 'created_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    $perPage = $request->per_page ?? 50;
-    $perPage = min(max($perPage, 1), 200);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -127,48 +114,37 @@ class ContentApiController extends Controller
    */
   public function sharedData(Request $request): JsonResponse
   {
-    $query = DB::table('shared_data')->where('is_active', 1);
+    try {
+      $query = DB::table('shared_data')->where('is_active', 1);
 
-    if ($request->has('type')) {
-      $query->where('type', $request->type);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'type' => 'where',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple types
+      if ($request->has('types')) {
+        $types = array_filter(explode(',', $request->types));
+        if (!empty($types)) {
+          $query->whereIn('type', $types);
+        }
+      }
+
+      // JSON search
+      if ($request->has('json_search')) {
+        $search = '%' . $request->json_search . '%';
+        $query->where('data', 'like', $search);
+      }
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'type', 'created_at', 'updated_at']);
+
+      return $this->paginateOrGet($query, $request, self::DEFAULT_PER_PAGE * 3);
+    } catch (\Exception $e) {
+      Log::error('Shared data API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch shared data');
     }
-
-    if ($request->has('types')) {
-      $types = explode(',', $request->types);
-      $query->whereIn('type', $types);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('type', 'like', $search)
-          ->orWhere('data', 'like', $search);
-      });
-    }
-
-    if ($request->has('json_search')) {
-      $search = '%' . $request->json_search . '%';
-      $query->where('data', 'like', $search);
-    }
-
-    $sortBy = $request->sort_by ?? 'type';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'type', 'created_at', 'updated_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    $perPage = $request->per_page ?? 50;
-    $perPage = min(max($perPage, 1), 200);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -176,51 +152,33 @@ class ContentApiController extends Controller
    */
   public function customSectionData(Request $request): JsonResponse
   {
-    $query = DB::table('custom_section_data')->where('is_active', 1);
+    try {
+      $query = DB::table('custom_section_data')->where('is_active', 1);
 
-    if ($request->has('page_slug')) {
-      $query->where('page_slug', $request->page_slug);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'page_slug' => 'where',
+        'section_key' => 'where',
+        'is_active' => 'whereInt',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple section keys
+      if ($request->has('section_keys')) {
+        $keys = array_filter(explode(',', $request->section_keys));
+        if (!empty($keys)) {
+          $query->whereIn('section_key', $keys);
+        }
+      }
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'page_slug', 'section_key', 'is_active', 'created_at']);
+
+      return $this->paginateOrGet($query, $request, self::DEFAULT_PER_PAGE * 3);
+    } catch (\Exception $e) {
+      Log::error('Custom section data API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch custom section data');
     }
-
-    if ($request->has('section_key')) {
-      $query->where('section_key', $request->section_key);
-    }
-
-    if ($request->has('section_keys')) {
-      $keys = explode(',', $request->section_keys);
-      $query->whereIn('section_key', $keys);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('section_key', 'like', $search)
-          ->orWhere('data', 'like', $search);
-      });
-    }
-
-    if ($request->has('is_active')) {
-      $query->where('is_active', (int) $request->is_active);
-    }
-
-    $sortBy = $request->sort_by ?? 'id';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'page_slug', 'section_key', 'is_active', 'created_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    $perPage = $request->per_page ?? 50;
-    $perPage = min(max($perPage, 1), 200);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -228,77 +186,52 @@ class ContentApiController extends Controller
    */
   public function programs(Request $request): JsonResponse
   {
-    $query = DB::table('programs')->where('is_active', 1);
+    try {
+      $query = DB::table('programs')->where('is_active', 1);
 
-    if ($request->has('slug')) {
-      $query->where('slug', $request->slug);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'slug' => 'where',
+        'is_featured' => 'whereInt',
+        'category' => 'where',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple slugs
+      if ($request->has('slugs')) {
+        $slugs = array_filter(explode(',', $request->slugs));
+        if (!empty($slugs)) {
+          $query->whereIn('slug', $slugs);
+        }
+      }
+
+      // Handle multiple categories
+      if ($request->has('categories')) {
+        $categories = array_filter(explode(',', $request->categories));
+        if (!empty($categories)) {
+          $query->whereIn('category', $categories);
+        }
+      }
+
+      // Handle range filters
+      $this->applyRangeFilters($query, $request, [
+        'display_order' => ['min' => 'display_order_min', 'max' => 'display_order_max'],
+        'created_at' => ['min' => 'created_from', 'max' => 'created_to']
+      ]);
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'title', 'display_order', 'is_featured', 'created_at', 'updated_at']);
+
+      // Apply limit
+      if ($request->has('limit')) {
+        $query->limit($this->sanitizeLimit($request->limit));
+      }
+
+      return $this->paginateOrGet($query, $request);
+    } catch (\Exception $e) {
+      Log::error('Programs API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch programs');
     }
-
-    if ($request->has('slugs')) {
-      $slugs = explode(',', $request->slugs);
-      $query->whereIn('slug', $slugs);
-    }
-
-    if ($request->has('is_featured')) {
-      $query->where('is_featured', (int) $request->is_featured);
-    }
-
-    if ($request->has('category')) {
-      $query->where('category', $request->category);
-    }
-
-    if ($request->has('categories')) {
-      $categories = explode(',', $request->categories);
-      $query->whereIn('category', $categories);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('title', 'like', $search)
-          ->orWhere('description', 'like', $search)
-          ->orWhere('content', 'like', $search);
-      });
-    }
-
-    if ($request->has('display_order_min')) {
-      $query->where('display_order', '>=', (int) $request->display_order_min);
-    }
-    if ($request->has('display_order_max')) {
-      $query->where('display_order', '<=', (int) $request->display_order_max);
-    }
-
-    if ($request->has('created_from')) {
-      $query->where('created_at', '>=', $request->created_from);
-    }
-    if ($request->has('created_to')) {
-      $query->where('created_at', '<=', $request->created_to);
-    }
-
-    $sortBy = $request->sort_by ?? 'display_order';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'title', 'display_order', 'is_featured', 'created_at', 'updated_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    if ($request->has('limit')) {
-      $limit = (int) $request->limit;
-      $limit = min(max($limit, 1), 100);
-      $query->limit($limit);
-    }
-
-    $perPage = $request->per_page ?? 15;
-    $perPage = min(max($perPage, 1), 100);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -306,97 +239,76 @@ class ContentApiController extends Controller
    */
   public function blogs(Request $request): JsonResponse
   {
-    $query = DB::table('blogs')->where('is_active', 1);
+    try {
+      $query = DB::table('blogs')->where('is_active', 1);
 
-    if ($request->has('slug')) {
-      $query->where('slug', $request->slug);
-    }
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'slug' => 'where',
+        'is_featured' => 'whereInt',
+        'author' => 'whereLike',
+        'category' => 'where',
+        'search' => 'search',
+      ]);
 
-    if ($request->has('slugs')) {
-      $slugs = explode(',', $request->slugs);
-      $query->whereIn('slug', $slugs);
-    }
-
-    if ($request->has('is_featured')) {
-      $query->where('is_featured', (int) $request->is_featured);
-    }
-
-    if ($request->has('author')) {
-      $query->where('author', 'like', '%' . $request->author . '%');
-    }
-
-    if ($request->has('category')) {
-      $query->where('category', $request->category);
-    }
-
-    if ($request->has('categories')) {
-      $categories = explode(',', $request->categories);
-      $query->whereIn('category', $categories);
-    }
-
-    if ($request->has('tag')) {
-      $query->where('tags', 'like', '%"' . $request->tag . '"%')
-        ->orWhere('tags', 'like', '%' . $request->tag . '%');
-    }
-
-    if ($request->has('tags')) {
-      $tags = explode(',', $request->tags);
-      $query->where(function ($q) use ($tags) {
-        foreach ($tags as $tag) {
-          $q->orWhere('tags', 'like', '%"' . trim($tag) . '"%')
-            ->orWhere('tags', 'like', '%' . trim($tag) . '%');
+      // Handle multiple slugs
+      if ($request->has('slugs')) {
+        $slugs = array_filter(explode(',', $request->slugs));
+        if (!empty($slugs)) {
+          $query->whereIn('slug', $slugs);
         }
-      });
-    }
+      }
 
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('title', 'like', $search)
-          ->orWhere('excerpt', 'like', $search)
-          ->orWhere('content', 'like', $search)
-          ->orWhere('full_content', 'like', $search);
-      });
-    }
+      // Handle multiple categories
+      if ($request->has('categories')) {
+        $categories = array_filter(explode(',', $request->categories));
+        if (!empty($categories)) {
+          $query->whereIn('category', $categories);
+        }
+      }
 
-    if ($request->has('created_from')) {
-      $query->where('created_at', '>=', $request->created_from);
-    }
-    if ($request->has('created_to')) {
-      $query->where('created_at', '<=', $request->created_to);
-    }
+      // Handle tag filtering
+      if ($request->has('tag')) {
+        $tag = $request->tag;
+        $query->where(function ($q) use ($tag) {
+          $q->where('tags', 'like', '%"' . $tag . '"%')
+            ->orWhere('tags', 'like', '%' . $tag . '%');
+        });
+      }
 
-    if ($request->has('published_from')) {
-      $query->where('published_at', '>=', $request->published_from);
+      // Handle multiple tags
+      if ($request->has('tags')) {
+        $tags = array_filter(explode(',', $request->tags));
+        if (!empty($tags)) {
+          $query->where(function ($q) use ($tags) {
+            foreach ($tags as $tag) {
+              $tag = trim($tag);
+              $q->orWhere('tags', 'like', '%"' . $tag . '"%')
+                ->orWhere('tags', 'like', '%' . $tag . '%');
+            }
+          });
+        }
+      }
+
+      // Handle date range filters
+      $this->applyRangeFilters($query, $request, [
+        'created_at' => ['min' => 'created_from', 'max' => 'created_to'],
+        'published_at' => ['min' => 'published_from', 'max' => 'published_to']
+      ]);
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'title', 'author', 'is_featured', 'created_at', 'updated_at', 'published_at']);
+
+      // Apply limit
+      if ($request->has('limit')) {
+        $query->limit($this->sanitizeLimit($request->limit));
+      }
+
+      return $this->paginateOrGet($query, $request);
+    } catch (\Exception $e) {
+      Log::error('Blogs API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch blogs');
     }
-    if ($request->has('published_to')) {
-      $query->where('published_at', '<=', $request->published_to);
-    }
-
-    $sortBy = $request->sort_by ?? 'created_at';
-    $sortOrder = $request->sort_order ?? 'desc';
-    $allowedSorts = ['id', 'title', 'author', 'is_featured', 'created_at', 'updated_at', 'published_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    if ($request->has('limit')) {
-      $limit = (int) $request->limit;
-      $limit = min(max($limit, 1), 100);
-      $query->limit($limit);
-    }
-
-    $perPage = $request->per_page ?? 15;
-    $perPage = min(max($perPage, 1), 100);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -404,57 +316,41 @@ class ContentApiController extends Controller
    */
   public function aboutContent(Request $request): JsonResponse
   {
-    $query = DB::table('about_content')->where('is_active', 1);
+    try {
+      $query = DB::table('about_content')->where('is_active', 1);
 
-    if ($request->has('slug')) {
-      $query->where('slug', $request->slug);
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'slug' => 'where',
+        'search' => 'search',
+      ]);
+
+      // Handle multiple slugs
+      if ($request->has('slugs')) {
+        $slugs = array_filter(explode(',', $request->slugs));
+        if (!empty($slugs)) {
+          $query->whereIn('slug', $slugs);
+        }
+      }
+
+      // Handle range filters
+      $this->applyRangeFilters($query, $request, [
+        'display_order' => ['min' => 'display_order_min', 'max' => 'display_order_max']
+      ]);
+
+      // Apply sorting
+      $this->applySorting($query, $request, ['id', 'title', 'slug', 'display_order', 'created_at', 'updated_at']);
+
+      // Apply limit
+      if ($request->has('limit')) {
+        $query->limit($this->sanitizeLimit($request->limit));
+      }
+
+      return $this->paginateOrGet($query, $request);
+    } catch (\Exception $e) {
+      Log::error('About content API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch about content');
     }
-
-    if ($request->has('slugs')) {
-      $slugs = explode(',', $request->slugs);
-      $query->whereIn('slug', $slugs);
-    }
-
-    if ($request->has('search')) {
-      $search = '%' . $request->search . '%';
-      $query->where(function ($q) use ($search) {
-        $q->where('title', 'like', $search)
-          ->orWhere('content', 'like', $search)
-          ->orWhere('full_content', 'like', $search);
-      });
-    }
-
-    if ($request->has('display_order_min')) {
-      $query->where('display_order', '>=', (int) $request->display_order_min);
-    }
-    if ($request->has('display_order_max')) {
-      $query->where('display_order', '<=', (int) $request->display_order_max);
-    }
-
-    $sortBy = $request->sort_by ?? 'display_order';
-    $sortOrder = $request->sort_order ?? 'asc';
-    $allowedSorts = ['id', 'title', 'slug', 'display_order', 'created_at', 'updated_at'];
-
-    if (in_array($sortBy, $allowedSorts)) {
-      $query->orderBy($sortBy, $sortOrder);
-    }
-
-    if ($request->has('limit')) {
-      $limit = (int) $request->limit;
-      $limit = min(max($limit, 1), 100);
-      $query->limit($limit);
-    }
-
-    $perPage = $request->per_page ?? 15;
-    $perPage = min(max($perPage, 1), 100);
-
-    if ($request->has('page')) {
-      $data = $query->paginate($perPage);
-    } else {
-      $data = $query->get();
-    }
-
-    return response()->json(['data' => $data]);
   }
 
   /**
@@ -466,83 +362,37 @@ class ContentApiController extends Controller
     try {
       $query = DB::table('job_listings')->where('is_active', 1);
 
-      // Filtering
-      if ($request->has('slug')) {
-        $query->where('slug', $request->slug);
-      }
+      // Apply filters
+      $this->applyFilters($query, $request, [
+        'slug' => 'where',
+        'type' => 'where', // mapped to job_type
+        'department' => 'whereLike',
+        'location' => 'whereLike',
+        'is_active' => 'whereInt',
+        'category_id' => 'whereInt',
+        'experience_level' => 'where',
+        'is_salary_negotiable' => 'whereInt',
+        'search' => 'search',
+      ]);
 
-      if ($request->has('type')) {
-        $query->where('job_type', $request->type);
-      }
-
+      // Handle multiple types
       if ($request->has('types')) {
-        $types = explode(',', $request->types);
-        $query->whereIn('job_type', $types);
+        $types = array_filter(explode(',', $request->types));
+        if (!empty($types)) {
+          $query->whereIn('job_type', $types);
+        }
       }
 
-      if ($request->has('department')) {
-        $query->where('department', 'like', '%' . $request->department . '%');
-      }
+      // Handle range filters
+      $this->applyRangeFilters($query, $request, [
+        'views_count' => ['min' => 'min_views', 'max' => 'max_views'],
+        'created_at' => ['min' => 'created_from', 'max' => 'created_to'],
+        'application_deadline' => ['min' => 'deadline_after', 'max' => 'deadline_before'],
+        'salary_min' => ['min' => 'salary_min', 'max' => null],
+        'salary_max' => ['min' => null, 'max' => 'salary_max'],
+      ]);
 
-      if ($request->has('location')) {
-        $query->where('location', 'like', '%' . $request->location . '%');
-      }
-
-      if ($request->has('min_views')) {
-        $query->where('views_count', '>=', (int) $request->min_views);
-      }
-
-      if ($request->has('max_views')) {
-        $query->where('views_count', '<=', (int) $request->max_views);
-      }
-
-      if ($request->has('created_from')) {
-        $query->where('created_at', '>=', $request->created_from);
-      }
-      if ($request->has('created_to')) {
-        $query->where('created_at', '<=', $request->created_to);
-      }
-
-      if ($request->has('deadline_before')) {
-        $query->where('application_deadline', '<=', $request->deadline_before);
-      }
-      if ($request->has('deadline_after')) {
-        $query->where('application_deadline', '>=', $request->deadline_after);
-      }
-
-      if ($request->has('is_active')) {
-        $query->where('is_active', (int) $request->is_active);
-      }
-
-      if ($request->has('category_id')) {
-        $query->where('category_id', (int) $request->category_id);
-      }
-
-      if ($request->has('experience_level')) {
-        $query->where('experience_level', $request->experience_level);
-      }
-
-      if ($request->has('salary_min')) {
-        $query->where('salary_min', '>=', (float) $request->salary_min);
-      }
-      if ($request->has('salary_max')) {
-        $query->where('salary_max', '<=', (float) $request->salary_max);
-      }
-
-      if ($request->has('is_salary_negotiable')) {
-        $query->where('is_salary_negotiable', (int) $request->is_salary_negotiable);
-      }
-
-      // Searching
-      if ($request->has('search')) {
-        $search = '%' . $request->search . '%';
-        $query->where(function ($q) use ($search) {
-          $q->where('title', 'like', $search)
-            ->orWhere('description', 'like', $search)
-            ->orWhere('requirements', 'like', $search);
-        });
-      }
-
+      // Keyword search
       if ($request->has('keyword_search')) {
         $search = '%' . $request->keyword_search . '%';
         $query->where(function ($q) use ($search) {
@@ -551,84 +401,60 @@ class ContentApiController extends Controller
         });
       }
 
+      // Skill search
       if ($request->has('skill_search')) {
         $query->whereJsonContains('skills', $request->skill_search);
       }
 
-      // Sorting - Default: Most Viewed
-      $sortBy = $request->sort_by ?? 'views_count';
-      $sortOrder = $request->sort_order ?? 'desc';
-      $allowedSorts = ['id', 'title', 'job_type', 'views_count', 'created_at', 'updated_at', 'application_deadline', 'salary_min', 'salary_max', 'is_active', 'category_id', 'experience_level'];
+      // Apply sorting
+      $this->applySorting($query, $request, [
+        'id',
+        'title',
+        'job_type',
+        'views_count',
+        'created_at',
+        'updated_at',
+        'application_deadline',
+        'salary_min',
+        'salary_max',
+        'is_active',
+        'category_id',
+        'experience_level'
+      ]);
 
-      if (in_array($sortBy, $allowedSorts)) {
-        $query->orderBy($sortBy, $sortOrder);
-      }
-
-      // Most viewed override
+      // Handle special sort cases
       if ($request->has('most_viewed')) {
-        $limit = (int) $request->most_viewed;
-        $limit = min(max($limit, 1), 20);
+        $limit = $this->sanitizeLimit($request->most_viewed, 20);
         $query->orderBy('views_count', 'desc')->limit($limit);
-      }
-
-      // Latest override
-      if ($request->has('latest')) {
-        $limit = (int) $request->latest;
-        $limit = min(max($limit, 1), 20);
+      } elseif ($request->has('latest')) {
+        $limit = $this->sanitizeLimit($request->latest, 20);
         $query->orderBy('created_at', 'desc')->limit($limit);
+      } elseif (!$request->has('sort_by') && !$request->has('page')) {
+        // Default: most viewed when no sorting specified and not paginated
+        $query->orderBy('views_count', 'desc')->limit(5);
       }
 
-      // Limit - Default: 5
-      $defaultLimit = $request->has('page') ? null : 5;
-      $limit = $request->has('limit') ? (int) $request->limit : $defaultLimit;
-
-      if ($limit !== null) {
-        $limit = min(max($limit, 1), 100);
+      // Apply limit for non-paginated results
+      if (!$request->has('page') && !$request->has('most_viewed') && !$request->has('latest')) {
+        $limit = $request->has('limit') ? $this->sanitizeLimit($request->limit) : 5;
         $query->limit($limit);
       }
 
       // Get data
       $data = $query->get();
 
-      // Format for React
+      // Format for React if requested
       if ($request->has('format') && $request->format === 'react') {
-        $data = $data->map(function ($job) {
-          return [
-            'id' => $job->id,
-            'type' => $this->formatJobType($job->job_type),
-            'department' => $this->getDepartmentFromTitle($job->title),
-            'location' => $job->location ?? 'Bangladesh',
-            'title' => $job->title,
-            'description' => $job->description ?? 'No description available.',
-            'link' => "/jobs/{$job->slug}",
-            'views' => $job->views_count ?? 0,
-            'slug' => $job->slug,
-            'is_active' => $job->is_active ?? true,
-          ];
-        });
+        $data = $data->map(fn($job) => $this->formatJobForReact($job));
       }
 
-      // Pagination
+      // Handle pagination
       if ($request->has('page')) {
-        $perPage = $request->per_page ?? 15;
-        $perPage = min(max($perPage, 1), 100);
+        $perPage = $this->sanitizePerPage($request->per_page ?? 15);
         $paginated = $query->paginate($perPage);
 
         if ($request->has('format') && $request->format === 'react') {
-          $paginated->getCollection()->transform(function ($job) {
-            return [
-              'id' => $job->id,
-              'type' => $this->formatJobType($job->job_type),
-              'department' => $this->getDepartmentFromTitle($job->title),
-              'location' => $job->location ?? 'Bangladesh',
-              'title' => $job->title,
-              'description' => $job->description ?? 'No description available.',
-              'link' => "/jobs/{$job->slug}",
-              'views' => $job->views_count ?? 0,
-              'slug' => $job->slug,
-              'is_active' => $job->is_active ?? true,
-            ];
-          });
+          $paginated->getCollection()->transform(fn($job) => $this->formatJobForReact($job));
         }
 
         return response()->json(['data' => $paginated]);
@@ -636,8 +462,28 @@ class ContentApiController extends Controller
 
       return response()->json(['data' => $data]);
     } catch (\Exception $e) {
-      return response()->json(['data' => [], 'error' => $e->getMessage()], 500);
+      Log::error('Jobs API error: ' . $e->getMessage());
+      return $this->errorResponse('Failed to fetch jobs');
     }
+  }
+
+  /**
+   * Format job for React frontend
+   */
+  private function formatJobForReact($job): array
+  {
+    return [
+      'id' => $job->id,
+      'type' => $this->formatJobType($job->job_type ?? 'full-time'),
+      'department' => $this->getDepartmentFromTitle($job->title ?? ''),
+      'location' => $job->location ?? 'Bangladesh',
+      'title' => $job->title,
+      'description' => $job->description ?? 'No description available.',
+      'link' => "/jobs/{$job->slug}",
+      'views' => $job->views_count ?? 0,
+      'slug' => $job->slug,
+      'is_active' => $job->is_active ?? true,
+    ];
   }
 
   /**
@@ -645,7 +491,9 @@ class ContentApiController extends Controller
    */
   private function formatJobType(?string $type): string
   {
-    if (!$type) return 'Full time';
+    if (!$type) {
+      return 'Full time';
+    }
 
     $mapping = [
       'full-time' => 'Full time',
@@ -691,5 +539,110 @@ class ContentApiController extends Controller
     }
 
     return 'General';
+  }
+
+  /**
+   * Apply common filters to query builder
+   */
+  private function applyFilters(Builder $query, Request $request, array $filters): void
+  {
+    foreach ($filters as $param => $type) {
+      if (!$request->has($param)) {
+        continue;
+      }
+
+      $value = $request->$param;
+
+      switch ($type) {
+        case 'where':
+          $query->where($param, $value);
+          break;
+        case 'whereInt':
+          $query->where($param, (int) $value);
+          break;
+        case 'whereLike':
+          $query->where($param, 'like', '%' . $value . '%');
+          break;
+        case 'search':
+          $search = '%' . $value . '%';
+          $query->where(function ($q) use ($search) {
+            // This is a fallback - specific implementations should override
+            $q->where('name', 'like', $search)
+              ->orWhere('title', 'like', $search)
+              ->orWhere('description', 'like', $search);
+          });
+          break;
+      }
+    }
+  }
+
+  /**
+   * Apply range filters to query builder
+   */
+  private function applyRangeFilters(Builder $query, Request $request, array $ranges): void
+  {
+    foreach ($ranges as $column => $params) {
+      if (isset($params['min']) && $request->has($params['min'])) {
+        $query->where($column, '>=', (int) $request->{$params['min']});
+      }
+      if (isset($params['max']) && $request->has($params['max'])) {
+        $query->where($column, '<=', (int) $request->{$params['max']});
+      }
+    }
+  }
+
+  /**
+   * Apply sorting to query builder
+   */
+  private function applySorting(Builder $query, Request $request, array $allowedSorts): void
+  {
+    $sortBy = $request->sort_by ?? 'id';
+    $sortOrder = $request->sort_order ?? 'asc';
+
+    if (in_array($sortBy, $allowedSorts) && in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+      $query->orderBy($sortBy, $sortOrder);
+    }
+  }
+
+  /**
+   * Paginate or get all results
+   */
+  private function paginateOrGet(Builder $query, Request $request, ?int $defaultPerPage = null): JsonResponse
+  {
+    if ($request->has('page')) {
+      $perPage = $this->sanitizePerPage($request->per_page ?? $defaultPerPage ?? self::DEFAULT_PER_PAGE);
+      return response()->json(['data' => $query->paginate($perPage)]);
+    }
+
+    return response()->json(['data' => $query->get()]);
+  }
+
+  /**
+   * Sanitize and validate per page value
+   */
+  private function sanitizePerPage($value): int
+  {
+    $perPage = (int) $value;
+    return min(max($perPage, 1), self::MAX_PER_PAGE);
+  }
+
+  /**
+   * Sanitize and validate limit value
+   */
+  private function sanitizeLimit($value, int $max = 100): int
+  {
+    $limit = (int) $value;
+    return min(max($limit, 1), $max);
+  }
+
+  /**
+   * Return error response
+   */
+  private function errorResponse(string $message, int $status = 500): JsonResponse
+  {
+    return response()->json([
+      'data' => [],
+      'error' => $message
+    ], $status);
   }
 }
