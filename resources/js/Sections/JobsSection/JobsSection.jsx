@@ -223,11 +223,6 @@ const JobsSection = ({
           {hasMoreJobs && (
             <div className='text-center pt-4'>
               <button
-                onClick={() => {
-                  // Handle view all functionality
-                  // Could navigate to a careers page or expand the list
-                  console.log('View all jobs clicked');
-                }}
                 className="bricolage-grotesque border border-[#009BE2] rounded-md text-[#009BE2] px-6 sm:px-8 py-3 sm:py-4 font-600 text-[14px] sm:text-[15px] lg:text-[16px] inline-flex items-center justify-center gap-2 group hover:bg-[#009BE2] hover:text-white transition-all duration-300"
               >
                 View All Jobs ({filteredJobs.length})

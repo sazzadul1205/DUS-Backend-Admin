@@ -62,9 +62,6 @@ const ProjectsAndProgramsDetails = ({
   const dynamicSections = allSections.filter(section => section.isFixedSection !== true)
     .sort((a, b) => a.order - b.order);
 
-  console.log('Fixed Sections:', fixedSections);
-  console.log('Dynamic Sections:', dynamicSections);
-
   // Find specific sections for ordering
   const bannerSection = dynamicSections.find(s => s.component === 'PageBannerSection');
   const otherDynamicSections = dynamicSections.filter(s => s.component !== 'PageBannerSection');
