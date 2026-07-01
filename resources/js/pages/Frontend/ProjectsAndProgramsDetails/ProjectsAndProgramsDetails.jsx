@@ -6,7 +6,7 @@ import PublicLayout from '../../../layouts/PublicLayout';
 import DynamicSectionRenderer from '../../../components/Shared/DynamicSectionRenderer';
 
 // Program Content Section Component
-const ProgramContentSection = ({ programData, slug, bgColor, paddingY, paddingX, sectionClassName, sectionId }) => {
+const ProgramContentSection = ({ programData, bgColor, paddingY, paddingX, sectionClassName, sectionId }) => {
   const renderHTML = (htmlString) => ({ __html: htmlString });
 
   const data = programData || window.programData;

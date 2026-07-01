@@ -59,7 +59,7 @@ const JobsSection = ({
   };
 
   // Filtered Jobs
-  let filteredJobs = selectedFilter === "" || selectedFilter === "all"
+  const filteredJobs = selectedFilter === "" || selectedFilter === "all"
     ? jobs
     : jobs.filter(job => job.type?.toLowerCase().replace(" ", "-") === selectedFilter);
 
@@ -158,7 +158,7 @@ const JobsSection = ({
                             {job.type}
                           </p>
                           {(hasValue(job.department) || hasValue(job.location)) && (
-                            <span className='w-1 h-px bg-[#524B48] block'></span>
+                            <span className='w-1 h-px bg-[#524B48] block' />
                           )}
                         </>
                       )}
@@ -171,7 +171,7 @@ const JobsSection = ({
                             {job.department}
                           </p>
                           {hasValue(job.location) && (
-                            <span className='w-1 h-px bg-[#524B48] block'></span>
+                            <span className='w-1 h-px bg-[#524B48] block' />
                           )}
                         </>
                       )}
