@@ -1,4 +1,46 @@
+/* eslint-disable no-undef */
 // resources/js/components/TopBar.jsx
+
+/**
+ * ============================================
+ * TOP BAR - Utility Bar Component
+ * ============================================
+ * 
+ * PURPOSE:
+ * - Renders the top utility bar with contact info, language selector, search, and user menu
+ * - Provides quick access to key actions
+ * - Responsive: Desktop expanded, Mobile hamburger menu
+ * 
+ * SECTIONS:
+ * 1. Contact Info: Email, Phone, Hours
+ * 2. Language Selector: Switch between English and Bengali
+ * 3. Search: Expandable search bar
+ * 4. User Menu: Login/Register or Dashboard/Logout
+ * 5. Social Links: Facebook, Instagram, LinkedIn, Twitter/X
+ * 
+ * DATA STRUCTURE:
+ * {
+ *   contactInfo: {
+ *     email: { text, icon, alt },
+ *     phone: { text, icon, alt },
+ *     hours: { text, icon, alt }
+ *   },
+ *   languages: [{ code, name, flag }],
+ *   socialLinks: [{ id, iconName, url, name, hoverColor }],
+ *   userMenu: {
+ *     guest: [{ label, route, type }],
+ *     authenticated: [{ label, route, type, action, divider }]
+ *   }
+ * }
+ * 
+ * FEATURES:
+ * - Language persistence via localStorage
+ * - Click outside to close dropdowns
+ * - Expandable search with animation
+ * - User authentication state handling
+ * 
+ * ============================================
+ */
 
 // Icons - Import all needed icons
 import { FiSearch } from "react-icons/fi";
@@ -9,7 +51,9 @@ import { FaFacebook, FaInstagram, FaLinkedin, FaXTwitter, FaUser } from "react-i
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 
-// Utility function to check if value exists
+// ============================================
+// UTILITY: Check if value exists
+// ============================================
 const hasValue = (value) => {
   if (value === undefined || value === null) return false;
   if (typeof value === 'string') return value.trim().length > 0;
@@ -18,40 +62,95 @@ const hasValue = (value) => {
   return true;
 };
 
-// Map icon names to components
+// ============================================
+// ICON MAPPING
+// ============================================
 const iconMap = {
-  FaFacebook: FaFacebook,
-  FaInstagram: FaInstagram,
-  FaLinkedin: FaLinkedin,
-  FaXTwitter: FaXTwitter
+  FaFacebook,
+  FaInstagram,
+  FaLinkedin,
+  FaXTwitter
 };
 
+/**
+ * TopBar Component
+ * 
+ * @param {Object} props
+ * @param {Object} props.topBarData - Top bar configuration data
+ * @param {string} props.storageUrl - Base URL for image storage
+ * 
+ * @returns {JSX.Element} Rendered top bar
+ */
 const TopBar = ({ topBarData, storageUrl }) => {
-  // Get auth from usePage
+  // ============================================
+  // AUTH - Get from Inertia usePage
+  // ============================================
   const { auth } = usePage().props;
   const user = auth?.user;
 
-  // States
+  // ============================================
+  // STATE - All hooks must be called unconditionally
+  // ============================================
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Don't render if no data
-  if (!hasValue(topBarData)) {
-    return null;
-  }
+  // Refs for click-outside detection
+  const langRef = useRef(null);
+  const userRef = useRef(null);
+  const searchRef = useRef(null);
 
-  // Safe destructuring with defaults
+  // ============================================
+  // DESTRUCTURE DATA - With safe defaults
+  // ============================================
   const {
     contactInfo = {},
     languages = [],
     socialLinks = [],
     userMenu = {}
-  } = topBarData;
+  } = topBarData || {};
 
-  // Hardcoded user menu items (can be moved to controller)
+  // ============================================
+  // LANGUAGE SELECTION
+  // ============================================
+
+  /**
+   * Get initial language from localStorage or defaults
+   * - Check localStorage for saved preference
+   * - If not found, use English (us) as default
+   * - Only shows 'us' and 'bd' languages
+   */
+  const languagesToShow = (languages || []).filter(lang =>
+    lang.code === 'us' || lang.code === 'bd'
+  );
+
+  const getInitialLanguage = () => {
+    try {
+      const savedLang = localStorage.getItem('selectedLanguage');
+      if (savedLang) {
+        const parsedLang = JSON.parse(savedLang);
+        const existsInData = languagesToShow.find(lang => lang.code === parsedLang.code);
+        if (existsInData) return parsedLang;
+      }
+    } catch (error) {
+      console.error('Error loading language from localStorage:', error);
+    }
+
+    const englishLang = languagesToShow.find(lang => lang.code === 'us');
+    return englishLang || languagesToShow[0] || {
+      code: 'us',
+      name: 'English',
+      flag: `${storageUrl || ''}/images/Flags/united-states.png`
+    };
+  };
+
+  const [selectedLanguage, setSelectedLanguage] = useState(getInitialLanguage);
+
+  // ============================================
+  // USER MENU - Default if not provided
+  // ============================================
   const defaultUserMenu = {
     guest: [
       { label: 'Login', route: 'login', type: 'link' },
@@ -66,49 +165,22 @@ const TopBar = ({ topBarData, storageUrl }) => {
 
   const finalUserMenu = hasValue(userMenu) ? userMenu : defaultUserMenu;
 
-  // Filter to only show English (us) and Bengali (bd) from server data
-  const languagesToShow = languages.filter(lang =>
-    lang.code === 'us' || lang.code === 'bd'
-  );
-
-  // Initialize language from localStorage or default to English from server data
-  const [selectedLanguage, setSelectedLanguage] = useState(() => {
-    try {
-      const savedLang = localStorage.getItem('selectedLanguage');
-      if (savedLang) {
-        const parsedLang = JSON.parse(savedLang);
-        const existsInData = languagesToShow.find(lang => lang.code === parsedLang.code);
-        if (existsInData) return parsedLang;
-      }
-    } catch (error) {
-      console.error('Error loading language from localStorage:', error);
-    }
-
-    // Default to English if found, otherwise first language
-    const englishLang = languagesToShow.find(lang => lang.code === 'us');
-    return englishLang || languagesToShow[0] || {
-      code: 'us',
-      name: 'English',
-      flag: `${storageUrl}/images/Flags/united-states.png`
-    };
-  });
-
-  // Refs
-  const langRef = useRef(null);
-  const userRef = useRef(null);
-  const searchRef = useRef(null);
-
-  // Close dropdowns when clicking outside
+  // ============================================
+  // CLICK OUTSIDE DETECTION - useEffect must be unconditional
+  // ============================================
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Close search if clicked outside and no query
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         if (!searchQuery) {
           setIsSearchExpanded(false);
         }
       }
+      // Close language dropdown
       if (langRef.current && !langRef.current.contains(event.target)) {
         setIsLangDropdownOpen(false);
       }
+      // Close user dropdown
       if (userRef.current && !userRef.current.contains(event.target)) {
         setIsUserDropdownOpen(false);
       }
@@ -118,15 +190,28 @@ const TopBar = ({ topBarData, storageUrl }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [searchQuery]);
 
+  // ============================================
+  // HANDLERS
+  // ============================================
+
+  /**
+   * Handle language selection
+   * - Updates state
+   * - Saves to localStorage
+   * - Dispatches custom event for other components
+   */
   const handleLanguageSelect = (language) => {
     setSelectedLanguage(language);
     localStorage.setItem('selectedLanguage', JSON.stringify(language));
     setIsLangDropdownOpen(false);
-
-    // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: language }));
   };
 
+  /**
+   * Handle search submission
+   * - Navigates to search results page
+   * - Closes search and clears query
+   */
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     router.get('/search', { q: searchQuery });
@@ -134,70 +219,113 @@ const TopBar = ({ topBarData, storageUrl }) => {
     setSearchQuery('');
   };
 
+  /**
+   * Handle logout
+   * - POST to logout endpoint
+   */
   const handleLogout = () => {
     router.post('/logout');
   };
 
-  // Check if contact info exists
+  // ============================================
+  // HELPERS
+  // ============================================
+
+  /**
+   * Build image URL with storage path
+   */
+  const getImageSrc = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (storageUrl) return `${storageUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    return imagePath;
+  };
+
+  // ============================================
+  // EARLY RETURN - AFTER all hooks have been called
+  // ============================================
+  // Check for content - moved after all hooks
   const hasContactInfo = hasValue(contactInfo.email?.text) ||
     hasValue(contactInfo.phone?.text) ||
     hasValue(contactInfo.hours?.text);
 
-  // Check if social links exist
   const hasSocialLinks = hasValue(socialLinks);
   const hasLanguages = hasValue(languagesToShow);
 
-  // If no content at all, don't render
-  if (!hasContactInfo && !hasSocialLinks && !hasLanguages) {
+  // Early return after all hooks have been called
+  if (!hasValue(topBarData) || (!hasContactInfo && !hasSocialLinks && !hasLanguages)) {
     return null;
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <>
-      {/* Desktop Top Bar - Hidden on mobile */}
-      <div className='hidden lg:flex justify-between items-center px-10 py-3 bg-[#080C14] relative z-50'>
-        {/* Left - Contact Info */}
+      {/* ============================================
+          DESKTOP TOP BAR
+          ============================================ */}
+      <div className='hidden lg:flex justify-between items-center px-50 py-4.75 bg-[#080C14] relative z-50'>
+
+        {/* Left Side - Contact Info */}
         {hasContactInfo && (
           <div className='flex items-center space-x-6'>
-            {/* Email */}
             {hasValue(contactInfo.email?.text) && (
               <div className='flex items-center space-x-2'>
                 {hasValue(contactInfo.email?.icon) && (
-                  <img src={contactInfo.email.icon} alt={contactInfo.email.alt || 'Email'} className="w-4 h-4" />
+                  <img
+                    src={getImageSrc(contactInfo.email.icon)}
+                    alt={contactInfo.email.alt || 'Email'}
+                    className="w-[19.5px] h-3.75"
+                  />
                 )}
-                <a href={`mailto:${contactInfo.email.text}`} className='text-white text-sm hover:text-[#009BE2] transition-colors'>
+                <a
+                  href={`mailto:${contactInfo.email.text}`}
+                  className='text-white text-[16px] font-normal hover:text-[#009BE2] transition-colors'
+                >
                   {contactInfo.email.text}
                 </a>
               </div>
             )}
 
-            {/* Phone */}
+            <div className="bg-white/20 h-3.75 p-[0.5px]" />
+
             {hasValue(contactInfo.phone?.text) && (
               <div className='flex items-center space-x-2'>
                 {hasValue(contactInfo.phone?.icon) && (
-                  <img src={contactInfo.phone.icon} alt={contactInfo.phone.alt || 'Phone'} className="w-4 h-4" />
+                  <img
+                    src={getImageSrc(contactInfo.phone.icon)}
+                    alt={contactInfo.phone.alt || 'Phone'}
+                    className="w-[19.5px] h-3.75"
+                  />
                 )}
-                <a href={`tel:${contactInfo.phone.text.replace(/\s/g, '')}`} className='text-white text-sm hover:text-[#009BE2] transition-colors'>
+                <a href={`tel:${contactInfo.phone.text.replace(/\s/g, '')}`} className='text-white text-[16px] font-normal hover:text-[#009BE2] transition-colors'>
                   {contactInfo.phone.text}
                 </a>
               </div>
             )}
 
-            {/* Hours */}
+            <div className="bg-white/20 h-3.75 p-[0.5px]" />
+
             {hasValue(contactInfo.hours?.text) && (
               <div className='flex items-center space-x-2'>
                 {hasValue(contactInfo.hours?.icon) && (
-                  <img src={contactInfo.hours.icon} alt={contactInfo.hours.alt || 'Hours'} className="w-4 h-4" />
+                  <img
+                    src={getImageSrc(contactInfo.hours.icon)}
+                    alt={contactInfo.hours.alt || 'Hours'}
+                    className="w-[19.5px] h-3.75"
+                  />
                 )}
-                <p className='text-white text-sm'>{contactInfo.hours.text}</p>
+                <p className='text-white text-[16px] font-normal'>{contactInfo.hours.text}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Right - Social Media Section */}
+        {/* Right Side - Language, Search, User, Social */}
         <div className="flex items-center gap-3 space-x-4">
-          {/* Language Dropdown */}
+
+          {/* LANGUAGE SELECTOR */}
           {hasLanguages && (
             <div className="relative" ref={langRef}>
               <button
@@ -209,13 +337,20 @@ const TopBar = ({ topBarData, storageUrl }) => {
                 aria-label="Select language"
               >
                 {hasValue(selectedLanguage?.flag) && (
-                  <img src={selectedLanguage.flag} alt={selectedLanguage.name} className="w-5 h-5" />
+                  <img
+                    src={getImageSrc(selectedLanguage.flag)}
+                    alt={selectedLanguage.name}
+                    className="w-5 h-5"
+                  />
                 )}
                 <span className="text-white text-sm hidden md:inline">{selectedLanguage.name}</span>
-                {isLangDropdownOpen ? <FaAngleUp className="text-white transition-transform duration-200" /> : <FaAngleDown className="text-white transition-transform duration-200" />}
+                {isLangDropdownOpen ?
+                  <FaAngleUp className="text-white transition-transform duration-200" /> :
+                  <FaAngleDown className="text-white transition-transform duration-200" />
+                }
               </button>
 
-              {/* Language Dropdown Menu with Animation */}
+              {/* Language Dropdown */}
               <div
                 className={`absolute top-full mt-2 right-0 bg-white rounded-md shadow-lg py-2 w-40 z-50 transition-all duration-300 origin-top-right
                   ${isLangDropdownOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}
@@ -227,7 +362,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                     className={`flex items-center gap-2 px-4 py-2 hover:bg-gray-100 w-full text-left transition-colors duration-150 ${selectedLanguage.code === lang.code ? 'bg-blue-50' : ''
                       }`}
                   >
-                    <img src={lang.flag} alt={lang.name} className="w-5 h-5" />
+                    <img
+                      src={getImageSrc(lang.flag)}
+                      alt={lang.name}
+                      className="w-5 h-5"
+                    />
                     <span className={`text-sm ${selectedLanguage.code === lang.code ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
                       {lang.name}
                     </span>
@@ -240,15 +379,16 @@ const TopBar = ({ topBarData, storageUrl }) => {
             </div>
           )}
 
-          {/* Vertical Line - Only if both sides have content */}
-          {hasLanguages && (hasSocialLinks || true) && (
-            <div className="w-px h-5 bg-gray-600"></div>
+          {/* Divider */}
+          {hasLanguages && (hasSocialLinks || hasContactInfo) && (
+            <div className="w-px h-5 bg-gray-600" />
           )}
 
-          {/* Expandable Search with Animation */}
+          {/* SEARCH */}
           <div className="relative" ref={searchRef}>
             <div className="overflow-hidden">
-              <div className={`transition-all duration-300 ease-in-out ${isSearchExpanded ? 'w-64 opacity-100' : 'w-6 opacity-100'}`}>
+              <div className={`transition-all duration-300 ease-in-out ${isSearchExpanded ? 'w-64 opacity-100' : 'w-6 opacity-100'
+                }`}>
                 {isSearchExpanded ? (
                   <form onSubmit={handleSearchSubmit} className="flex items-center animate-slideIn">
                     <input
@@ -279,10 +419,10 @@ const TopBar = ({ topBarData, storageUrl }) => {
             </div>
           </div>
 
-          {/* Vertical Line */}
-          <div className="w-px h-5 bg-gray-600"></div>
+          {/* Divider */}
+          <div className="w-px h-5 bg-gray-600" />
 
-          {/* User Dropdown */}
+          {/* USER MENU */}
           <div className="relative" ref={userRef}>
             <button
               onClick={() => {
@@ -295,13 +435,13 @@ const TopBar = ({ topBarData, storageUrl }) => {
               <FaUser className="text-xl text-white" />
             </button>
 
-            {/* User Dropdown Menu with Animation */}
+            {/* User Dropdown */}
             <div
               className={`absolute top-full mt-2 right-0 bg-white rounded-md shadow-lg py-2 w-48 z-50 transition-all duration-300 origin-top-right
                 ${isUserDropdownOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}
             >
               {user ? (
-                // Authenticated User Menu
+                // Authenticated User
                 <>
                   <div className="px-4 py-2 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -309,7 +449,7 @@ const TopBar = ({ topBarData, storageUrl }) => {
                   </div>
                   {finalUserMenu.authenticated?.map((item, index) => (
                     item.divider ? (
-                      <div key={index} className="border-t border-gray-200 my-1"></div>
+                      <div key={index} className="border-t border-gray-200 my-1" />
                     ) : item.type === 'link' ? (
                       <Link
                         key={index}
@@ -334,7 +474,7 @@ const TopBar = ({ topBarData, storageUrl }) => {
                   ))}
                 </>
               ) : (
-                // Guest User Menu
+                // Guest User
                 finalUserMenu.guest?.map((item) => (
                   <Link
                     key={item.label}
@@ -349,10 +489,10 @@ const TopBar = ({ topBarData, storageUrl }) => {
             </div>
           </div>
 
-          {/* Vertical Line */}
-          {hasSocialLinks && <div className="w-px h-5 bg-gray-600"></div>}
+          {/* Divider before social links */}
+          {hasSocialLinks && <div className="w-px h-5 bg-gray-600" />}
 
-          {/* Social Icons with Hover Animation */}
+          {/* SOCIAL LINKS */}
           {hasSocialLinks && socialLinks.map((social) => {
             const IconComponent = iconMap[social.iconName];
             if (!IconComponent) return null;
@@ -372,11 +512,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
         </div>
       </div>
 
-      {/* Mobile Top Bar - Visible only on mobile */}
+      {/* ============================================
+          MOBILE TOP BAR
+          ============================================ */}
       <div className='lg:hidden bg-[#080C14] px-4 py-2 relative z-50'>
-        {/* Mobile Header with Logo and Menu Button */}
         <div className='flex justify-between items-center'>
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="text-white focus:outline-none"
@@ -394,18 +534,23 @@ const TopBar = ({ topBarData, storageUrl }) => {
           </button>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile Menu Content - Slide Down */}
         <div
-          className={`transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? 'max-h-150 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? 'max-h-150 opacity-100 mt-4' : 'max-h-0 opacity-0'
+            }`}
         >
           <div className="space-y-4 pb-4">
-            {/* Contact Info - Mobile */}
+            {/* Contact Info */}
             {hasContactInfo && (
               <div className="space-y-3">
                 {hasValue(contactInfo.email?.text) && (
                   <a href={`mailto:${contactInfo.email.text}`} className="flex items-center gap-2 text-white text-sm hover:text-[#009BE2] transition-colors">
                     {hasValue(contactInfo.email?.icon) && (
-                      <img src={contactInfo.email.icon} alt={contactInfo.email.alt || 'Email'} className="w-4 h-4" />
+                      <img
+                        src={getImageSrc(contactInfo.email.icon)}
+                        alt={contactInfo.email.alt || 'Email'}
+                        className="w-4 h-4"
+                      />
                     )}
                     <span>{contactInfo.email.text}</span>
                   </a>
@@ -414,7 +559,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                 {hasValue(contactInfo.phone?.text) && (
                   <a href={`tel:${contactInfo.phone.text.replace(/\s/g, '')}`} className="flex items-center gap-2 text-white text-sm hover:text-[#009BE2] transition-colors">
                     {hasValue(contactInfo.phone?.icon) && (
-                      <img src={contactInfo.phone.icon} alt={contactInfo.phone.alt || 'Phone'} className="w-4 h-4" />
+                      <img
+                        src={getImageSrc(contactInfo.phone.icon)}
+                        alt={contactInfo.phone.alt || 'Phone'}
+                        className="w-4 h-4"
+                      />
                     )}
                     <span>{contactInfo.phone.text}</span>
                   </a>
@@ -423,7 +572,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                 {hasValue(contactInfo.hours?.text) && (
                   <div className="flex items-center gap-2 text-white text-sm">
                     {hasValue(contactInfo.hours?.icon) && (
-                      <img src={contactInfo.hours.icon} alt={contactInfo.hours.alt || 'Hours'} className="w-4 h-4" />
+                      <img
+                        src={getImageSrc(contactInfo.hours.icon)}
+                        alt={contactInfo.hours.alt || 'Hours'}
+                        className="w-4 h-4"
+                      />
                     )}
                     <span>{contactInfo.hours.text}</span>
                   </div>
@@ -431,10 +584,9 @@ const TopBar = ({ topBarData, storageUrl }) => {
               </div>
             )}
 
-            {/* Divider */}
-            {(hasContactInfo || true) && <div className="border-t border-gray-700"></div>}
+            {hasContactInfo && <div className="border-t border-gray-700" />}
 
-            {/* Mobile Search */}
+            {/* Search */}
             <form onSubmit={handleSearchSubmit} className="flex items-center">
               <input
                 type="text"
@@ -451,10 +603,9 @@ const TopBar = ({ topBarData, storageUrl }) => {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="border-t border-gray-700"></div>
+            <div className="border-t border-gray-700" />
 
-            {/* Mobile Language Selector */}
+            {/* Language Selector */}
             {hasLanguages && (
               <>
                 <div>
@@ -464,7 +615,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                       onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
                       className="flex items-center gap-2"
                     >
-                      <img src={selectedLanguage.flag} alt={selectedLanguage.name} className="w-5 h-5" />
+                      <img
+                        src={getImageSrc(selectedLanguage.flag)}
+                        alt={selectedLanguage.name}
+                        className="w-5 h-5"
+                      />
                       <span className="text-white text-sm">{selectedLanguage.name}</span>
                       {isLangDropdownOpen ? <FaAngleUp className="text-white" /> : <FaAngleDown className="text-white" />}
                     </button>
@@ -479,7 +634,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                           className={`flex items-center gap-2 px-4 py-2 hover:bg-gray-100 w-full text-left transition-colors duration-150 ${selectedLanguage.code === lang.code ? 'bg-blue-50' : ''
                             }`}
                         >
-                          <img src={lang.flag} alt={lang.name} className="w-5 h-5" />
+                          <img
+                            src={getImageSrc(lang.flag)}
+                            alt={lang.name}
+                            className="w-5 h-5"
+                          />
                           <span className={`text-sm ${selectedLanguage.code === lang.code ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
                             {lang.name}
                           </span>
@@ -492,12 +651,11 @@ const TopBar = ({ topBarData, storageUrl }) => {
                   )}
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-gray-700"></div>
+                <div className="border-t border-gray-700" />
               </>
             )}
 
-            {/* Mobile User Menu */}
+            {/* User Menu */}
             <div>
               <button
                 onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
@@ -505,12 +663,16 @@ const TopBar = ({ topBarData, storageUrl }) => {
               >
                 <FaUser className="text-white" />
                 <span>Account</span>
-                {isUserDropdownOpen ? <FaAngleUp className="text-white ml-auto" /> : <FaAngleDown className="text-white ml-auto" />}
+                {isUserDropdownOpen ?
+                  <FaAngleUp className="text-white ml-auto" /> :
+                  <FaAngleDown className="text-white ml-auto" />
+                }
               </button>
 
               {isUserDropdownOpen && (
                 <div className="mt-2 bg-white rounded-md shadow-lg py-2">
                   {user ? (
+                    // Authenticated User
                     <>
                       <div className="px-4 py-2 border-b border-gray-200">
                         <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -518,7 +680,7 @@ const TopBar = ({ topBarData, storageUrl }) => {
                       </div>
                       {finalUserMenu.authenticated?.map((item, index) => (
                         item.divider ? (
-                          <div key={index} className="border-t border-gray-200 my-1"></div>
+                          <div key={index} className="border-t border-gray-200 my-1" />
                         ) : item.type === 'link' ? (
                           <Link
                             key={index}
@@ -547,6 +709,7 @@ const TopBar = ({ topBarData, storageUrl }) => {
                       ))}
                     </>
                   ) : (
+                    // Guest User
                     finalUserMenu.guest?.map((item) => (
                       <Link
                         key={item.label}
@@ -565,10 +728,9 @@ const TopBar = ({ topBarData, storageUrl }) => {
               )}
             </div>
 
-            {/* Divider */}
-            {hasSocialLinks && <div className="border-t border-gray-700"></div>}
+            {/* Social Links */}
+            {hasSocialLinks && <div className="border-t border-gray-700" />}
 
-            {/* Mobile Social Icons */}
             {hasSocialLinks && (
               <div className="flex justify-center gap-4">
                 {socialLinks.map((social) => {
@@ -593,7 +755,9 @@ const TopBar = ({ topBarData, storageUrl }) => {
         </div>
       </div>
 
-      {/* Add custom animation keyframes */}
+      {/* ============================================
+          INLINE STYLES - Search Animation
+          ============================================ */}
       <style>{`
         @keyframes slideIn {
           from {
