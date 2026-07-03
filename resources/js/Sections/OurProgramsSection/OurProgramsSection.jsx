@@ -35,6 +35,7 @@ const DEFAULT_SECTION = {
  * @param {Object} props.programsData - Our Programs data from API (direct prop)
  * @param {number} props.limit - Number of programs to display (optional)
  * @param {boolean} props.showFeatured - Only show featured programs (optional)
+ * @param {boolean} props.showHeader - Show/hide the header section (optional, defaults to true)
  * @param {string} props.bgColor - Background color (optional)
  * @param {string} props.paddingY - Vertical padding classes
  * @param {string} props.paddingX - Horizontal padding classes
@@ -47,6 +48,7 @@ const OurProgramsSection = ({
   programsData,   // Direct prop (legacy support)
   limit,          // Custom prop: limit number of programs to show
   showFeatured,   // Custom prop: only show featured programs
+  showHeader = true, // NEW: Show/hide header (defaults to true)
   bgColor = 'bg-white',
   paddingY = 'py-12 sm:py-16 lg:py-20',
   paddingX = 'px-5 sm:px-10 md:px-20 lg:px-50',
@@ -92,9 +94,7 @@ const OurProgramsSection = ({
   // ============================================
   // RESOLVE DATA - After hooks
   // ============================================
-  // Use data prop if available, fallback to programsData
   let resolvedData = data || programsData;
-
 
   // ============================================
   // EARLY RETURN - No data (after hooks)
@@ -106,8 +106,6 @@ const OurProgramsSection = ({
   // ============================================
   // NORMALIZE DATA STRUCTURE
   // ============================================
-  // Check if the data is wrapped in a 'data' property
-  // This happens when the API returns { id, page_slug, section_key, data: { ... } }
   if (resolvedData.data && typeof resolvedData.data === 'object') {
     resolvedData = resolvedData.data;
   }
@@ -115,30 +113,21 @@ const OurProgramsSection = ({
   // ============================================
   // HANDLE DIFFERENT DATA STRUCTURES
   // ============================================
-  // Case 1: Data is directly an array of programs
-  // { data: [...] } or programsData is an array
   let programs = [];
   let section = {};
 
   if (Array.isArray(resolvedData)) {
-    // Data is an array of programs
     programs = resolvedData;
-    // Use default section if no section data available
     section = { ...DEFAULT_SECTION };
   } else if (resolvedData.programs && Array.isArray(resolvedData.programs)) {
-    // Data has a programs property that is an array
     programs = resolvedData.programs;
-    // Merge section from data with defaults (data takes precedence)
     section = { ...DEFAULT_SECTION, ...(resolvedData.section || {}) };
   } else {
-    // Try to find any array property that might be programs
     const arrayKeys = Object.keys(resolvedData).filter(key => Array.isArray(resolvedData[key]));
     if (arrayKeys.length > 0) {
       programs = resolvedData[arrayKeys[0]];
-      // Merge section from data with defaults (data takes precedence)
       section = { ...DEFAULT_SECTION, ...(resolvedData.section || {}) };
     } else {
-      // If no array found, use default section
       section = { ...DEFAULT_SECTION };
     }
   }
@@ -148,17 +137,14 @@ const OurProgramsSection = ({
   // ============================================
   let filteredPrograms = [...programs];
 
-  // Apply showFeatured filter
   if (showFeatured === true || showFeatured === 'true') {
     filteredPrograms = filteredPrograms.filter(program => program.is_featured === true || program.is_featured === 1);
   }
 
-  // Apply limit
   if (limit && parseInt(limit) > 0) {
     const limitNum = parseInt(limit);
     filteredPrograms = filteredPrograms.slice(0, limitNum);
   }
-
 
   // ============================================
   // FUNCTION: Strip HTML tags and get plain text
@@ -186,7 +172,7 @@ const OurProgramsSection = ({
     }
 
     let truncatedText = words.slice(0, maxWords).join(' ');
-    truncatedText = `${truncatedText  }...`;
+    truncatedText = `${truncatedText}...`;
 
     return `<p class="font-400 text-[16px] sm:text-[18px] lg:text-[20px] text-[#524B48] leading-relaxed">${truncatedText}</p>`;
   };
@@ -198,10 +184,13 @@ const OurProgramsSection = ({
   const hasDescription = hasValue(section.description);
   const hasButton = hasValue(section.button?.text);
 
-  const showHeader = hasTitle || hasDescription || hasButton;
+  // Use showHeader prop to control header visibility
+  // If showHeader is explicitly set to false, hide it
+  // Otherwise, show it if there's content
+  const shouldShowHeader = showHeader && (hasTitle || hasDescription || hasButton);
   const hasPrograms = hasValue(filteredPrograms);
 
-  if (!showHeader && !hasPrograms) {
+  if (!shouldShowHeader && !hasPrograms) {
     return null;
   }
 
@@ -213,19 +202,16 @@ const OurProgramsSection = ({
       id="our-programs"
       className={`${bgColor} ${paddingX} ${paddingY} ${sectionClassName}`}
     >
-      {/* Header - Only show if there's header content */}
-      {showHeader && (
+      {/* Header - Controlled by showHeader prop */}
+      {shouldShowHeader && (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center pb-8 sm:pb-10 lg:pb-15 gap-5">
           {(hasTitle || hasDescription) && (
             <div className="max-w-250">
-              {/* Section Title */}
               {hasTitle && (
                 <h1 className="bricolage-grotesque font-700 text-[28px] sm:text-[32px] md:text-[36px] lg:text-[40px] text-[#080C14] pb-3 sm:pb-4 lg:pb-5">
                   {section.title}
                 </h1>
               )}
-
-              {/* Section Description */}
               {hasDescription && (
                 <p className="font-400 text-[16px] sm:text-[18px] lg:text-[20px] text-[#515151]">
                   {section.description}
@@ -233,8 +219,6 @@ const OurProgramsSection = ({
               )}
             </div>
           )}
-
-          {/* Section Button */}
           {hasButton && (
             <button
               onClick={() => {
@@ -251,23 +235,20 @@ const OurProgramsSection = ({
         </div>
       )}
 
-      {/* Programs - Only show if there are programs */}
+      {/* Programs */}
       {hasPrograms && (
         <>
           <div
-            className={`relative ${showHeader ? "mt-16 sm:mt-24 lg:mt-32" : ""
-              }`}
+            className={`relative ${shouldShowHeader ? "mt-16 sm:mt-24 lg:mt-32" : ""}`}
             style={{
               height: `${filteredPrograms.length * 100}vh`,
             }}
           >
             {filteredPrograms.map((program, index) => {
-              // Skip rendering if program has no content
               if (!hasValue(program) && !program.title && !program.description) {
                 return null;
               }
 
-              // Use full_content_html as the description (or fallback to description if available)
               const descriptionHtml = program.full_content_html || program.description || '';
               const truncatedDescription = truncateHtml(descriptionHtml, 9);
 
@@ -294,7 +275,6 @@ const OurProgramsSection = ({
                   >
                     {/* Left Content */}
                     <div className="w-full lg:w-1/2 flex flex-col justify-center">
-                      {/* Program Title */}
                       {hasValue(program.title) && (
                         <h3 className="bricolage-grotesque font-600 text-[24px] sm:text-[28px] md:text-[36px] lg:text-[46px] text-[#080C14] leading-tight mb-5">
                           {program.title.split("<br />").map((line, idx) => (
@@ -305,16 +285,12 @@ const OurProgramsSection = ({
                           ))}
                         </h3>
                       )}
-
-                      {/* Program Description - using full_content_html */}
                       {hasValue(descriptionHtml) && (
                         <div
                           className="bricolage-grotesque font-400 text-[16px] sm:text-[18px] lg:text-[20px] text-[#524B48] leading-relaxed line-clamp-9"
                           dangerouslySetInnerHTML={{ __html: truncatedDescription }}
                         />
                       )}
-
-                      {/* Program Link/Button */}
                       {hasValue(program.link) && (
                         <button
                           onClick={() => window.location.href = program.link}
@@ -326,7 +302,7 @@ const OurProgramsSection = ({
                       )}
                     </div>
 
-                    {/* Right Image - Only show if image exists */}
+                    {/* Right Image */}
                     {hasValue(program.image) && (
                       <div className="w-full lg:w-1/2">
                         <img
@@ -341,7 +317,6 @@ const OurProgramsSection = ({
               );
             })}
           </div>
-
           <div className="h-50" />
         </>
       )}

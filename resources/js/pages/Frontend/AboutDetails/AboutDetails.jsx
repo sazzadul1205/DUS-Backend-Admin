@@ -10,9 +10,18 @@ const ContentSection = ({ subPageData, bgColor, paddingY, paddingX, sectionClass
   const renderHTML = (htmlString) => ({ __html: htmlString });
 
   const data = subPageData || {};
-  const { title, content, image, btn } = data;
 
-  if (!title && !content) return null;
+  const title = data.title;
+  const content = data.full_content || data.content;
+  const image = data.image;
+  const btnText = data.btn_text || data.btn?.text;
+  const btnLink = data.btn_link || data.btn?.link;
+
+  // If no title or content, don't render
+  if (!title && !content) {
+    console.warn('⚠️ ContentSection: No title or content to render');
+    return null;
+  }
 
   return (
     <section id={sectionId} className={`${bgColor || ''} ${paddingY || ''} ${paddingX || ''} ${sectionClassName || ''}`}>
@@ -43,10 +52,10 @@ const ContentSection = ({ subPageData, bgColor, paddingY, paddingX, sectionClass
           dangerouslySetInnerHTML={renderHTML(content)}
         />
       )}
-      {btn && btn.text && btn.link && (
+      {btnText && btnLink && (
         <div className="mt-8">
-          <a href={btn.link} className="inline-block bg-[#009BE2] text-white font-600 px-8 py-4 rounded-lg hover:bg-[#007BB5] transition-colors">
-            {btn.text}
+          <a href={btnLink} className="inline-block bg-[#009BE2] text-white font-600 px-8 py-4 rounded-lg hover:bg-[#007BB5] transition-colors">
+            {btnText}
           </a>
         </div>
       )}
@@ -60,9 +69,11 @@ const AboutDetails = ({
   footerData,
   storageUrl,
   sectionConfig,
-  slug,
-  ...pageData
+  ...props
 }) => {
+  // The data might be nested under pageData or at the root level
+  const pageData = props.pageData || props; // Fallback to props if pageData doesn't exist
+
   const allSections = (sectionConfig?.sections || [])
     .filter(section => section.enabled === true);
 
@@ -105,7 +116,6 @@ const AboutDetails = ({
             />
           );
         }
-        // Handle other fixed components here if needed
         return null;
       })}
 

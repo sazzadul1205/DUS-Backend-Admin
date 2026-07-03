@@ -57,8 +57,8 @@ const DynamicSectionRenderer = ({
   globalProps = {}
 }) => {
   console.log("section", section);
-  console.log("pageData", pageData);
-  console.log("globalProps", globalProps);
+  console.log("pageData", pageData?.pageData);
+  // console.log("globalProps", globalProps);
 
   // ============================================
   // EXTRACT SECTION CONFIG
@@ -127,15 +127,12 @@ const DynamicSectionRenderer = ({
   // Check if pageData has a 'pageData' property that contains the actual data
   const dataSource = pageData.pageData || pageData;
 
-  console.log('DynamicSectionRenderer - dataSource keys:', Object.keys(dataSource));
-
   // ============================================
   // RESOLVE PROPS BASED ON CONFIGURATION
   // ============================================
 
   if (config?.isMultiProp) {
     // Multi-prop components: pass multiple props
-    console.log('  - Using multi-prop mode');
     config.props.forEach(prop => {
       if (dataSource[prop] !== undefined) {
         componentProps[prop] = dataSource[prop];
@@ -144,7 +141,6 @@ const DynamicSectionRenderer = ({
   } else {
     // Single prop components
     const propNameToUse = propName || config?.propName || 'data';
-    console.log('  - Using single prop mode, propNameToUse:', propNameToUse);
 
     // Try to find the data
     let dataValue = undefined;
@@ -152,13 +148,11 @@ const DynamicSectionRenderer = ({
     // 1. Try using dataKey first
     if (dataKey && dataSource[dataKey] !== undefined) {
       dataValue = dataSource[dataKey];
-      console.log('  - Found data via dataKey:', dataKey);
     }
 
     // 2. If not found, try using propName
     if (dataValue === undefined && propName && dataSource[propName] !== undefined) {
       dataValue = dataSource[propName];
-      console.log('  - Found data via propName:', propName);
     }
 
     // 3. If still not found, try kebab-case versions
@@ -166,7 +160,6 @@ const DynamicSectionRenderer = ({
       const kebabKey = dataKey.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
       if (dataSource[kebabKey] !== undefined) {
         dataValue = dataSource[kebabKey];
-        console.log('  - Found data via kebabKey:', kebabKey);
       }
     }
 
@@ -175,7 +168,6 @@ const DynamicSectionRenderer = ({
       const guessedKey = componentName.replace('Section', '').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
       if (dataSource[guessedKey] !== undefined) {
         dataValue = dataSource[guessedKey];
-        console.log('  - Found data via guessedKey:', guessedKey);
       }
     }
 
@@ -186,7 +178,6 @@ const DynamicSectionRenderer = ({
       for (const key in dataSource) {
         if (key.toLowerCase().includes(componentLower.replace('section', ''))) {
           dataValue = dataSource[key];
-          console.log('  - Found data via partial match:', key);
           break;
         }
       }
@@ -194,13 +185,7 @@ const DynamicSectionRenderer = ({
 
     // Set the prop
     componentProps[propNameToUse] = dataValue;
-    console.log('  - Final prop value:', dataValue);
   }
-
-  // ============================================
-  // DEBUG: Log final component props
-  // ============================================
-  console.log('DynamicSectionRenderer - Final componentProps:', componentProps);
 
   // ============================================
   // RENDER WITH SUSPENSE (for lazy loading)

@@ -132,9 +132,11 @@ class PageController extends Controller
     foreach ($sectionConfigs as $config) {
       switch ($config->data_table) {
         case 'shared_data':
-          // data_key like 'bannerData' -> extract 'banner'
-          $type = str_replace('Data', '', $config->data_key);
-          $needs['shared_data'][] = $type;
+          // Map data_key to SharedData type
+          $type = $this->mapDataKeyToSharedType($config->data_key);
+          if ($type) {
+            $needs['shared_data'][] = $type;
+          }
           break;
         case 'programs':
           $needs['programs'] = true;
@@ -154,6 +156,23 @@ class PageController extends Controller
       }
     }
     return $needs;
+  }
+
+  /**
+   * Map data_key to SharedData type
+   */
+  private function mapDataKeyToSharedType(string $dataKey): ?string
+  {
+    $map = [
+      'bannerData' => 'banner',
+      'faqData' => 'faq',
+      'upcomingEventsData' => 'upcoming-events',
+      'topbarData' => 'topbar',
+      'navbarData' => 'navbar',
+      'footerData' => 'footer',
+    ];
+
+    return $map[$dataKey] ?? null;
   }
 
   /**
@@ -249,8 +268,8 @@ class PageController extends Controller
 
       switch ($dataTable) {
         case 'shared_data':
-          $type = str_replace('Data', '', $dataKey);
-          if (isset($fetchedData['shared'][$type])) {
+          $type = $this->mapDataKeyToSharedType($dataKey);
+          if ($type && isset($fetchedData['shared'][$type])) {
             $pageData[$dataKey] = $fetchedData['shared'][$type];
           }
           break;
