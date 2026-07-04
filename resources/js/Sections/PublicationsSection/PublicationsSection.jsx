@@ -128,11 +128,14 @@ const PublicationsSection = ({
   // ============================================
   const isRelatedSection = Boolean(isRelated);
 
+  // For related sections, limit to 3 items and use grid layout
   if (isRelatedSection) {
     resolvedMainPublication = null;
     resolvedPublicationItems = Array.isArray(resolvedPublicationItems)
       ? resolvedPublicationItems.slice(0, 3)
       : [];
+    // Force grid view for related sections
+    // (viewMode will be 'grid' by default, but we can override if needed)
   }
 
   const hasMainPublication = !isRelatedSection && hasValue(resolvedMainPublication) &&
@@ -168,10 +171,34 @@ const PublicationsSection = ({
   };
 
   // ============================================
+  // GET DETAIL PAGE URL
+  // ============================================
+  const getDetailUrl = (publication) => {
+    // Use the slug to build the detail URL
+    // Frontend URL is /publications/{slug}
+    if (publication.slug) {
+      return `/publications/${publication.slug}`;
+    }
+    // Fallback to using link if provided
+    if (publication.link) {
+      return publication.link;
+    }
+    // Fallback to using id
+    if (publication.id) {
+      return `/publications/${publication.id}`;
+    }
+    return '#';
+  };
+
+  // ============================================
   // SORT PUBLICATIONS
   // ============================================
   const getSortedPublications = () => {
     const sorted = [...resolvedPublicationItems];
+    // Don't sort if it's a related section (maintain original order)
+    if (isRelatedSection) {
+      return sorted;
+    }
     switch (selectedSort) {
       case 'Newest':
         return sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -197,6 +224,7 @@ const PublicationsSection = ({
         }`}
     >
       {sortedPublications.map((publication) => {
+        // Skip main publication in the grid if we have one
         if (hasMainPublication && resolvedMainPublication.id === publication.id) {
           return null;
         }
@@ -236,20 +264,21 @@ const PublicationsSection = ({
 
             <div className="mt-8 flex items-center justify-between gap-3">
               <button
-                className="flex items-center gap-2 rounded-xl border border-[#E8E8EB] px-4 py-2 text-[14px] font-medium transition-colors hover:bg-gray-50 cursor-pointer "
+                className="flex items-center gap-2 rounded-xl border border-[#E8E8EB] px-4 py-2 text-[14px] font-medium transition-colors hover:bg-gray-50 cursor-pointer"
                 onClick={() => {
-                  if (publication.link) {
-                    window.location.href = publication.link;
+                  const url = getDetailUrl(publication);
+                  if (url && url !== '#') {
+                    window.location.href = url;
                   }
                 }}
               >
                 <FileText size={14} />
-                <span>Explore Publications</span>
+                <span>Explore Publication</span>
               </button>
 
               {hasValue(publication.pdf_url) && (
                 <button
-                  className="flex items-center gap-2 rounded-xl border border-[#009BE2] px-4 py-2 text-[14px] font-medium text-[#009BE2] transition-colors hover:bg-[#009BE2] hover:text-white cursor-pointer "
+                  className="flex items-center gap-2 rounded-xl border border-[#009BE2] px-4 py-2 text-[14px] font-medium text-[#009BE2] transition-colors hover:bg-[#009BE2] hover:text-white cursor-pointer"
                   onClick={() => window.open(publication.pdf_url, "_blank")}
                 >
                   <Download size={14} />
@@ -340,8 +369,9 @@ const PublicationsSection = ({
                 <button
                   className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-[#E8E8EB] text-[12px] sm:text-[14px] font-medium flex items-center gap-1 hover:bg-gray-50 transition-colors"
                   onClick={() => {
-                    if (publication.link) {
-                      window.location.href = publication.link;
+                    const url = getDetailUrl(publication);
+                    if (url && url !== '#') {
+                      window.location.href = url;
                     }
                   }}
                 >
@@ -375,10 +405,10 @@ const PublicationsSection = ({
       id={sectionId}
       className={`${bgColor} ${paddingX} ${paddingY} ${sectionClassName}`}
     >
-      {/* Section Title - Only show if sectionTitle exists */}
-      {hasValue(resolvedSectionTitle) && (
+      {/* Section Title - Left aligned for related sections, otherwise left aligned */}
+      {hasValue(resolvedSectionTitle) && isRelatedSection && (
         <div className="mb-8 sm:mb-10 md:mb-12 lg:mb-15">
-          <h2 className="text-[#080C14] font-extrabold text-[28px] sm:text-[34px] md:text-[40px] lg:text-[50px] leading-tight">
+          <h2 className="text-[#080C14] font-extrabold text-[28px] sm:text-[34px] md:text-[40px] lg:text-[50px] leading-tight text-left">
             {resolvedSectionTitle}
           </h2>
         </div>
@@ -387,7 +417,7 @@ const PublicationsSection = ({
       {/* Publications Grid/List */}
       {hasPublicationItems && (
         <>
-          {/* Filters Bar - Only show for main publications section */}
+          {/* Filters Bar - Only show for main publications section, NOT for related */}
           {!isRelatedSection && (
             <div className={`flex flex-wrap items-center justify-between gap-4 ${hasMainPublication ? 'pt-6 sm:pt-8 lg:pt-10' : ''}`}>
               <h3 className='font-normal text-[16px] sm:text-[18px] lg:text-[20px]'>

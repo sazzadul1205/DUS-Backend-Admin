@@ -71,6 +71,25 @@ use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
+| API ROUTES (Data endpoints for the frontend)
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('data')->group(function () {
+    Route::get('pages.json', [ContentApiController::class, 'pages']);
+    Route::get('section_configs.json', [ContentApiController::class, 'sectionConfigs']);
+    Route::get('shared_data.json', [ContentApiController::class, 'sharedData']);
+    Route::get('custom_section_data.json', [ContentApiController::class, 'customSectionData']);
+    Route::get('programs.json', [ContentApiController::class, 'programs']);
+    Route::get('blogs.json', [ContentApiController::class, 'blogs']);
+    Route::get('about_content.json', [ContentApiController::class, 'aboutContent']);
+    Route::get('jobs.json', [ContentApiController::class, 'jobs']);
+});
+
+
+
+/*
+|--------------------------------------------------------------------------
 | FRONTEND PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
@@ -84,9 +103,7 @@ Route::get('/storage/{path}', function ($path) {
 })->where('path', '.*')->name('storage.file');
 
 // Asset route for serving assets
-Route::get('/asset/{path}', [FrontendController::class, 'asset'])
-    ->where('path', '.*')
-    ->name('asset');
+Route::get('/asset/{path}', [FrontendController::class, 'asset'])->where('path', '.*')->name('asset');
 
 // Unauthorized access page
 Route::get('/unauthorized', function () {
@@ -103,14 +120,14 @@ Route::get('/Playground', function () {
     return Inertia::render('Playground');
 })->name('playground');
 
-// ALL pages - dynamic routing
-Route::get('/{pageSlug}', [PageController::class, 'show'])
-    ->where('pageSlug', '^(?!admin|backend|login|register|dashboard|api|storage|Playground).*$');
-
-// Detail pages
+// DETAIL PAGES - More specific pattern
 Route::get('/{pageSlug}/{detailSlug}', [PageController::class, 'show'])
-    ->where('pageSlug', '^(?!admin|backend|login|register|dashboard|api|storage|Playground).*$');
+    ->where('pageSlug', '^(?!admin|backend|login|register|dashboard|api|storage|Playground|Playground).*$')
+    ->where('detailSlug', '.*');
 
+// LISTING PAGES - Less specific pattern
+Route::get('/{pageSlug}', [PageController::class, 'show'])
+    ->where('pageSlug', '^(?!admin|backend|login|register|dashboard|api|storage|Playground|Playground).*$');
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATION ROUTES
@@ -579,24 +596,6 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| API ROUTES (Data endpoints for the frontend)
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('data')->group(function () {
-    Route::get('pages.json', [ContentApiController::class, 'pages']);
-    Route::get('section_configs.json', [ContentApiController::class, 'sectionConfigs']);
-    Route::get('shared_data.json', [ContentApiController::class, 'sharedData']);
-    Route::get('custom_section_data.json', [ContentApiController::class, 'customSectionData']);
-    Route::get('programs.json', [ContentApiController::class, 'programs']);
-    Route::get('blogs.json', [ContentApiController::class, 'blogs']);
-    Route::get('about_content.json', [ContentApiController::class, 'aboutContent']);
-    Route::get('jobs.json', [ContentApiController::class, 'jobs']);
-});
-
-
-/*
-|--------------------------------------------------------------------------
 | COMBINED NAVIGATION API
 |--------------------------------------------------------------------------
 */
@@ -672,7 +671,5 @@ Route::get('/api/programs', function (Request $request) {
 })->name('api.programs');
 
 
-Route::post('/admin/upload-editor-image', [EditorImageUploadController::class, 'upload'])
-    ->name('admin.upload-editor-image');
-Route::delete('/admin/editor-image', [EditorImageUploadController::class, 'deleteImages'])
-    ->name('admin.editor-image.delete');
+Route::post('/admin/upload-editor-image', [EditorImageUploadController::class, 'upload'])->name('admin.upload-editor-image');
+Route::delete('/admin/editor-image', [EditorImageUploadController::class, 'deleteImages'])->name('admin.editor-image.delete');

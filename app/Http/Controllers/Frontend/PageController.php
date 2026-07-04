@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Frontend/PageController.php
 
 namespace App\Http\Controllers\Frontend;
 
@@ -112,10 +113,6 @@ class PageController extends Controller
       $slug = 'blog';
     }
 
-    // For detail pages, we need to handle the base slug
-    // The $slug might be 'about-details' but we need to get the page by its actual slug
-    // which is stored as 'about-details' in the pages table
-
     return \App\Models\pages\Page::where('slug', $slug)
       ->where('is_active', true)
       ->first();
@@ -146,11 +143,12 @@ class PageController extends Controller
     // Normalize 'blogs' to 'blog'
     $normalizedPageSlug = $pageSlug === 'blogs' ? 'blog' : $pageSlug;
 
-    // Specific page components (only for special cases)
+    // Specific page components (only for special cases that have dedicated React components)
     $specificPages = [
       'home' => 'Frontend/Home/Home',
       'about' => 'Frontend/About/About',
       'contact' => 'Frontend/ContactUs/ContactUs',
+      // 'publications' => 'Frontend/Publications/Publications', // REMOVED - using GenericPage instead
     ];
 
     // Detail page components
@@ -158,6 +156,7 @@ class PageController extends Controller
       'about' => 'Frontend/AboutDetails/AboutDetails',
       'blog' => 'Frontend/BlogDetails/BlogDetails',
       'projects-programs' => 'Frontend/ProjectsAndProgramsDetails/ProjectsAndProgramsDetails',
+      'publications' => 'Frontend/PublicationDetails/PublicationDetails',
     ];
 
     if ($detailSlug) {
@@ -272,7 +271,7 @@ class PageController extends Controller
         ->get();
     }
 
-    // Publications - ADD THIS BLOCK
+    // Publications
     if (!empty($needs['publications'])) {
       $data['publications'] = $this->contentService->getPublications();
     }
@@ -315,6 +314,9 @@ class PageController extends Controller
           break;
         case 'projects-programs':
           $detail = $this->contentService->getProgram($detailSlug);
+          break;
+        case 'publications':
+          $detail = $this->contentService->getPublication($detailSlug);
           break;
         default:
           $detail = $this->contentService->getSectionData($pageSlug, $detailSlug);
@@ -371,7 +373,11 @@ class PageController extends Controller
           break;
         case 'publications':
           if (isset($fetchedData['publications'])) {
-            $pageData[$dataKey] = $fetchedData['publications'];
+            if ($detailSlug && $pageSlug === 'publications' && $dataKey === 'relatedPublicationsData') {
+              $pageData[$dataKey] = $this->filterRelatedPublications($fetchedData['publications'], $fetchedData['detail'] ?? null);
+            } else {
+              $pageData[$dataKey] = $fetchedData['publications'];
+            }
           }
           break;
         case 'pages':
@@ -393,7 +399,7 @@ class PageController extends Controller
       }
     }
 
-    // Detail page handling...
+    // Detail page handling
     if ($detailSlug && isset($fetchedData['detail'])) {
       $detail = $fetchedData['detail'];
       $baseSlug = $pageSlug;
@@ -410,6 +416,9 @@ class PageController extends Controller
           break;
         case 'projects-programs':
           $pageData['programContentData'] = $detail;
+          break;
+        case 'publications':
+          $pageData['publicationData'] = $this->normalizePublicationDetail($detail);
           break;
         default:
           $pageData['detailData'] = $detail;
@@ -460,6 +469,45 @@ class PageController extends Controller
   }
 
   /**
+   * Filter related publications for the detail page.
+   *
+   * @param Collection|array $publications
+   * @param Model|array|null $currentPublication
+   * @return array
+   */
+  private function filterRelatedPublications(Collection|array $publications, Model|array|null $currentPublication = null): array
+  {
+    $items = collect($publications);
+
+    if ($items->isEmpty()) {
+      return [];
+    }
+
+    $currentId = $currentPublication->id ?? $currentPublication['id'] ?? null;
+    $currentSlug = $currentPublication->slug ?? $currentPublication['slug'] ?? null;
+
+    return $items
+      ->filter(function ($publication) use ($currentId, $currentSlug) {
+        $pubId = $publication->id ?? $publication['id'] ?? null;
+        $pubSlug = $publication->slug ?? $publication['slug'] ?? null;
+        $isFeatured = $publication->is_featured ?? $publication['is_featured'] ?? false;
+
+        if ($pubId !== null && $currentId !== null && $pubId === $currentId) {
+          return false;
+        }
+
+        if ($pubSlug !== null && $currentSlug !== null && $pubSlug === $currentSlug) {
+          return false;
+        }
+
+        return !($isFeatured === true || $isFeatured === 1);
+      })
+      ->values()
+      ->take(3)
+      ->all();
+  }
+
+  /**
    * Normalize blog detail data to the shape expected by the frontend.
    *
    * @param Model|array $detail
@@ -479,6 +527,37 @@ class PageController extends Controller
         'createdBy' => $detail->author,
         'timerRead' => $detail->read_time,
         'tags' => $detail->tags ?? [],
+        'isFeatured' => (bool) ($detail->is_featured ?? false),
+        'isActive' => (bool) ($detail->is_active ?? false),
+      ];
+    }
+
+    return $detail;
+  }
+
+  /**
+   * Normalize publication detail data to the shape expected by the frontend.
+   *
+   * @param Model|array $detail
+   * @return array
+   */
+  private function normalizePublicationDetail(Model|array $detail): array
+  {
+    if ($detail instanceof Model) {
+      return [
+        'id' => $detail->id,
+        'slug' => $detail->slug,
+        'title' => $detail->title,
+        'excerpt' => $detail->excerpt,
+        'fullContent' => $detail->full_content,
+        'image' => $detail->image,
+        'pdf_url' => $detail->pdf_url,
+        'date' => $detail->date,
+        'author' => $detail->author,
+        'read_time' => $detail->read_time,
+        'tags' => $detail->tags ?? [],
+        'category' => $detail->category,
+        'views' => $detail->views ?? 0,
         'isFeatured' => (bool) ($detail->is_featured ?? false),
         'isActive' => (bool) ($detail->is_active ?? false),
       ];

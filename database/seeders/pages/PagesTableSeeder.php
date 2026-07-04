@@ -92,6 +92,26 @@ class PagesTableSeeder extends Seeder
                 'created_at' => '2024-01-01 00:00:00',
                 'updated_at' => '2024-01-01 00:00:00',
             ],
+            [
+                'id' => 9,
+                'slug' => 'publications',
+                'name' => 'Publications',
+                'title' => 'Publications - DUS',
+                'description' => 'Research papers, reports, and publications from DUS',
+                'is_active' => 1,
+                'created_at' => '2024-01-01 00:00:00',
+                'updated_at' => '2024-01-01 00:00:00',
+            ],
+            [
+                'id' => 10,
+                'slug' => 'publications-details',
+                'name' => 'Publication Details',
+                'title' => 'Publication Details - DUS',
+                'description' => 'Detailed publication information',
+                'is_active' => 1,
+                'created_at' => '2024-01-01 00:00:00',
+                'updated_at' => '2024-01-01 00:00:00',
+            ],
         ];
 
         DB::table('pages')->insert($pages);

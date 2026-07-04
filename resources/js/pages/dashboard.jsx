@@ -24,6 +24,8 @@ import {
   FiShield,
 } from 'react-icons/fi';
 
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout';
+
 const Dashboard = () => {
   const { auth, notifications } = usePage().props;
   const user = auth?.user;
@@ -33,10 +35,6 @@ const Dashboard = () => {
   // Helper functions for permission checks
   const hasRole = (roleSlug) => userRoles.some(role => role.slug === roleSlug);
   const hasPermission = (permissionSlug) => userPermissions?.includes(permissionSlug) || false;
-  const hasAnyPermission = (permissionSlugs) => {
-    if (!permissionSlugs || permissionSlugs.length === 0) return false;
-    return permissionSlugs.some(slug => hasPermission(slug));
-  };
 
   // Determine primary role for UI
   const primaryRole = (() => {
@@ -83,7 +81,7 @@ const Dashboard = () => {
 
         return () => clearInterval(timer);
       }
-    }, [value, animateStats]);
+    }, [value]);
 
     return <span>{count}{suffix}</span>;
   };

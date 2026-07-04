@@ -263,6 +263,32 @@ class CustomSectionDataTableSeeder extends Seeder
         'created_at' => '2024-01-01 00:00:00',
         'updated_at' => '2024-01-01 00:00:00',
       ],
+
+      // ============================================
+      // PUBLICATIONS PAGE BANNER (formerly Media)
+      // ============================================
+      [
+        'id' => 29,
+        'page_slug' => 'publications',
+        'section_key' => 'banner',
+        'data' => '{"background":{"src":"/storage/Publications/banner-default.jpg","alt":"Publications Banner"},"overlay":{"darkOverlay":"bg-black/40 lg:bg-black/50","gradient":"bg-gradient-to-r from-black/85 via-black/10 to-transparent"},"content":{"title":{"text":"Publications","className":"font-bold leading-tight"},"description":{"text":"Reach out today and let’s create meaningful, lasting positive change together worldwide","className":"font-normal leading-tight"}}}',
+        'is_active' => 1,
+        'created_at' => '2024-01-01 00:00:00',
+        'updated_at' => '2024-01-01 00:00:00',
+      ],
+
+      // ============================================
+      // PUBLICATIONS DETAILS PAGE BANNER (formerly Media Details)
+      // ============================================
+      [
+        'id' => 30,
+        'page_slug' => 'publications-details',
+        'section_key' => 'banner',
+        'data' => '{"background":{"src":"/storage/Publications/banner-detail-default.jpg","alt":"Publications Banner"},"overlay":{"darkOverlay":"bg-black/40 lg:bg-black/70"}}',
+        'is_active' => 1,
+        'created_at' => '2024-01-01 00:00:00',
+        'updated_at' => '2024-01-01 00:00:00',
+      ],
     ];
 
     DB::table('custom_section_data')->insert($customSectionData);
