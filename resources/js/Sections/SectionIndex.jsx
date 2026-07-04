@@ -5,6 +5,7 @@ import React from 'react';
 // Import all section components
 import HomeBanner from './BannerSection/HomeBanner';
 import PageBannerSection from './BannerSection/PageBannerSection';
+import PageTagBannerSection from './BannerSection/PageTagBannerSection'; // NEW
 import AboutUsSection from './AboutUsSection/AboutUsSection';
 import OurActionSection from './OurActionSection/OurActionSection';
 import WhereWeWorkSection from './WhereWeWorkSection/WhereWeWorkSection';
@@ -23,12 +24,15 @@ import ContactReachSection from './ContactReachSection/ContactReachSection';
 import FollowUSSection from './FollowUSSection/FollowUSSection';
 import LegalSection from './LegalSection/LegalSection';
 import PublicationsSection from './PublicationsSection/PublicationsSection';
+import ImageGallerySection from './ImageGallerySection/ImageGallerySection';
+import VideoGallerySection from './VideoGallerySection/VideoGallerySection';
 
 // Component mapping with both old and new component names
 const sectionComponents = {
   // New names
   HomeBanner,
   PageBannerSection,
+  PageTagBannerSection, // NEW
   AboutUsSection,
   OurActionSection,
   WhereWeWorkSection,
@@ -47,10 +51,13 @@ const sectionComponents = {
   FollowUSSection,
   LegalSection,
   PublicationsSection,
+  ImageGallerySection,
+  VideoGallerySection,
 
   // Old names for backward compatibility
   'BannerSection': HomeBanner,
   'PageBanner': PageBannerSection,
+  'PageTagBanner': PageTagBannerSection,
   'AboutUs': AboutUsSection,
   'OurAction': OurActionSection,
   'WhereWeWork': WhereWeWorkSection,
@@ -69,6 +76,8 @@ const sectionComponents = {
   'FollowUS': FollowUSSection,
   'Legal': LegalSection,
   'Publications': PublicationsSection,
+  'ImageGallery': ImageGallerySection,
+  'VideoGallery': VideoGallerySection,
 };
 
 /**
@@ -246,6 +255,21 @@ const buildComponentProps = (component, sectionData, section) => {
       props.bannerData = sectionData;
       break;
 
+    case 'PageTagBannerSection': // NEW
+    case 'PageTagBanner': // NEW - old name alias
+      props.bannerData = sectionData;
+      // Check if section has tags in custom_props
+      if (section.custom_props?.tags) {
+        props.tags = section.custom_props.tags;
+      }
+      if (section.custom_props?.activeTag) {
+        props.activeTag = section.custom_props.activeTag;
+      }
+      if (section.custom_props?.tagTitle) {
+        props.tagTitle = section.custom_props.tagTitle;
+      }
+      break;
+
     case 'AboutUsSection':
     case 'AboutUs':
       props.aboutUsData = sectionData;
@@ -316,6 +340,44 @@ const buildComponentProps = (component, sectionData, section) => {
       // Check if section has a title in custom_props
       if (section.custom_props?.sectionTitle) {
         props.sectionTitle = section.custom_props.sectionTitle;
+      }
+      break;
+
+    case 'ImageGallerySection':
+    case 'ImageGallery':
+      // ImageGallerySection expects galleryData
+      props.galleryData = sectionData;
+      // Check if section has custom props
+      if (section.custom_props?.sectionTitle) {
+        props.sectionTitle = section.custom_props.sectionTitle;
+      }
+      if (section.custom_props?.imagesPerPage) {
+        props.imagesPerPage = section.custom_props.imagesPerPage;
+      }
+      if (section.custom_props?.imagesPerLoad) {
+        props.imagesPerLoad = section.custom_props.imagesPerLoad;
+      }
+      if (section.custom_props?.imageCountLabel) {
+        props.imageCountLabel = section.custom_props.imageCountLabel;
+      }
+      break;
+
+    case 'VideoGallerySection':
+    case 'VideoGallery':
+      // VideoGallerySection expects videoData
+      props.videoData = sectionData;
+      // Check if section has custom props
+      if (section.custom_props?.sectionTitle) {
+        props.sectionTitle = section.custom_props.sectionTitle;
+      }
+      if (section.custom_props?.videosPerPage) {
+        props.videosPerPage = section.custom_props.videosPerPage;
+      }
+      if (section.custom_props?.videosPerLoad) {
+        props.videosPerLoad = section.custom_props.videosPerLoad;
+      }
+      if (section.custom_props?.videoCountLabel) {
+        props.videoCountLabel = section.custom_props.videoCountLabel;
       }
       break;
 

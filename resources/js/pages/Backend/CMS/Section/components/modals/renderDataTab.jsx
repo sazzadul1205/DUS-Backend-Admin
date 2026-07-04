@@ -3,7 +3,6 @@
 import React, { lazy, Suspense } from 'react';
 
 // ===== LAZY LOAD EDITORS =====
-// Each editor is loaded only when needed, reducing initial bundle size
 const FAQEditor = lazy(() => import('./Editors/FAQEditor'));
 const JobsEditor = lazy(() => import('./Editors/JobsEditor'));
 const BlogEditor = lazy(() => import('./Editors/BlogEditor'));
@@ -18,15 +17,20 @@ const OurActionEditor = lazy(() => import('./Editors/OurActionEditor'));
 const HeroFigureEditor = lazy(() => import('./Editors/HeroFigureEditor'));
 const HomeBannerEditor = lazy(() => import('./Editors/HomeBannerEditor'));
 const PageBannerEditor = lazy(() => import('./Editors/PageBannerEditor'));
+const PageTagBannerEditor = lazy(() => import('./Editors/PageTagBannerEditor'));
 const OurProgramsEditor = lazy(() => import('./Editors/OurProgramsEditor'));
 const WhereWeWorkEditor = lazy(() => import('./Editors/WhereWeWorkEditor'));
 const ContactReachEditor = lazy(() => import('./Editors/ContactReachEditor'));
 const ProgramImpactEditor = lazy(() => import('./Editors/ProgramImpactEditor'));
 const ContactOfficeEditor = lazy(() => import('./Editors/ContactOfficeEditor'));
 const UpcomingEventsEditor = lazy(() => import('./Editors/UpcomingEventsEditor'));
+const PublicationsEditor = lazy(() => import('./Editors/PublicationsEditor'));
+
+// ===== NEW: Gallery Editors =====
+const ImageGalleryEditor = lazy(() => import('./Editors/ImageGalleryEditor'));
+const VideoGalleryEditor = lazy(() => import('./Editors/VideoGalleryEditor'));
 
 // ===== LOADING COMPONENT =====
-// Shows while editor is being loaded
 const EditorLoader = () => (
   <div className="flex items-center justify-center py-12">
     <div className="flex flex-col items-center gap-3">
@@ -37,9 +41,7 @@ const EditorLoader = () => (
 );
 
 // ===== EDITOR MAP =====
-// Maps component names to their lazy-loaded editor components
 const EDITOR_COMPONENTS = {
-
   'FAQSection': FAQEditor,
   'JobsSection': JobsEditor,
   'BlogSection': BlogEditor,
@@ -54,19 +56,21 @@ const EDITOR_COMPONENTS = {
   'OurActionSection': OurActionEditor,
   'HeroFigureSection': HeroFigureEditor,
   'PageBannerSection': PageBannerEditor,
+  'PageTagBannerSection': PageTagBannerEditor,
   'WhereWeWorkSection': WhereWeWorkEditor,
   'OurProgramsSection': OurProgramsEditor,
   'ContactReachSection': ContactReachEditor,
   'ContactOfficeSection': ContactOfficeEditor,
   'ProgramImpactSection': ProgramImpactEditor,
   'UpcomingEventsSection': UpcomingEventsEditor,
+  'PublicationsSection': PublicationsEditor,
+
+  // ===== NEW: Gallery Editors =====
+  'ImageGallerySection': ImageGalleryEditor,
+  'VideoGallerySection': VideoGalleryEditor,
 };
 
-/**
- * Render Section Data Tab Component
- * Routes to the appropriate editor based on component type
- * Uses lazy loading to improve performance
- */
+// ===== COMPONENT =====
 const RenderDataTab = ({ section, hasData, onDataChange }) => {
   // Check if data exists
   if (!hasData || !section?.data || Object.keys(section.data).length === 0) {
@@ -80,11 +84,9 @@ const RenderDataTab = ({ section, hasData, onDataChange }) => {
     );
   }
 
-  // ===== RENDER EDITOR =====
   // Get the appropriate editor component from the map
   const EditorComponent = EDITOR_COMPONENTS[section.component];
 
-  // If no editor is found for this component type, show fallback
   if (!EditorComponent) {
     return (
       <div className="space-y-4">
@@ -96,10 +98,8 @@ const RenderDataTab = ({ section, hasData, onDataChange }) => {
     );
   }
 
-  // ===== MAIN RENDER =====
   return (
     <div className="space-y-4">
-      {/* Lazy Loaded Editor - wrapped in Suspense */}
       <Suspense fallback={<EditorLoader />}>
         <EditorComponent
           section={section}

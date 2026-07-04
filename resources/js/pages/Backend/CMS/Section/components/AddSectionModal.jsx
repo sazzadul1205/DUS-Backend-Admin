@@ -58,6 +58,12 @@ const SECTION_OPTIONS = {
     description: 'Page header banner with title and description',
     isSpecial: false
   },
+  'PageTagBannerSection': {
+    label: 'Page Tag Banner',
+    data_table: 'custom_section_data',
+    description: 'Page header banner with tags and title',
+    isSpecial: false
+  },
   'AboutUsSection': {
     label: 'About Us Section',
     data_table: 'custom_section_data',
@@ -137,6 +143,20 @@ const SECTION_OPTIONS = {
     description: 'Displays publications from Publications Manager',
     isSpecial: true
   },
+  // ===== NEW: Gallery Sections =====
+  'ImageGallerySection': {
+    label: 'Image Gallery Section',
+    data_table: 'custom_section_data',
+    description: 'Program impact with SDG images',
+    isSpecial: false
+  },
+  'VideoGallerySection': {
+    label: 'Video Gallery Section',
+    data_table: 'custom_section_data',
+    description: 'Program impact with SDG Videos',
+    isSpecial: false
+  },
+
 };
 
 const AddSectionModal = ({ isOpen, onClose, pageId, onSuccess }) => {

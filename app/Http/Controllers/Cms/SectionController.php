@@ -248,6 +248,7 @@ class SectionController extends Controller
     $keyMap = [
       'HomeBanner' => 'bannerData',
       'PageBannerSection' => 'bannerData',
+      'PageTagBannerSection' => 'pageTagBannerData',
       'AboutUsSection' => 'aboutUsData',
       'OurActionSection' => 'ourActionData',
       'WhereWeWorkSection' => 'whereWeWorkData',
@@ -269,6 +270,8 @@ class SectionController extends Controller
       'ProgramContentSection' => 'programContentData',
       'BlogContentSection' => 'blogData',
       'PublicationsSection' => 'publicationsData',
+      'ImageGallerySection' => 'imageGalleryData',
+      'VideoGallerySection' => 'videoGalleryData',
     ];
 
     return $keyMap[$component] ?? $sectionKey . 'Data';
@@ -282,6 +285,7 @@ class SectionController extends Controller
     $propMap = [
       'HomeBanner' => 'data',
       'PageBannerSection' => 'data',
+      'PageTagBannerSection' => 'data',
       'ContentSection' => 'subPageData',
       'ProgramContentSection' => 'programData',
       'BlogContentSection' => 'blogData',
@@ -308,6 +312,8 @@ class SectionController extends Controller
       'ProgramContentSection',
       'BlogContentSection',
       'PublicationsSection',
+      'ImageGallerySection',
+      'VideoGallerySection',
     ];
 
     return in_array($component, $specialComponents);
@@ -423,6 +429,27 @@ class SectionController extends Controller
             'className' => 'font-normal leading-tight'
           ]
         ]
+      ],
+
+      'PageTagBannerSection' => [
+        'background' => ['src' => '', 'alt' => 'Background'],
+        'overlay' => [
+          'darkOverlay' => 'bg-black/40 lg:bg-black/50',
+          'gradient' => 'bg-gradient-to-r from-black/85 via-black/10 to-transparent'
+        ],
+        // Remove the content wrapper and put tags at root level
+        'tagTitle' => 'Photo Gallery',
+        'tags' => [
+          ['label' => 'DUS in action', 'color' => '#009BE2'],
+          ['label' => 'Community Impact', 'color' => '#FF6B6B'],
+          ['label' => 'Coastal Development', 'color' => '#4ECDC4'],
+          ['label' => 'Microfinance Success', 'color' => '#FFE66D'],
+          ['label' => 'Climate Action', 'color' => '#6C5CE7'],
+          ['label' => 'Women Empowerment', 'color' => '#FD79A8'],
+          ['label' => 'Education for All', 'color' => '#00B894'],
+          ['label' => 'Sustainable Agriculture', 'color' => '#FDCB6E'],
+        ],
+        'activeTag' => 'DUS in action',
       ],
 
       // ===== CONTENT SECTIONS =====
@@ -950,7 +977,125 @@ class SectionController extends Controller
             'link' => '/jobs/climate-specialist'
           ]
         ]
-      ]
+      ],
+
+
+      // ===== IMAGE GALLERY SECTION =====
+      'ImageGallerySection' => [
+        'sectionTitle' => 'DUS in action',
+        'imageCountLabel' => 'Image Count',
+        'images' => [
+          [
+            'id' => 1,
+            'src' => 'https://placehold.co/485x400/009BE2/FFFFFF?text=Image+1',
+            'alt' => 'Gallery image 1',
+            'title' => 'Image 1'
+          ],
+          [
+            'id' => 2,
+            'src' => 'https://placehold.co/485x400/FF6B6B/FFFFFF?text=Image+2',
+            'alt' => 'Gallery image 2',
+            'title' => 'Image 2'
+          ],
+          [
+            'id' => 3,
+            'src' => 'https://placehold.co/485x400/4ECDC4/FFFFFF?text=Image+3',
+            'alt' => 'Gallery image 3',
+            'title' => 'Image 3'
+          ],
+          [
+            'id' => 4,
+            'src' => 'https://placehold.co/485x400/FFE66D/FFFFFF?text=Image+4',
+            'alt' => 'Gallery image 4',
+            'title' => 'Image 4'
+          ],
+          [
+            'id' => 5,
+            'src' => 'https://placehold.co/485x400/A8E6CF/FFFFFF?text=Image+5',
+            'alt' => 'Gallery image 5',
+            'title' => 'Image 5'
+          ],
+          [
+            'id' => 6,
+            'src' => 'https://placehold.co/485x400/FF8A5C/FFFFFF?text=Image+6',
+            'alt' => 'Gallery image 6',
+            'title' => 'Image 6'
+          ],
+          [
+            'id' => 7,
+            'src' => 'https://placehold.co/485x400/6C5CE7/FFFFFF?text=Image+7',
+            'alt' => 'Gallery image 7',
+            'title' => 'Image 7'
+          ],
+          [
+            'id' => 8,
+            'src' => 'https://placehold.co/485x400/FDCB6E/FFFFFF?text=Image+8',
+            'alt' => 'Gallery image 8',
+            'title' => 'Image 8'
+          ],
+          [
+            'id' => 9,
+            'src' => 'https://placehold.co/485x400/00B894/FFFFFF?text=Image+9',
+            'alt' => 'Gallery image 9',
+            'title' => 'Image 9'
+          ],
+          [
+            'id' => 10,
+            'src' => 'https://placehold.co/485x400/E17055/FFFFFF?text=Image+10',
+            'alt' => 'Gallery image 10',
+            'title' => 'Image 10'
+          ],
+          [
+            'id' => 11,
+            'src' => 'https://placehold.co/485x400/0984E3/FFFFFF?text=Image+11',
+            'alt' => 'Gallery image 11',
+            'title' => 'Image 11'
+          ],
+          [
+            'id' => 12,
+            'src' => 'https://placehold.co/485x400/F368E0/FFFFFF?text=Image+12',
+            'alt' => 'Gallery image 12',
+            'title' => 'Image 12'
+          ]
+        ]
+      ],
+
+      // ===== VIDEO GALLERY SECTION =====
+      'VideoGallerySection' => [
+        'sectionTitle' => 'Video Gallery',
+        'videoCountLabel' => 'Video Count',
+        'videos' => [
+          [
+            'id' => 1,
+            'title' => 'DUS Impact Story - Empowering Communities',
+            'description' => 'Watch how DUS is making a difference in coastal communities through sustainable development programs.',
+            'src' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'thumbnail' => 'https://placehold.co/600x400/009BE2/FFFFFF?text=Video+1'
+          ],
+          [
+            'id' => 2,
+            'title' => 'Microfinance Success Stories',
+            'description' => 'Real stories of women entrepreneurs who transformed their lives through microfinance programs.',
+            'src' => 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+            'thumbnail' => 'https://placehold.co/600x400/FF6B6B/FFFFFF?text=Video+2'
+          ],
+          [
+            'id' => 3,
+            'title' => 'Community Radio - Voice of the Island',
+            'description' => 'How community radio is empowering local voices and connecting communities in Hatiya Island.',
+            'src' => 'https://www.youtube.com/watch?v=wZZ7oFKsKzY',
+            'thumbnail' => 'https://placehold.co/600x400/4ECDC4/FFFFFF?text=Video+3'
+          ],
+          [
+            'id' => 4,
+            'title' => 'Climate Action in Coastal Bangladesh',
+            'description' => 'Building resilience against climate change through innovative adaptation strategies.',
+            'src' => 'https://www.youtube.com/watch?v=OPf0YbXqDm0',
+            'thumbnail' => 'https://placehold.co/600x400/FFE66D/FFFFFF?text=Video+4'
+          ]
+        ]
+      ],
+
     ];
 
     return $templates[$component] ?? [];

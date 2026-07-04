@@ -4,34 +4,6 @@
  * ============================================
  * SECTION REGISTRY - Lazy-Loaded Section Components
  * ============================================
- * 
- * PURPOSE:
- * - Central registry of all available section components
- * - Maps section component names to their lazy-loaded imports
- * - Defines how each section receives its props
- * 
- * WHY LAZY LOADING?
- * - Sections are only loaded when needed
- * - Reduces initial bundle size
- * - Improves page load performance
- * 
- * HOW IT WORKS:
- * 1. SECTION_COMPONENTS maps component names to lazy imports
- * 2. DynamicSectionRenderer uses this to load the right component
- * 3. SECTION_CONFIGS defines the prop structure for each component
- * 
- * ADDING A NEW SECTION:
- * 1. Create the section component in src/Sections/YourSection/
- * 2. Import it here using lazy(() => import(...))
- * 3. Add it to SECTION_COMPONENTS
- * 4. Add configuration to SECTION_CONFIGS (if needed)
- * 
- * PROP CONFIGURATION:
- * - propName: The prop name the component expects (e.g., 'data')
- * - isMultiProp: If true, component receives multiple props
- *   - props: Array of prop names the component expects
- * 
- * ============================================
  */
 
 // React
@@ -45,6 +17,7 @@ export const SECTION_COMPONENTS = {
   // --- Banner Sections ---
   HomeBanner: lazy(() => import('../Sections/BannerSection/HomeBanner')),
   PageBannerSection: lazy(() => import('../Sections/BannerSection/PageBannerSection')),
+  PageTagBannerSection: lazy(() => import('../Sections/BannerSection/PageTagBannerSection')), // NEW
   
   // --- Common Sections ---
   FAQSection: lazy(() => import('../Sections/FAQSection/FAQSection')),
@@ -67,23 +40,23 @@ export const SECTION_COMPONENTS = {
   
   // --- Publications Section ---
   PublicationsSection: lazy(() => import('../Sections/PublicationsSection/PublicationsSection')),
+
+  // --- Gallery Sections ---
+  ImageGallerySection: lazy(() => import('../Sections/ImageGallerySection/ImageGallerySection')),
+  VideoGallerySection: lazy(() => import('../Sections/VideoGallerySection/VideoGallerySection')),
 };
 
 // ============================================
 // SECTION CONFIGURATIONS
 // ============================================
-/**
- * Defines how each section receives its props
- * 
- * For most sections, the component expects a single 'data' prop
- * The data is passed from pageData based on the section's data_key
- */
+
 export const SECTION_CONFIGS = {
   // All sections use 'data' as the prop name
   FAQSection: { propName: 'data', isMultiProp: false },
   JobsSection: { propName: 'data', isMultiProp: false },
   HomeBanner: { propName: 'data', isMultiProp: false },
   PageBannerSection: { propName: 'data', isMultiProp: false },
+  PageTagBannerSection: { propName: 'data', isMultiProp: false }, // NEW
   CardsSection: { propName: 'data', isMultiProp: false },
   LegalSection: { propName: 'data', isMultiProp: false },
   HeroFigureSection: { propName: 'data', isMultiProp: false },
@@ -104,4 +77,10 @@ export const SECTION_CONFIGS = {
   
   // PublicationsSection consumes a single data prop
   PublicationsSection: { propName: 'data', isMultiProp: false },
+
+  // ImageGallerySection consumes a single data prop
+  ImageGallerySection: { propName: 'data', isMultiProp: false },
+
+  // VideoGallerySection consumes a single data prop
+  VideoGallerySection: { propName: 'data', isMultiProp: false },
 };
