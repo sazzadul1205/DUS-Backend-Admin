@@ -1,7 +1,7 @@
 // js/Sections/BannerSection/HomeBanner.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Arrow Icon
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 1920, height = 600, text = 'Welcome') => {
+  return `https://via.placeholder.com/${width}x${height}/1a1a2e/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -34,6 +39,14 @@ const HomeBanner = ({
   height = 'h-125 md:h-280',
   sectionClassName = '',
 }) => {
+  // ============================================
+  // HOOKS MUST BE CALLED AT THE TOP LEVEL
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
+  // ============================================
+  // RESOLVE DATA
+  // ============================================
   // Use data prop if available, fallback to bannerData
   let resolvedData = data || bannerData;
 
@@ -72,6 +85,27 @@ const HomeBanner = ({
     hasValue(buttons);
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const hasBackground = hasValue(background.src);
+
+  // Determine if we should use placeholder
+  const usePlaceholder = !hasBackground || imageError;
+
+  // Get image source
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(1920, 600, content.title?.text || 'Welcome')
+    : background.src;
+
+  // Get image alt text
+  const imageAlt = background.alt || (content.title?.text ? `${content.title.text} - Banner` : 'Home banner background');
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -82,13 +116,12 @@ const HomeBanner = ({
       {/* ============================================
           BACKGROUND IMAGE
           ============================================ */}
-      {hasValue(background.src) && (
-        <img
-          src={background.src}
-          alt={background.alt || "Banner background"}
-          className="w-full h-full object-cover object-center md:object-cover"
-        />
-      )}
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        className="w-full h-full object-cover object-center md:object-cover"
+        onError={handleImageError}
+      />
 
       {/* ============================================
           OVERLAYS

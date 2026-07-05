@@ -39,7 +39,7 @@ const hasValue = (value) => {
  * @param {string} sectionClassName - Additional section classes
  * @param {string} apiEndpoint - API endpoint for fetching jobs
  * @param {Object} apiParams - Additional API parameters
- * @param {string} publicJobsRoute - Route prefix for job links (default: /backend/jobs)
+ * @param {string} publicJobsRoute - Route prefix for job links (default: /seeker/jobs)
  */
 const JobsSection = ({
   data: propData,
@@ -53,7 +53,7 @@ const JobsSection = ({
   sectionClassName = '',
   apiEndpoint = '/api/jobs',
   apiParams = {},
-  publicJobsRoute = '/backend/jobs',
+  publicJobsRoute = '/seeker/jobs',
 }) => {
   // ============================================
   // ✅ HELPER: Parse data if it's a string
@@ -351,7 +351,7 @@ const JobsSection = ({
 
       // Map API jobs to the expected format
       const mappedJobs = fetchedJobs.map(job => {
-        // ✅ Build the link with /backend/jobs prefix
+        // ✅ Build the link with /seeker/jobs prefix
         let jobLink;
         if (job.slug) {
           jobLink = `${publicJobsRoute}/${job.slug}`;

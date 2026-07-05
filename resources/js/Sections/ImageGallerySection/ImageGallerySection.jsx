@@ -2,6 +2,11 @@
 
 import React, { useState } from 'react';
 
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 485, height = 400, text = 'Gallery Image') => {
+  return `https://via.placeholder.com/${width}x${height}/EAEAEA/999999?text=${encodeURIComponent(text)}`;
+};
+
 const ImageGallerySection = ({
   data,
   galleryData,
@@ -16,6 +21,7 @@ const ImageGallerySection = ({
   sectionId = 'image-gallery-section',
 }) => {
   const [visibleCount, setVisibleCount] = useState(imagesPerPage);
+  const [imageErrors, setImageErrors] = useState({});
 
   // ============================================
   // RESOLVE DATA - FIXED
@@ -91,6 +97,30 @@ const ImageGallerySection = ({
   const isAllVisible = visibleCount >= resolvedImages.length;
   const visibleImages = resolvedImages.slice(0, visibleCount);
 
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (imageId) => {
+    setImageErrors(prev => ({ ...prev, [imageId]: true }));
+  };
+
+  const getImageSrc = (image, index) => {
+    const imageId = image.id || index;
+    if (imageErrors[imageId]) {
+      const title = image.title || image.caption || `Gallery image ${index + 1}`;
+      return getPlaceholderImage(485, 400, title);
+    }
+    const src = image.src || image.url || image.image || image;
+    if (typeof src === 'string' && src.trim().length > 0) {
+      return src;
+    }
+    return getPlaceholderImage(485, 400, image.title || image.caption || `Gallery image ${index + 1}`);
+  };
+
+  const getImageAlt = (image, index) => {
+    return image.alt || image.title || image.caption || `Gallery image ${index + 1}`;
+  };
+
   return (
     <section
       id={sectionId}
@@ -112,9 +142,9 @@ const ImageGallerySection = ({
         {/* Image Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-7.5">
           {visibleImages.map((image, index) => {
-            const imageSrc = image.src || image.url || image.image || image;
-            const imageAlt = image.alt || image.title || image.caption || `Gallery image ${index + 1}`;
             const imageId = image.id || index;
+            const imageSrc = getImageSrc(image, index);
+            const imageAlt = getImageAlt(image, index);
 
             return (
               <div
@@ -126,10 +156,7 @@ const ImageGallerySection = ({
                   alt={imageAlt}
                   className="w-full h-48 sm:h-56 md:h-64 lg:h-100 object-cover hover:scale-105 transition-transform duration-300"
                   loading="lazy"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://placehold.co/485x400/EAEAEA/999999?text=Image+Not+Found";
-                  }}
+                  onError={() => handleImageError(imageId)}
                 />
               </div>
             );

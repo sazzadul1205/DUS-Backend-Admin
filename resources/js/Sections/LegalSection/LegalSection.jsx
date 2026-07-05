@@ -1,7 +1,7 @@
 // js/Sections/LegalSection/LegalSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Components
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 1920, height = 600, text = 'Legal') => {
+  return `https://via.placeholder.com/${width}x${height}/1a1a2e/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -40,6 +45,11 @@ const LegalSection = ({
   sectionClassName = '',
   sectionId = 'legal',
 }) => {
+  // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
   // ============================================
   // RESOLVE DATA
   // ============================================
@@ -86,6 +96,21 @@ const LegalSection = ({
   }
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const usePlaceholder = !hasBackground || imageError;
+
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(1920, 600, textBox.title || 'Legal')
+    : background.src;
+
+  const imageAlt = background.alt || (textBox.title ? `${textBox.title} - Legal` : 'Legal background');
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -93,14 +118,13 @@ const LegalSection = ({
       id={sectionId}
       className={`relative w-full ${height} overflow-hidden ${bgColor} ${paddingY} ${paddingX} ${sectionClassName}`}
     >
-      {/* Background Image - Only render if src exists */}
-      {hasValue(background.src) && (
-        <img
-          src={background.src}
-          alt={background.alt || 'Legal background'}
-          className="w-full h-full object-cover object-center md:object-cover"
-        />
-      )}
+      {/* Background Image - Always render with fallback */}
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        className="w-full h-full object-cover object-center md:object-cover"
+        onError={handleImageError}
+      />
 
       {/* Dark Overlay - Only render if darkOverlay class exists */}
       {hasValue(overlay.darkOverlay) && (

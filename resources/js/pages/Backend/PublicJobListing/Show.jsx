@@ -97,8 +97,6 @@ export default function PublicJobListingShow({
     });
   };
 
-  // Format date and time
-
   // Get days left
   const getDaysLeft = (deadline) => {
     const daysLeft = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24));
@@ -195,7 +193,7 @@ export default function PublicJobListingShow({
     return 'Not specified';
   };
 
-  // Apply Handler
+  // Apply Handler - UPDATED: Use consolidated public route
   const handleApply = () => {
     if (!isAuthenticated) {
       Swal.fire({
@@ -209,7 +207,7 @@ export default function PublicJobListingShow({
         cancelButtonText: 'Cancel',
       }).then((result) => {
         if (result.isConfirmed) {
-          router.visit(route('login', { redirect: route('backend.public-jobs.show', jobListing.slug) }));
+          router.visit(route('login', { redirect: route('public.jobs.show', jobListing.slug) }));
         }
       });
       return;
@@ -235,7 +233,7 @@ export default function PublicJobListingShow({
         cancelButtonText: 'Cancel',
       }).then((result) => {
         if (result.isConfirmed) {
-          router.visit(route('login', { redirect: route('backend.public-jobs.show', jobListing.slug) }));
+          router.visit(route('login', { redirect: route('public.jobs.show', jobListing.slug) }));
         }
       });
       return;
@@ -414,7 +412,7 @@ export default function PublicJobListingShow({
         {/* Hero Section */}
         <div className="relative bg-linear-to-br from-blue-700 via-blue-600 to-indigo-700 text-white overflow-hidden">
           <div className="absolute inset-0 bg-black/5" />
-          <div className="relative  mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+          <div className="relative mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
             <button
               onClick={() => window.history.back()}
               className="group inline-flex items-center gap-2 text-white/70 hover:text-white mb-6 transition-all duration-200 hover:-translate-x-0.5"
@@ -527,7 +525,7 @@ export default function PublicJobListingShow({
         </div>
 
         {/* Main Content */}
-        <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -762,7 +760,7 @@ export default function PublicJobListingShow({
             </div>
           </div>
 
-          {/* Related Jobs Section */}
+          {/* Related Jobs Section - UPDATED: Use consolidated public route */}
           {relatedJobs && relatedJobs.length > 0 && (
             <div className="mt-10">
               <div className="flex items-center gap-3 mb-5">
@@ -779,7 +777,8 @@ export default function PublicJobListingShow({
                 {relatedJobs.map((job) => (
                   <a
                     key={job.id}
-                    href={route('backend.public-jobs.show', job.slug)}
+                    // UPDATED: Use consolidated public route
+                    href={route('public.jobs.show', job.slug)}
                     className="group bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 p-5 border border-gray-100 hover:border-blue-200 block"
                   >
                     <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-2">

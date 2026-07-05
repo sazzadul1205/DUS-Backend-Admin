@@ -1,7 +1,7 @@
 // js/Sections/HeroFigureSection/HeroFigureSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Components
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Hero Image') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -44,6 +49,11 @@ const HeroFigureSection = ({
   paddingX = 'px-5 sm:px-10 md:px-20 lg:px-50',
   sectionClassName = '',
 }) => {
+  // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
   // ============================================
   // RESOLVE DATA
   // ============================================
@@ -90,6 +100,21 @@ const HeroFigureSection = ({
   if (!hasAnyContent) {
     return null;
   }
+
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const usePlaceholder = !hasImage || imageError;
+
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(800, 600, section.title || 'Hero Image')
+    : image.src;
+
+  const imageAlt = image.alt || section.title || 'Section image';
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   // ============================================
   // HELPERS
@@ -164,15 +189,14 @@ const HeroFigureSection = ({
 
   // Image component
   const ImageComponent = () => (
-    hasImage && (
-      <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0 relative z-10'>
-        <img
-          src={image.src}
-          alt={image.alt || 'Section image'}
-          className={image.className || 'w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl'}
-        />
-      </div>
-    )
+    <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0 relative z-10'>
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        className={image.className || 'w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl'}
+        onError={handleImageError}
+      />
+    </div>
   );
 
   // ============================================

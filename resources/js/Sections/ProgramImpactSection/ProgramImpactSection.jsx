@@ -12,6 +12,11 @@ const hasValue = (value) => {
   return true;
 };
 
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Impact') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
+};
+
 /**
  * ProgramImpactSection Component
  * 
@@ -39,6 +44,7 @@ const ProgramImpactSection = ({
   // HOOKS - Must be called before any conditional returns
   // ============================================
   const [index, setIndex] = useState(0);
+  const [imageErrors, setImageErrors] = useState({});
 
   // ============================================
   // RESOLVE DATA
@@ -77,6 +83,33 @@ const ProgramImpactSection = ({
   if (!hasImages && !hasTitle && !hasSdgImages) return null;
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (imageId) => {
+    setImageErrors(prev => ({ ...prev, [imageId]: true }));
+  };
+
+  const getImageSrc = (image, defaultText = 'Impact') => {
+    if (imageErrors[image.id]) {
+      return getPlaceholderImage(800, 600, image.alt || defaultText);
+    }
+    if (hasValue(image.src)) {
+      return image.src;
+    }
+    return getPlaceholderImage(800, 600, image.alt || defaultText);
+  };
+
+  const getCarouselImageSrc = (imageUrl, index) => {
+    if (imageErrors[`carousel-${index}`]) {
+      return getPlaceholderImage(1200, 800, `Impact slide ${index + 1}`);
+    }
+    if (hasValue(imageUrl)) {
+      return imageUrl;
+    }
+    return getPlaceholderImage(1200, 800, `Impact slide ${index + 1}`);
+  };
+
+  // ============================================
   // HELPER: Go to slide
   // ============================================
   const goToSlide = (i) => setIndex(i);
@@ -96,9 +129,10 @@ const ProgramImpactSection = ({
             <div className="relative overflow-hidden rounded-xl sm:rounded-2xl group">
               {hasValue(images[index]) && (
                 <img
-                  src={images[index]}
+                  src={getCarouselImageSrc(images[index], index)}
                   alt={`Impact slide ${index + 1}`}
                   className="w-full h-48 sm:h-64 md:h-96 lg:h-186.25 object-cover transition-all duration-500 group-hover:scale-105"
+                  onError={() => handleImageError({ id: `carousel-${index}` })}
                 />
               )}
 
@@ -136,10 +170,11 @@ const ProgramImpactSection = ({
           {sdgImages.map((image) => (
             <img
               key={image.id}
-              src={image.src}
+              src={getImageSrc(image, 'SDG')}
               alt={image.alt || "SDG"}
               className='w-full h-auto object-cover rounded-lg hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer'
               onClick={() => image.link && (window.location.href = image.link)}
+              onError={() => handleImageError(image)}
             />
           ))}
         </div>

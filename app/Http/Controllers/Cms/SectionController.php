@@ -1081,7 +1081,7 @@ class SectionController extends Controller
       'data_key' => 'sometimes|string|max:255',
       'is_enabled' => 'boolean',
       'custom_props' => 'nullable|array',
-      'data' => 'nullable|array',  // The full section data (e.g., banner content)
+      'data' => 'nullable|array',
     ]);
 
     if ($validator->fails()) {
@@ -1098,11 +1098,30 @@ class SectionController extends Controller
     if ($request->has('is_enabled')) {
       $updateData['is_enabled'] = $request->boolean('is_enabled');
     }
+
+    // Handle custom_props with color conversion
     if ($request->has('custom_props')) {
-      // MERGE custom_props instead of replacing them
       $existingProps = $sectionConfig->custom_props ?? [];
       $newProps = $request->input('custom_props');
+
+      // Ensure bgColor is in the correct format
+      if (isset($newProps['bgColor'])) {
+        $bgColor = $newProps['bgColor'];
+
+        if (is_string($bgColor) && preg_match('/^#[0-9a-fA-F]{6}$/', $bgColor)) {
+          $newProps['bgColor'] = 'bg-[' . $bgColor . ']';
+        }
+      }
+
       $updateData['custom_props'] = array_merge($existingProps, $newProps);
+
+      // 🔍 Debug: Show what's being updated
+      // dd([
+      //   'section_id' => $id,
+      //   'current_data' => $sectionConfig->toArray(),
+      //   'update_data' => $updateData,
+      //   'full_request' => $request->all()
+      // ]);
     }
 
     // Update the section config
@@ -1112,7 +1131,7 @@ class SectionController extends Controller
     if ($request->has('data') && is_array($request->input('data'))) {
       $data = $request->input('data');
 
-      // Remove custom_props from data if it's there (it's already handled above)
+      // Remove custom_props from data if it's there
       if (isset($data['custom_props'])) {
         unset($data['custom_props']);
       }
@@ -1122,14 +1141,12 @@ class SectionController extends Controller
         case 'custom_section_data':
           $this->updateCustomSectionData($sectionConfig, $data);
           break;
-        // For other data tables, we may not allow editing here
         default:
           // Log or ignore
           break;
       }
     }
 
-    // Return success response
     return back()->with('success', 'Section updated successfully.');
   }
 
@@ -1143,23 +1160,41 @@ class SectionController extends Controller
       ->where('section_key', $sectionConfig->section_key)
       ->first();
 
-    // If no record exists, create one
     if (!$customData) {
       $customData = new CustomSectionData();
       $customData->page_slug = $sectionConfig->page_slug;
       $customData->section_key = $sectionConfig->section_key;
     }
 
-    // Get old data for comparison (to delete removed images)
+    // Get old data for comparison
     $oldData = $customData->data ?? [];
+
+    // 🔥 FIX: Normalize color values in the data
+    $newData = $this->normalizeColorValues($newData);
 
     // Process images in the new data
     $processedData = $this->processDataImages($newData, $oldData, $sectionConfig->section_key);
 
     // Update the data
     $customData->data = $processedData;
-    $customData->is_active = true; // Or keep existing status
+    $customData->is_active = true;
     $customData->save();
+  }
+
+  /**
+   * Normalize color values in the data array
+   */
+  protected function normalizeColorValues(array $data): array
+  {
+    foreach ($data as $key => $value) {
+      if (is_array($value)) {
+        $data[$key] = $this->normalizeColorValues($value);
+      } elseif (is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value)) {
+        // Convert hex color to Tailwind format
+        $data[$key] = 'bg-[' . $value . ']';
+      }
+    }
+    return $data;
   }
 
   /**

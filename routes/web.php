@@ -8,9 +8,8 @@ use App\Http\Controllers\Api\JobListingApiController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
-// Controllers - Job Listings
+// Controllers - Job Listings (Now consolidated - PublicJobListingController removed)
 use App\Http\Controllers\JobListing\JobListingController;
-use App\Http\Controllers\JobListing\PublicJobListingController;
 
 // Controllers - Profile
 use App\Http\Controllers\Profile\ApplicantProfileController;
@@ -62,6 +61,7 @@ use App\Http\Controllers\Cms\AboutContentController as CmsAboutContentController
 use App\Http\Controllers\Cms\PublicationController as CmsPublicationController;
 use App\Http\Controllers\Cms\EditorImageUploadController;
 use App\Http\Controllers\Frontend\PageController;
+
 // Models
 use App\Models\pages\Page;
 use App\Models\pages\Program;
@@ -87,14 +87,31 @@ Route::prefix('data')->group(function () {
     Route::get('jobs.json', [ContentApiController::class, 'jobs']);
 });
 
-// ============================================
-// ADD JOB LISTING API ROUTES HERE
-// ============================================
+/*
+|--------------------------------------------------------------------------
+| JOB LISTING API ROUTES (Public endpoints)
+|--------------------------------------------------------------------------
+*/
 Route::prefix('api/jobs')->group(function () {
     Route::get('/', [JobListingApiController::class, 'index']);
     Route::get('/{identifier}', [JobListingApiController::class, 'show']);
     Route::get('/{slug}/related', [JobListingApiController::class, 'related']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| JOB LISTINGS ROUTES (PUBLIC + ADMIN - CONSOLIDATED)
+|--------------------------------------------------------------------------
+*/
+
+// Public routes (no auth required)
+Route::prefix('seeker')->name('public.jobs.')->group(function () {
+    Route::get('/jobs', [JobListingController::class, 'index'])->name('index');
+    Route::get('/jobs/{slug}', [JobListingController::class, 'show'])->name('show');
+});
+
+Route::get('/api/jobs/popular', [JobListingController::class, 'popular'])->name('api.jobs.popular');
+Route::get('/api/jobs/trending', [JobListingController::class, 'trending'])->name('api.jobs.trending');
 
 /*
 |--------------------------------------------------------------------------
@@ -136,6 +153,7 @@ Route::get('/{pageSlug}/{detailSlug}', [PageController::class, 'show'])
 // LISTING PAGES - Less specific pattern
 Route::get('/{pageSlug}', [PageController::class, 'show'])
     ->where('pageSlug', '^(?!admin|backend|login|register|dashboard|api|storage|Playground|Playground).*$');
+
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATION ROUTES
@@ -317,16 +335,20 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | JOB LISTINGS MANAGEMENT
+        | JOB LISTINGS MANAGEMENT (CONSOLIDATED - PUBLIC + ADMIN)
         |--------------------------------------------------------------------------
         */
 
-        // Public
-        Route::get('/jobs', [JobListingController::class, 'publicIndex'])->name('public.jobs.index');
-        Route::get('/jobs/{slug}', [JobListingController::class, 'publicShow'])->name('public.jobs.show');
-
-        // Listing
+        // Admin routes for job listings
         Route::prefix('listing')->name('listing.')->group(function () {
+            Route::get('/', [JobListingController::class, 'adminIndex'])->name('index');
+            Route::get('/create', [JobListingController::class, 'adminCreate'])->name('create');
+            Route::post('/', [JobListingController::class, 'adminStore'])->name('store');
+            Route::get('{jobListing}', [JobListingController::class, 'adminShow'])->name('show');
+            Route::get('{jobListing}/edit', [JobListingController::class, 'adminEdit'])->name('edit');
+            Route::put('{jobListing}', [JobListingController::class, 'adminUpdate'])->name('update');
+            Route::delete('{jobListing}', [JobListingController::class, 'adminDestroy'])->name('destroy');
+
             Route::patch('{jobListing}/toggle-active', [JobListingController::class, 'toggleActive'])->name('toggle-active');
             Route::patch('{jobListing}/restore', [JobListingController::class, 'restore'])->name('restore');
             Route::delete('{jobListing}/force-delete', [JobListingController::class, 'forceDelete'])->name('force-delete');
@@ -334,13 +356,6 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
             Route::post('/bulk-activate', [JobListingController::class, 'bulkActivate'])->name('bulk-activate');
             Route::post('/bulk-deactivate', [JobListingController::class, 'bulkDeactivate'])->name('bulk-deactivate');
             Route::delete('/bulk-delete', [JobListingController::class, 'bulkDelete'])->name('bulk-delete');
-            Route::get('/', [JobListingController::class, 'index'])->name('index');
-            Route::get('/create', [JobListingController::class, 'create'])->name('create');
-            Route::post('/', [JobListingController::class, 'store'])->name('store');
-            Route::get('{jobListing}', [JobListingController::class, 'show'])->name('show');
-            Route::get('{jobListing}/edit', [JobListingController::class, 'edit'])->name('edit');
-            Route::put('{jobListing}', [JobListingController::class, 'update'])->name('update');
-            Route::delete('{jobListing}', [JobListingController::class, 'destroy'])->name('destroy');
         });
 
         /*
@@ -350,16 +365,6 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
         */
         Route::prefix('statistics')->name('statistics.')->group(function () {
             Route::get('/', [JobListingController::class, 'statistics'])->name('index');
-        });
-
-        /*
-        |--------------------------------------------------------------------------
-        | PUBLIC JOB LISTINGS (Backend viewing)
-        |--------------------------------------------------------------------------
-        */
-        Route::prefix('public-jobs')->name('public-jobs.')->group(function () {
-            Route::get('/', [PublicJobListingController::class, 'index'])->name('index');
-            Route::get('{slug}', [PublicJobListingController::class, 'show'])->name('show');
         });
 
         /*
@@ -535,7 +540,6 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
                 Route::get('/about-content-options', [CmsSectionController::class, 'getAboutContentOptions'])->name('about-content-options');
             });
 
-
             // Shared Data Management (Edit only)
             Route::prefix('shared')->name('shared.')->group(function () {
                 Route::get('/', [SharedDataController::class, 'index'])->name('index');
@@ -683,7 +687,6 @@ Route::get('/api/programs', function (Request $request) {
         'programs' => $programs
     ]);
 })->name('api.programs');
-
 
 Route::post('/admin/upload-editor-image', [EditorImageUploadController::class, 'upload'])->name('admin.upload-editor-image');
 Route::delete('/admin/editor-image', [EditorImageUploadController::class, 'deleteImages'])->name('admin.editor-image.delete');

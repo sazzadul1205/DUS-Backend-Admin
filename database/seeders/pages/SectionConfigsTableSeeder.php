@@ -1063,7 +1063,7 @@ class SectionConfigsTableSeeder extends Seeder
         'is_enabled' => 1,
         'is_fixed_section' => 0,
         'is_special_component' => 0,
-        'custom_props' => '[]',
+        'custom_props' => null,
         'created_at' => '2024-01-01 00:00:00',
         'updated_at' => '2024-01-01 00:00:00',
       ],

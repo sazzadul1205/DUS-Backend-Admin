@@ -1,6 +1,6 @@
 // js/Sections/WhereWeWorkSection/WhereWeWorkSection.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
 
 // Utility function to check if value exists
 const hasValue = (value) => {
@@ -9,6 +9,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Where We Work') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -32,6 +37,11 @@ const WhereWeWorkSection = ({
   paddingX = 'px-5 sm:px-10 md:px-20 lg:px-50',
   sectionClassName = '',
 }) => {
+  // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageErrors, setImageErrors] = useState({});
+
   // Use data prop if available, fallback to workData
   let resolvedData = data || workData;
 
@@ -58,6 +68,33 @@ const WhereWeWorkSection = ({
   // EARLY RETURN - No content
   // ============================================
   if (!section.title && !stats.length && !image.src) return null;
+
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (imageId) => {
+    setImageErrors(prev => ({ ...prev, [imageId]: true }));
+  };
+
+  const getImageSrc = (imageData, defaultText = 'Where We Work') => {
+    if (imageErrors[imageData.id || 'main']) {
+      return getPlaceholderImage(800, 600, imageData.alt || defaultText);
+    }
+    if (hasValue(imageData.src)) {
+      return imageData.src;
+    }
+    return getPlaceholderImage(800, 600, imageData.alt || defaultText);
+  };
+
+  const getIconSrc = (stat) => {
+    if (imageErrors[`icon-${stat.id}`]) {
+      return getPlaceholderImage(60, 60, stat.label || 'Icon');
+    }
+    if (hasValue(stat.icon)) {
+      return stat.icon;
+    }
+    return getPlaceholderImage(60, 60, stat.label || 'Icon');
+  };
 
   // ============================================
   // HELPER: Determine grid columns based on number of stats
@@ -96,13 +133,12 @@ const WhereWeWorkSection = ({
                   key={stat.id}
                   className='bg-[#F5F5F5] text-center p-5 sm:p-6 md:p-7 lg:p-8 rounded-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-xl group cursor-pointer'
                 >
-                  {stat.icon && (
-                    <img
-                      src={stat.icon}
-                      alt={stat.alt || stat.label || "Statistic icon"}
-                      className='w-10 h-10 sm:w-12 sm:h-12 md:w-13 md:h-13 lg:w-15 lg:h-15 mx-auto mb-4 sm:mb-5 md:mb-6 lg:mb-7.5 group-hover:scale-110 transition-transform duration-300'
-                    />
-                  )}
+                  <img
+                    src={getIconSrc(stat)}
+                    alt={stat.alt || stat.label || "Statistic icon"}
+                    className='w-10 h-10 sm:w-12 sm:h-12 md:w-13 md:h-13 lg:w-15 lg:h-15 mx-auto mb-4 sm:mb-5 md:mb-6 lg:mb-7.5 group-hover:scale-110 transition-transform duration-300'
+                    onError={() => handleImageError({ id: `icon-${stat.id}` })}
+                  />
                   {stat.value && (
                     <h3 className='bricolage-grotesque font-600 text-[32px] sm:text-[38px] md:text-[44px] lg:text-[50px] text-[#080C14] leading-tight'>
                       {stat.value}
@@ -121,15 +157,14 @@ const WhereWeWorkSection = ({
       )}
 
       {/* Right Section - Image */}
-      {image.src && (
-        <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0'>
-          <img
-            src={image.src}
-            alt={image.alt || "Where we work image"}
-            className={`${image.className || ''} w-full h-auto lg:h-232.5 object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl`}
-          />
-        </div>
-      )}
+      <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0'>
+        <img
+          src={getImageSrc(image)}
+          alt={image.alt || "Where we work image"}
+          className={`${image.className || ''} w-full h-auto lg:h-232.5 object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl`}
+          onError={() => handleImageError({ id: 'main' })}
+        />
+      </div>
     </section>
   );
 };

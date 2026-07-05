@@ -1,7 +1,7 @@
 // js/Sections/BannerSection/PageBannerSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Utility function to check if value exists (SAME as other sections)
 const hasValue = (value) => {
@@ -10,6 +10,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 1920, height = 600, text = 'Banner') => {
+  return `https://via.placeholder.com/${width}x${height}/1a1a2e/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -37,6 +42,11 @@ const PageBannerSection = ({
   sectionClassName = '',
   sectionId = 'page-banner',
 }) => {
+  // ============================================
+  // HOOKS MUST BE CALLED AT THE TOP LEVEL
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
   // ============================================
   // RESOLVE DATA
   // ============================================
@@ -86,6 +96,25 @@ const PageBannerSection = ({
   }
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  // Determine if we should use placeholder
+  const usePlaceholder = !hasBackground || imageError;
+
+  // Get image source
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(1920, 600, title.text || 'Page Banner')
+    : background.src;
+
+  // Get image alt text
+  const imageAlt = background.alt || (title.text ? `${title.text} - Banner` : 'Page banner background');
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -94,13 +123,12 @@ const PageBannerSection = ({
       className={`relative w-full ${height} overflow-hidden ${bgColor} ${paddingY} ${paddingX} ${sectionClassName}`}
     >
       {/* Background Image - Only render if src exists */}
-      {hasValue(background.src) && (
-        <img
-          src={background.src}
-          alt={background.alt || 'Banner background'}
-          className="w-full h-full object-cover object-center md:object-cover"
-        />
-      )}
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        className="w-full h-full object-cover object-center md:object-cover"
+        onError={handleImageError}
+      />
 
       {/* Dark Overlay - Only render if darkOverlay class exists */}
       {hasValue(overlay.darkOverlay) && (

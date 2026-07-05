@@ -14,6 +14,12 @@ const hasValue = (value) => {
   return true;
 };
 
+// Generate placeholder map URL
+const getPlaceholderMapUrl = (address = 'Location') => {
+  const encodedAddress = encodeURIComponent(address);
+  return `https://maps.google.com/maps?q=${encodedAddress}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+};
+
 const OfficeStar = ({ active }) => (
   <svg
     width="24"
@@ -155,6 +161,21 @@ const AddressSection = ({
   }
 
   // ============================================
+  // GET MAP URL WITH FALLBACK
+  // ============================================
+  const getMapUrl = (office) => {
+    if (hasValue(office?.mapUrl)) {
+      return office.mapUrl;
+    }
+    // Fallback to Google Maps embed with address
+    if (hasValue(office?.address)) {
+      return getPlaceholderMapUrl(office.address);
+    }
+    // Default fallback
+    return getPlaceholderMapUrl(office?.label || 'Location');
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -184,15 +205,13 @@ const AddressSection = ({
       {/* Dynamic Map */}
       <div className="relative pt-12">
         <div className="w-full max-w-380 mx-auto rounded-2xl overflow-hidden shadow-lg">
-          {hasValue(activeOffice?.mapUrl) && (
-            <iframe
-              src={activeOffice.mapUrl}
-              className="w-full h-100 md:h-228.75 border-0"
-              loading="lazy"
-              allowFullScreen
-              title={`${activeOffice.label} Location Map`}
-            />
-          )}
+          <iframe
+            src={getMapUrl(activeOffice)}
+            className="w-full h-100 md:h-228.75 border-0"
+            loading="lazy"
+            allowFullScreen
+            title={`${activeOffice?.label || 'Location'} Map`}
+          />
         </div>
 
         {/* Dynamic Address Card */}

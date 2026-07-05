@@ -1,7 +1,7 @@
 // js/Sections/AboutUsSection/AboutUsSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Arrow Icon
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'About Us') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -36,6 +41,14 @@ const AboutUsSection = ({
   paddingX = 'px-5 sm:px-10 md:px-20 lg:px-50',
   sectionClassName = '',
 }) => {
+  // ============================================
+  // HOOKS MUST BE CALLED AT THE TOP LEVEL
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
+  // ============================================
+  // PROCESS DATA
+  // ============================================
   // Use data prop if available, fallback to aboutUsData
   let resolvedData = data || aboutUsData;
 
@@ -80,6 +93,25 @@ const AboutUsSection = ({
   if (!hasAnyContent) {
     return null;
   }
+
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  // Determine if we should use placeholder
+  const usePlaceholder = !hasValue(image.src) || imageError;
+
+  // Get image source
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(800, 600, section.title || 'About Us')
+    : image.src;
+
+  // Get image alt text
+  const imageAlt = image.alt || (section.title ? `${section.title} - About Us` : 'About us image');
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   // ============================================
   // RENDER
@@ -206,15 +238,14 @@ const AboutUsSection = ({
       </div>
 
       {/* Right Section - Image */}
-      {hasValue(image.src) && (
-        <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0'>
-          <img
-            src={image.src}
-            alt={image.alt || "About us image"}
-            className={`${image.className || ''} w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl`}
-          />
-        </div>
-      )}
+      <div className='w-full lg:w-1/2 flex mt-8 lg:mt-0'>
+        <img
+          src={imageSrc}
+          alt={imageAlt}
+          className={`${image.className || ''} w-full h-auto lg:h-full object-cover rounded-2xl sm:rounded-3xl lg:rounded-4xl`}
+          onError={handleImageError}
+        />
+      </div>
     </section>
   );
 };

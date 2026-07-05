@@ -1,7 +1,7 @@
 // js/Sections/OurActionSection/OurActionSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Utility function to check if value exists
 const hasValue = (value) => {
@@ -10,6 +10,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL for icons
+const getPlaceholderIcon = (text = 'Icon') => {
+  return `https://via.placeholder.com/50x50/009BE2/FFFFFF?text=${encodeURIComponent(text.substring(0, 3))}`;
 };
 
 /**
@@ -33,6 +38,11 @@ const OurActionSection = ({
   paddingX = 'px-5 sm:px-10 md:px-20 lg:px-50',
   sectionClassName = '',
 }) => {
+  // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [iconErrors, setIconErrors] = useState({});
+
   // Use data prop if available, fallback to actionData
   let resolvedData = data || actionData;
 
@@ -61,6 +71,23 @@ const OurActionSection = ({
   if (!hasValue(section.title) && !hasValue(section.description) && !hasValue(actions)) {
     return null;
   }
+
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleIconError = (actionId) => {
+    setIconErrors(prev => ({ ...prev, [actionId]: true }));
+  };
+
+  const getIconSrc = (action) => {
+    if (iconErrors[action.id]) {
+      return getPlaceholderIcon(action.title || 'Icon');
+    }
+    if (hasValue(action.icon)) {
+      return action.icon;
+    }
+    return getPlaceholderIcon(action.title || 'Icon');
+  };
 
   // ============================================
   // RENDER
@@ -94,13 +121,12 @@ const OurActionSection = ({
               key={action.id}
               className='bg-[#FAFAFA] hover:bg-white p-6 sm:p-8 md:p-10 lg:p-12.5 rounded-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer hover:shadow-[0_6px_12px_rgba(0,0,0,0.10)]'
             >
-              {action.icon && (
-                <img
-                  src={action.icon}
-                  alt={action.alt || action.title || "Action icon"}
-                  className='w-8 h-8 sm:w-10 sm:h-10 lg:w-12.5 lg:h-12.5 group-hover:scale-110 transition-transform duration-300 mb-3 sm:mb-4 lg:mb-5'
-                />
-              )}
+              <img
+                src={getIconSrc(action)}
+                alt={action.alt || action.title || "Action icon"}
+                className='w-8 h-8 sm:w-10 sm:h-10 lg:w-12.5 lg:h-12.5 group-hover:scale-110 transition-transform duration-300 mb-3 sm:mb-4 lg:mb-5'
+                onError={() => handleIconError(action.id)}
+              />
               {action.title && (
                 <h3 className='bricolage-grotesque font-600 text-[20px] sm:text-[22px] lg:text-[24px] text-[#080C14] mb-2 sm:mb-3'>
                   {action.title}

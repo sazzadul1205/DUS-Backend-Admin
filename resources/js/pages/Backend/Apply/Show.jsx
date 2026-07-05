@@ -1,7 +1,8 @@
+/* eslint-disable no-undef */
 // resources/js/Pages/Backend/Apply/Show.jsx
 
 // React
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 // Inertia
 import { Head, router, Link } from '@inertiajs/react';
@@ -38,7 +39,6 @@ import {
   FaThumbsUp,
   FaLightbulb,
   FaExternalLinkAlt,
-  FaShieldAlt,
 } from 'react-icons/fa';
 
 // SweetAlert
@@ -49,28 +49,10 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
   const {
     user: currentUser,
     isAuthenticated,
-    hasRole,
-    hasAnyPermission,
   } = useAuth();
-
-  // Check permissions
-  // Check permissions - FIXED: Use correct permission slugs
-  const isJobSeeker = hasRole('job-seeker') || hasRole('job_seeker');
-  // Check for both apply.* and applications.* permissions
-  const canViewAllApplications = hasAnyPermission([
-    'apply.view',
-    'apply.view.any',
-    'apply.show',
-    'applications.view',
-    'applications.manage'
-  ]);
-  const isAdmin = canViewAllApplications;
 
   // Check if user is the owner of this application
   const isOwner = currentUser?.id === application?.user_id;
-
-  // Determine if user can view this application
-  const canView = isOwner || isAdmin;
 
   // Loading state
   const [restoring, setRestoring] = useState(false);
@@ -85,7 +67,7 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaShieldAlt className="w-10 h-10 text-red-500" />
+              <FaBriefcase className="w-10 h-10 text-red-500" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Login Required</h2>
             <p className="text-gray-500 mt-2">Please login to view application details.</p>
@@ -101,15 +83,15 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
     );
   }
 
-  // If user doesn't have permission to view this application, show access denied
-  if (!canView) {
+  // If user doesn't own this application, show access denied
+  if (!isOwner) {
     return (
       <AuthenticatedLayout>
         <Head title="Access Denied" />
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaShieldAlt className="w-10 h-10 text-red-500" />
+              <FaBriefcase className="w-10 h-10 text-red-500" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
             <p className="text-gray-500 mt-2">
@@ -120,32 +102,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Back to Applications
-            </button>
-          </div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
-
-  // If user is employer (not job seeker) and not admin, show message
-  if (!isJobSeeker && !isAdmin) {
-    return (
-      <AuthenticatedLayout>
-        <Head title="Access Denied" />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaBriefcase className="w-10 h-10 text-yellow-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Employer Account</h2>
-            <p className="text-gray-500 mt-2">
-              Employer accounts cannot view application details. Please use the employer panel to manage applications for your jobs.
-            </p>
-            <button
-              onClick={() => router.visit(route('backend.dashboard'))}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              Go to Dashboard
             </button>
           </div>
         </div>
@@ -217,15 +173,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
     return 'text-red-600';
   };
 
-  // Get ATS score background
-  const getAtsScoreBg = (score) => {
-    if (!score) return 'bg-gray-100';
-    if (score >= 80) return 'bg-green-100';
-    if (score >= 60) return 'bg-blue-100';
-    if (score >= 40) return 'bg-yellow-100';
-    return 'bg-red-100';
-  };
-
   // Get ATS score message
   const getAtsScoreMessage = (score) => {
     if (!score) return 'Not calculated yet';
@@ -238,20 +185,11 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
   // Format salary
   const formatSalary = (salary) => {
     if (!salary) return 'Not specified';
-    return new Intl.NumberFormat('en-US').format(salary) + ' BDT';
+    return `${new Intl.NumberFormat('en-US').format(salary)  } BDT`;
   };
 
   // Recalculate ATS handler
   const handleRecalculateAts = () => {
-    if (!isOwner && !isAdmin) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Permission Denied',
-        text: 'You do not have permission to recalculate ATS score.',
-      });
-      return;
-    }
-
     Swal.fire({
       title: 'Recalculate ATS Score?',
       text: 'This will re-analyze your CV against the job requirements.',
@@ -293,15 +231,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
 
   // Withdraw handler
   const handleWithdraw = () => {
-    if (!isOwner) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Permission Denied',
-        text: 'You do not have permission to withdraw this application.',
-      });
-      return;
-    }
-
     Swal.fire({
       title: 'Withdraw Application?',
       text: 'This will move your application to trash. You can restore it later.',
@@ -343,15 +272,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
 
   // Restore handler
   const handleRestore = () => {
-    if (!isOwner && !isAdmin) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Permission Denied',
-        text: 'You do not have permission to restore this application.',
-      });
-      return;
-    }
-
     Swal.fire({
       title: 'Restore Application?',
       text: 'This will restore your application from trash.',
@@ -393,15 +313,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
 
   // Force delete handler
   const handleForceDelete = () => {
-    if (!isOwner && !isAdmin) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Permission Denied',
-        text: 'You do not have permission to permanently delete this application.',
-      });
-      return;
-    }
-
     Swal.fire({
       title: 'Permanently Delete?',
       html: `Are you sure you want to permanently delete this application?<br><br><strong>This action cannot be undone.</strong>`,
@@ -439,23 +350,23 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
   };
 
   // Determine if user can edit this application
-  const canEdit = !isDeleted && application.status === 'pending' && (isOwner || isAdmin);
+  const canEdit = !isDeleted && application.status === 'pending' && isOwner;
 
   // Determine if user can withdraw this application
   const canWithdraw = !isDeleted && application.status === 'pending' && isOwner;
 
   // Determine if user can restore this application
-  const canRestore = isDeleted && (isOwner || isAdmin);
+  const canRestore = isDeleted && isOwner;
 
-  // Determine if user can force delete this application
-  const canRecalculate = !isDeleted && atsStatus?.can_recalculate && (isOwner || isAdmin);
+  // Determine if user can recalculate ATS
+  const canRecalculate = !isDeleted && atsStatus?.can_recalculate && isOwner;
 
   return (
     <AuthenticatedLayout>
       <Head title={`Application for ${jobListing.title}`} />
 
       <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-        <div className=" mx-auto">
+        <div className="mx-auto max-w-7xl">
           {/* Back Button */}
           <button
             onClick={() => router.get(route('backend.apply.index'))}
@@ -472,11 +383,6 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
                 <div>
                   <h1 className="text-xl font-bold text-white">Application Details</h1>
                   <p className="text-blue-100 text-sm mt-1">Review your application information</p>
-                  {isAdmin && !isOwner && (
-                    <p className="text-blue-200 text-xs mt-2">
-                      👑 Admin view - Viewing application for {application.name}
-                    </p>
-                  )}
                 </div>
                 <div className="flex gap-2">
                   {canEdit && (
@@ -508,7 +414,7 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
                       Restore
                     </button>
                   )}
-                  {isDeleted && (isOwner || isAdmin) && (
+                  {isDeleted && isOwner && (
                     <button
                       onClick={handleForceDelete}
                       className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-100 rounded-lg flex items-center gap-2 transition-all duration-200"
@@ -701,9 +607,9 @@ export default function ApplyShow({ application, jobListing, statusTimeline, ats
                       {statusTimeline.map((timeline, index) => (
                         <div key={index} className="flex gap-3">
                           <div className="flex flex-col items-center">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
                             {index < statusTimeline.length - 1 && (
-                              <div className="w-0.5 h-full bg-gray-200"></div>
+                              <div className="w-0.5 h-full bg-gray-200" />
                             )}
                           </div>
                           <div className="flex-1 pb-4">

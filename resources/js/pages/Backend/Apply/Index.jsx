@@ -463,7 +463,7 @@ export default function ApplyIndex({ applications: initialApplications, stats: i
               </button>
               {!showTrashed && (
                 <Link
-                  href={route('backend.public-jobs.index')}
+                  href={route('public.jobs.index')}
                   className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm text-sm font-medium"
                 >
                   <FaPlus size={12} />
@@ -522,7 +522,7 @@ export default function ApplyIndex({ applications: initialApplications, stats: i
                 </p>
                 {!showTrashed && (
                   <Link
-                    href={route('backend.public-jobs.index')}
+                    href={route('public.jobs.index')}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition mt-4"
                   >
                     <FaPlus size={12} /> Browse Jobs

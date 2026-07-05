@@ -105,13 +105,11 @@ export default function PublicJobListingsIndex({
 
     const paramsToUse = filterParams || filters;
 
-    // If no filters and no search, we still want to show all jobs
-    // But we don't need to make a request if nothing changed
-
     isApplyingFilters.current = true;
     setLoading(true);
 
-    router.get(route('backend.public.jobs.index'), paramsToUse, {
+    // UPDATED: Use the consolidated public job route
+    router.get(route('public.jobs.index'), paramsToUse, {
       preserveState: true,
       preserveScroll: true,
       replace: true,
@@ -120,7 +118,6 @@ export default function PublicJobListingsIndex({
         setLoading(false);
         isApplyingFilters.current = false;
         if (!filterParams) {
-          // Only scroll on manual filter application
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
@@ -146,7 +143,7 @@ export default function PublicJobListingsIndex({
       }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [applyFilters, filters.search, initialFilters.search]); // Only depend on search, not applyFilters
+  }, [applyFilters, filters.search, initialFilters.search]);
 
   // Handle filter change
   const handleFilterChange = (key, value) => {
@@ -172,7 +169,6 @@ export default function PublicJobListingsIndex({
       sort: 'latest',
     };
     setFilters(resetValues);
-    // Apply filters immediately
     applyFilters(resetValues);
   };
 
@@ -190,7 +186,8 @@ export default function PublicJobListingsIndex({
     if (page < 1 || page > pagination?.lastPage) return;
 
     setLoading(true);
-    router.get(route('backend.public.jobs.index'), { ...filters, page }, {
+    // UPDATED: Use the consolidated public job route
+    router.get(route('public.jobs.index'), { ...filters, page }, {
       preserveState: true,
       preserveScroll: true,
       replace: true,
@@ -268,7 +265,8 @@ export default function PublicJobListingsIndex({
 
   // Share job
   const handleShareJob = (job) => {
-    const url = window.location.origin + route('backend.public.jobs.show', job.slug);
+    // UPDATED: Use the consolidated public job show route
+    const url = window.location.origin + route('public.jobs.show', job.slug);
 
     if (navigator.share) {
       navigator.share({
@@ -298,7 +296,6 @@ export default function PublicJobListingsIndex({
   const clearFilter = (key) => {
     const updatedFilters = { ...filters, [key]: '' };
     setFilters(updatedFilters);
-    // Apply filters after clearing
     applyFilters(updatedFilters);
   };
 
@@ -387,7 +384,7 @@ export default function PublicJobListingsIndex({
       <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
         {/* Hero Section */}
         <div className="bg-linear-to-r from-blue-600 to-indigo-700 text-white py-12">
-          <div className=" mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h1 className="text-3xl md:text-4xl font-bold mb-3">
                 Find Your Dream Job
@@ -414,7 +411,7 @@ export default function PublicJobListingsIndex({
         </div>
 
         {/* Main Content */}
-        <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar Filters - Desktop */}
             <div className="hidden lg:block w-80 shrink-0">
@@ -749,7 +746,8 @@ export default function PublicJobListingsIndex({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <h2 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition">
-                                  <a href={route('backend.public.jobs.show', job.slug)}>
+                                  {/* UPDATED: Use the consolidated public job show route */}
+                                  <a href={route('public.jobs.show', job.slug)}>
                                     {job.title}
                                   </a>
                                 </h2>
@@ -850,9 +848,9 @@ export default function PublicJobListingsIndex({
                                   <FaShareAlt size={16} />
                                 </button>
 
-                                {/* Apply Button */}
+                                {/* Apply Button - UPDATED: Use consolidated route */}
                                 <a
-                                  href={route('backend.public.jobs.show', job.slug)}
+                                  href={route('public.jobs.show', job.slug)}
                                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                                 >
                                   View Details

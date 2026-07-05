@@ -1,7 +1,7 @@
-// js/Sections/BannerSection/PageTagBannerSectionSection.jsx
+// js/Sections/BannerSection/PageTagBannerSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Utility function
 const hasValue = (value) => {
@@ -10,6 +10,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 1920, height = 600, text = 'Gallery Banner') => {
+  return `https://via.placeholder.com/${width}x${height}/1a1a2e/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -44,6 +49,11 @@ const PageTagBannerSection = ({
   activeTag = '',
   tagTitle = '',
 }) => {
+  // ============================================
+  // HOOKS MUST BE CALLED AT THE TOP LEVEL
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
   // ============================================
   // RESOLVE DATA
   // ============================================
@@ -100,6 +110,25 @@ const PageTagBannerSection = ({
   }
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  // Determine if we should use placeholder
+  const usePlaceholder = !hasBackground || imageError;
+
+  // Get image source
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(1920, 600, galleryTitle)
+    : background.src;
+
+  // Get image alt text
+  const imageAlt = background.alt || (galleryTitle ? `${galleryTitle} - Banner` : 'Gallery banner background');
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // ============================================
   // RENDER TAGS
   // ============================================
   const renderTags = () => {
@@ -150,13 +179,12 @@ const PageTagBannerSection = ({
       className={`relative w-full ${height} overflow-hidden ${bgColor} ${paddingY} ${paddingX} ${sectionClassName}`}
     >
       {/* Background Image */}
-      {hasBackground && (
-        <img
-          src={background.src}
-          alt={background.alt || 'Banner background'}
-          className="w-full h-full object-cover object-center md:object-cover"
-        />
-      )}
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        className="w-full h-full object-cover object-center md:object-cover"
+        onError={handleImageError}
+      />
 
       {/* Dark Overlay */}
       {hasValue(overlay.darkOverlay) && (

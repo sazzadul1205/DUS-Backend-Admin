@@ -79,6 +79,9 @@ const SectionEditModal = ({
   // Populate form when section changes
   useEffect(() => {
     if (section) {
+      // console.log('📥 Section loaded:', section);
+      // console.log('📥 Custom props:', section.custom_props);
+
       setFormData({
         section_key: section.section_key || '',
         component: section.component || '',
@@ -123,13 +126,18 @@ const SectionEditModal = ({
    * Handle custom property changes
    */
   const handleCustomPropChange = (key, value) => {
-    setFormData(prev => ({
-      ...prev,
-      custom_props: {
-        ...prev.custom_props,
-        [key]: value
-      }
-    }));
+    // console.log('🔧 Custom prop changed:', { key, value });
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        custom_props: {
+          ...prev.custom_props,
+          [key]: value
+        }
+      };
+      // console.log('📝 Updated formData:', newFormData);
+      return newFormData;
+    });
     if (errors.custom_props) {
       setErrors(prev => ({ ...prev, custom_props: '' }));
     }
@@ -158,7 +166,7 @@ const SectionEditModal = ({
       return;
     }
 
-    // Prepare data for submission
+    // Prepare data for submission - START WITH FORM DATA
     const submitData = {
       section_key: formData.section_key,
       component: formData.component,
@@ -168,14 +176,30 @@ const SectionEditModal = ({
       custom_props: formData.custom_props || {},
     };
 
+    // console.log('📤 Submitting data (before merge):', submitData);
+
     // CRITICAL FIX: Merge section data changes properly
     if (sectionData !== null && Object.keys(sectionData).length > 0) {
-      // If sectionData contains custom_props, merge them properly
+      // ✅ ONLY merge custom_props from sectionData if they DON'T exist in formData
+      // OR if they are specifically for the data tab (not basic settings)
       if (sectionData.custom_props) {
-        submitData.custom_props = {
-          ...submitData.custom_props,
-          ...sectionData.custom_props
-        };
+        // ❌ REMOVE THIS - it's overwriting the formData custom_props
+        // submitData.custom_props = {
+        //   ...submitData.custom_props,
+        //   ...sectionData.custom_props
+        // };
+
+        // ✅ Instead, ONLY merge sectionData.custom_props if they are different
+        // and ONLY for keys that are NOT in formData.custom_props
+        const formDataKeys = Object.keys(submitData.custom_props);
+        const sectionDataKeys = Object.keys(sectionData.custom_props);
+
+        sectionDataKeys.forEach(key => {
+          // Only add if the key doesn't exist in formData
+          if (!formDataKeys.includes(key)) {
+            submitData.custom_props[key] = sectionData.custom_props[key];
+          }
+        });
       }
 
       // If sectionData contains other data (like the programs data), include it
@@ -188,6 +212,7 @@ const SectionEditModal = ({
       }
     }
 
+    // console.log('📤 Submitting data (after merge):', submitData);
 
     router.put(
       route('backend.cms.sections.update', { section: section.id }),
@@ -325,19 +350,91 @@ const SectionEditModal = ({
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
-                        value={currentValue.startsWith('#') ? currentValue : '#ffffff'}
-                        onChange={(e) => handleCustomPropChange(field.key, e.target.value)}
-                        className="w-12 h-12 border border-gray-300 rounded-lg cursor-pointer"
-                        aria-label={`Select color for ${field.label}`}
+                        value={(() => {
+                          // Extract hex from various formats
+                          if (!currentValue) return '#ffffff';
+                          if (currentValue.startsWith('#')) return currentValue;
+                          if (currentValue.startsWith('bg-[') && currentValue.endsWith(']')) {
+                            const match = currentValue.match(/bg-\[(.*?)\]/);
+                            return match ? match[1] : '#ffffff';
+                          }
+                          // Handle standard Tailwind colors
+                          const colorMap = {
+                            'bg-white': '#ffffff',
+                            'bg-gray-50': '#f9fafb',
+                            'bg-gray-100': '#f3f4f6',
+                            'bg-blue-50': '#eff6ff',
+                            'bg-green-50': '#f0fdf4',
+                            'bg-purple-50': '#faf5ff',
+                            'bg-yellow-50': '#fefce8',
+                            'bg-red-50': '#fef2f2',
+                            'bg-indigo-50': '#eef2ff',
+                            'bg-pink-50': '#fdf2f8',
+                            'bg-orange-50': '#fff7ed',
+                            'bg-teal-50': '#f0fdfa',
+                            'bg-[#F5F5F5]': '#F5F5F5',
+                            'bg-[#F9F9FA]': '#F9F9FA',
+                          };
+                          return colorMap[currentValue] || '#ffffff';
+                        })()}
+                        onChange={(e) => {
+                          const hexColor = e.target.value;
+                          // console.log('🎨 Color changed to:', hexColor); // Debug log
+                          // Store as Tailwind format: bg-[#hex]
+                          handleCustomPropChange(field.key, `bg-[${hexColor}]`);
+                        }}
+                        className="w-12 h-12 border border-gray-300 rounded-lg cursor-pointer p-1"
                       />
                       <input
                         type="text"
                         value={currentValue}
-                        onChange={(e) => handleCustomPropChange(field.key, e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                        placeholder={field.default || 'Enter color class or hex'}
+                        onChange={(e) => {
+                          let value = e.target.value.trim();
+                          // console.log('📝 Text input changed to:', value); // Debug log
+                          // If user enters just a hex color, auto-wrap it
+                          if (value.match(/^#[0-9a-fA-F]{6}$/)) {
+                            value = `bg-[${value}]`;
+                          }
+                          // If user enters just a color name like 'white', add bg- prefix
+                          else if (value.match(/^[a-zA-Z-]+$/) && !value.startsWith('bg-')) {
+                            value = `bg-${value}`;
+                          }
+                          handleCustomPropChange(field.key, value);
+                        }}
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono"
+                        placeholder="bg-white or #F9F9FA"
                       />
-                      <span className="text-xs text-gray-400">(e.g., bg-white or #ffffff)</span>
+                      {/* Color preview swatch */}
+                      <div
+                        className="w-8 h-8 rounded-lg border border-gray-200 shrink-0"
+                        style={{
+                          backgroundColor: (() => {
+                            if (!currentValue) return '#ffffff';
+                            if (currentValue.startsWith('#')) return currentValue;
+                            if (currentValue.startsWith('bg-[') && currentValue.endsWith(']')) {
+                              const match = currentValue.match(/bg-\[(.*?)\]/);
+                              return match ? match[1] : '#ffffff';
+                            }
+                            const colorMap = {
+                              'bg-white': '#ffffff',
+                              'bg-gray-50': '#f9fafb',
+                              'bg-gray-100': '#f3f4f6',
+                              'bg-blue-50': '#eff6ff',
+                              'bg-green-50': '#f0fdf4',
+                              'bg-purple-50': '#faf5ff',
+                              'bg-yellow-50': '#fefce8',
+                              'bg-red-50': '#fef2f2',
+                              'bg-indigo-50': '#eef2ff',
+                              'bg-pink-50': '#fdf2f8',
+                              'bg-orange-50': '#fff7ed',
+                              'bg-teal-50': '#f0fdfa',
+                              'bg-[#F5F5F5]': '#F5F5F5',
+                              'bg-[#F9F9FA]': '#F9F9FA',
+                            };
+                            return colorMap[currentValue] || '#ffffff';
+                          })()
+                        }}
+                      />
                     </div>
                   )}
 

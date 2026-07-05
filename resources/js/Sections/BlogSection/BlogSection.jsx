@@ -1,7 +1,7 @@
 // js/Sections/BlogSection/BlogSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Inertia
 import { Link } from '@inertiajs/react';
@@ -16,6 +16,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Blog Post') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -36,10 +41,14 @@ const BlogSection = ({
   sectionId = 'blog-section',
 }) => {
   // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageErrors, setImageErrors] = useState({});
+
+  // ============================================
   // RESOLVE DATA
   // ============================================
   let resolvedData = blogsData || data || blogData || [];
-
 
   // ============================================
   // NORMALIZE DATA STRUCTURE
@@ -116,6 +125,27 @@ const BlogSection = ({
   }
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (postId) => {
+    setImageErrors(prev => ({ ...prev, [postId]: true }));
+  };
+
+  const getImageSrc = (post, defaultText = 'Blog Post') => {
+    if (imageErrors[post.id]) {
+      return getPlaceholderImage(800, 600, post.title || defaultText);
+    }
+    if (hasValue(post.image)) {
+      return post.image;
+    }
+    return getPlaceholderImage(800, 600, post.title || defaultText);
+  };
+
+  const getImageAlt = (post) => {
+    return post.title || 'Blog post image';
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -135,13 +165,12 @@ const BlogSection = ({
       {/* Main Blog */}
       {hasMainBlog && (
         <div className='flex flex-col lg:flex-row items-center gap-8 lg:gap-12.5 shadow-lg p-5 sm:p-6 md:p-7.5 rounded-2xl bg-white'>
-          {hasValue(resolvedMainBlog.image) && (
-            <img
-              src={resolvedMainBlog.image}
-              alt={resolvedMainBlog.title || "Main blog image"}
-              className="w-full lg:w-187.5 h-auto lg:h-112.5 object-cover object-center rounded-2xl"
-            />
-          )}
+          <img
+            src={getImageSrc(resolvedMainBlog)}
+            alt={getImageAlt(resolvedMainBlog)}
+            className="w-full lg:w-187.5 h-auto lg:h-112.5 object-cover object-center rounded-2xl"
+            onError={() => handleImageError(resolvedMainBlog.id)}
+          />
 
           <div className="flex-1 w-full">
             {hasValue(resolvedMainBlog.date) && (
@@ -186,13 +215,12 @@ const BlogSection = ({
 
             return (
               <div key={post.id} className='shadow-2xl p-5 sm:p-6 md:p-7.5 rounded-2xl hover:shadow-3xl transition-shadow duration-300 bg-white'>
-                {hasValue(post.image) && (
-                  <img
-                    src={post.image}
-                    alt={post.title || "Blog post image"}
-                    className="w-full h-48 sm:h-56 md:h-62.5 object-cover object-center rounded-2xl mb-4 sm:mb-5"
-                  />
-                )}
+                <img
+                  src={getImageSrc(post)}
+                  alt={getImageAlt(post)}
+                  className="w-full h-48 sm:h-56 md:h-62.5 object-cover object-center rounded-2xl mb-4 sm:mb-5"
+                  onError={() => handleImageError(post.id)}
+                />
 
                 {hasValue(post.date) && (
                   <label className='font-normal text-[14px] sm:text-[16px] text-[#009BE2] pb-2 block'>

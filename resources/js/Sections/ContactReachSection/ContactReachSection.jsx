@@ -1,7 +1,7 @@
 // js/Sections/ContactReachSection/ContactReachSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Components
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Contact Us') => {
+  return `https://via.placeholder.com/${width}x${height}/1500FF/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -45,6 +50,11 @@ const ContactReachSection = ({
   sectionId = 'contact-reach',
 }) => {
   // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageError, setImageError] = useState(false);
+
+  // ============================================
   // RESOLVE DATA
   // ============================================
   // Use data prop if available, fallback to reachData or direct image prop
@@ -76,11 +86,23 @@ const ContactReachSection = ({
   }
 
   // ============================================
-  // CHECK FOR IMAGE (optional - form still renders)
+  // IMAGE HANDLING
   // ============================================
-  if (!hasValue(resolvedImage)) {
-    console.warn('ContactReachSection: No image provided');
-  }
+  const hasImage = hasValue(resolvedImage);
+  const usePlaceholder = !hasImage || imageError;
+
+  // Get image source
+  const imageSrc = usePlaceholder
+    ? getPlaceholderImage(800, 600, resolvedTitle || 'Contact Us')
+    : resolvedImage;
+
+  // Get image alt text
+  const imageAlt = 'Contact Reach';
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   // ============================================
   // INPUT CLASS NAME
@@ -98,17 +120,14 @@ const ContactReachSection = ({
     >
       {/* Left Image Section - Full height on desktop */}
       <div className='w-full lg:w-1/2 relative'>
-        {hasValue(resolvedImage) && (
-          <>
-            <img
-              src={resolvedImage}
-              alt='Contact Reach'
-              className='w-full h-full object-cover lg:max-h-none max-h-100'
-            />
-            {/* Gradient Overlay */}
-            <div className='absolute inset-0 bg-linear-to-b from-[#1500FF] via-[#6F07E5] to-[#F10A0A] opacity-50' />
-          </>
-        )}
+        <img
+          src={imageSrc}
+          alt={imageAlt}
+          className='w-full h-full object-cover lg:max-h-none max-h-100'
+          onError={handleImageError}
+        />
+        {/* Gradient Overlay */}
+        <div className='absolute inset-0 bg-linear-to-b from-[#1500FF] via-[#6F07E5] to-[#F10A0A] opacity-50' />
       </div>
 
       {/* Right Section */}

@@ -188,12 +188,63 @@ const AdminLayout = ({ children }) => {
     // Jobs Management Dropdown
     if (hasAnyPermission(['job.view.any', 'job.create', 'category.view', 'location.view', 'statistics.view'])) {
       const subs = [];
-      if (hasPermission('job.view.any')) subs.push({ name: 'All Jobs', routeName: 'backend.listing.index', activeExclude: ['/backend/listing/create'], icon: FiList });
-      if (hasPermission('job.create')) subs.push({ name: 'Create New Job', routeName: 'backend.listing.create', icon: FiPlusCircle, highlight: true });
-      if (hasPermission('location.view')) subs.push({ name: 'Locations', routeName: 'backend.locations.index', icon: FaSearchLocation });
-      if (hasPermission('category.view')) subs.push({ name: 'Categories', routeName: 'backend.categories.index', icon: MdCategory });
-      if (hasPermission('statistics.view') || hasPermission('report.jobs')) subs.push({ name: 'Job Statistics', routeName: 'backend.statistics.index', icon: FiBarChart2 });
-      if (subs.length) items.push({ name: 'Jobs Management', icon: FiBriefcase, isDropdown: true, dropdownKey: 'adminJobs', subItems: subs });
+
+      // All Jobs - Using adminIndex
+      if (hasPermission('job.view.any')) {
+        subs.push({
+          name: 'All Jobs',
+          routeName: 'backend.listing.index',
+          activeExclude: ['/backend/listing/create'],
+          icon: FiList
+        });
+      }
+
+      // Create New Job
+      if (hasPermission('job.create')) {
+        subs.push({
+          name: 'Create New Job',
+          routeName: 'backend.listing.create',
+          icon: FiPlusCircle,
+          highlight: true
+        });
+      }
+
+      // Locations
+      if (hasPermission('location.view')) {
+        subs.push({
+          name: 'Locations',
+          routeName: 'backend.locations.index',
+          icon: FaSearchLocation
+        });
+      }
+
+      // Categories
+      if (hasPermission('category.view')) {
+        subs.push({
+          name: 'Categories',
+          routeName: 'backend.categories.index',
+          icon: MdCategory
+        });
+      }
+
+      // Job Statistics
+      if (hasPermission('statistics.view') || hasPermission('report.jobs')) {
+        subs.push({
+          name: 'Job Statistics',
+          routeName: 'backend.statistics.index',
+          icon: FiBarChart2
+        });
+      }
+
+      if (subs.length) {
+        items.push({
+          name: 'Jobs Management',
+          icon: FiBriefcase,
+          isDropdown: true,
+          dropdownKey: 'adminJobs',
+          subItems: subs
+        });
+      }
     }
 
     // Applicant Profiles

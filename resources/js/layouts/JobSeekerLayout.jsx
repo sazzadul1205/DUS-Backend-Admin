@@ -57,32 +57,32 @@ const JobSeekerLayout = ({ children }) => {
   const menuItems = [
     {
       name: 'Dashboard',
-      routeName: 'backend.dashboard', // ✅ This exists in your routes
+      routeName: 'backend.dashboard',
       icon: FiHome,
       description: 'Overview & stats',
     },
     {
       name: 'Browse Jobs',
-      routeName: 'backend.public-jobs.index', // ✅ This exists - shows public jobs list
+      routeName: 'public.jobs.index', // ✅ UPDATED: Using the consolidated public route
       icon: FiSearch,
       description: 'Find your next role',
     },
     {
       name: 'My Profile',
-      routeName: 'backend.applicant.profile.show', // ✅ This exists
+      routeName: 'backend.applicant.profile.show',
       icon: FiUser,
       description: 'View & edit profile',
-      routeParams: { id: user?.applicantProfile?.id || null }, // Will need user's profile ID
+      routeParams: { id: user?.applicantProfile?.id || null },
     },
     {
       name: 'My Applications',
-      routeName: 'backend.apply.index', // ✅ This exists
+      routeName: 'backend.apply.index',
       icon: FiFileText,
       description: 'Track applications',
     },
     {
       name: 'Notifications',
-      routeName: 'backend.notifications.index', // ✅ This exists
+      routeName: 'backend.notifications.index',
       icon: FiBell,
       badgeCount: notificationMeta.unread_count,
       description: 'Updates & alerts',
@@ -91,11 +91,9 @@ const JobSeekerLayout = ({ children }) => {
 
   // Render menu item
   const renderMenuItem = (item) => {
-    // Generate the route URL using Ziggy
     const href = safeRoute(item.routeName, item.routeParams || {});
     const isActive = isRouteActive(item.routeName, item.routeParams || {});
 
-    // Don't render if route doesn't exist or is invalid
     if (href === '#') {
       return null;
     }
@@ -113,25 +111,20 @@ const JobSeekerLayout = ({ children }) => {
         `}
         title={item.description}
       >
-        {/* Icon */}
         <item.icon className={`w-5 h-5 ${isActive ? 'text-green-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
 
-        {/* Name */}
         {!isCollapsed && <span className="flex-1">{item.name}</span>}
 
-        {/* Badge */}
         {!isCollapsed && item.badgeCount > 0 && (
           <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
             {item.badgeCount > 99 ? '99+' : item.badgeCount}
           </span>
         )}
 
-        {/* Active indicator */}
         {isActive && !isCollapsed && (
           <span className="absolute left-0 w-1 h-8 bg-green-500 rounded-r-full" />
         )}
 
-        {/* Collapsed active indicator */}
         {isActive && isCollapsed && (
           <span className="absolute right-0 w-1.5 h-1.5 rounded-full bg-green-500" />
         )}

@@ -1,7 +1,7 @@
 // js/Sections/CardsSection/CardsSection.jsx
 
 // React
-import React from 'react';
+import React, { useState } from 'react';
 
 // Components
 import ArrowIcon from '../../components/Shared/ArrowIcon';
@@ -13,6 +13,11 @@ const hasValue = (value) => {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'object') return Object.keys(value).length > 0;
   return true;
+};
+
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 400, height = 300, text = 'Card Image') => {
+  return `https://via.placeholder.com/${width}x${height}/E0E7FF/1E3A8A?text=${encodeURIComponent(text)}`;
 };
 
 /**
@@ -40,6 +45,11 @@ const CardsSection = ({
   sectionClassName = '',
   sectionId = 'cards',
 }) => {
+  // ============================================
+  // HOOKS - Must be called at the top level
+  // ============================================
+  const [imageErrors, setImageErrors] = useState({});
+
   // ============================================
   // RESOLVE DATA
   // ============================================
@@ -77,6 +87,27 @@ const CardsSection = ({
   }
 
   // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (cardId) => {
+    setImageErrors(prev => ({ ...prev, [cardId]: true }));
+  };
+
+  const getImageSrc = (card) => {
+    if (imageErrors[card.id]) {
+      return getPlaceholderImage(400, 300, card.title || 'Card Image');
+    }
+    if (hasValue(card.image?.src)) {
+      return card.image.src;
+    }
+    return getPlaceholderImage(400, 300, card.title || 'Card Image');
+  };
+
+  const getImageAlt = (card) => {
+    return card.image?.alt || card.title || 'Card image';
+  };
+
+  // ============================================
   // RENDER
   // ============================================
   return (
@@ -89,16 +120,15 @@ const CardsSection = ({
           <div className={`${card.bgColor || 'bg-white'} w-full rounded-xl sm:rounded-2xl px-4 sm:px-8 md:px-12 lg:px-17 py-6 sm:py-8 md:py-10 lg:py-12.5 flex flex-col`}>
 
             {/* Image Container with fixed height and centering */}
-            {hasValue(card.image?.src) && (
-              <div className='flex items-center justify-center min-h-50 sm:min-h-62.5 md:min-h-75 lg:min-h-87.5 xl:min-h-110'>
-                <img
-                  src={card.image.src}
-                  alt={card.image.alt || card.title || 'Card image'}
-                  className={`${card.image.className || ''} max-w-full max-h-full object-contain w-auto h-auto`}
-                  loading="lazy"
-                />
-              </div>
-            )}
+            <div className='flex items-center justify-center min-h-50 sm:min-h-62.5 md:min-h-75 lg:min-h-87.5 xl:min-h-110'>
+              <img
+                src={getImageSrc(card)}
+                alt={getImageAlt(card)}
+                className={`${card.image?.className || ''} max-w-full max-h-full object-contain w-auto h-auto`}
+                loading="lazy"
+                onError={() => handleImageError(card.id)}
+              />
+            </div>
 
             {/* Bottom Card - Always at bottom with consistent height */}
             {(hasValue(card.title) || hasValue(card.buttonText)) && (

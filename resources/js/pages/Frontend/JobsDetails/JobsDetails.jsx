@@ -1,7 +1,7 @@
 // resources/js/Pages/Frontend/JobsDetails/JobsDetails.jsx
 
 import React, { useState, useEffect } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { CiCalendar, CiLocationOn } from "react-icons/ci";
 import { FaRegClock, FaFacebookF, FaLinkedinIn, FaInstagram, FaBriefcase, FaMoneyBillWave, FaGraduationCap, FaBuilding } from "react-icons/fa";
 import axios from 'axios';
@@ -11,10 +11,11 @@ import DynamicSectionRenderer from '../../../components/Shared/DynamicSectionRen
 // Banner Section Component
 const BannerSection = ({ bannerData, jobData, loading }) => {
   if (loading) {
+    const newLocal = "relative isolate w-full min-h-100 sm:min-h-125 lg:h-125 overflow-hidden bg-[#080C14] flex items-center justify-center";
     return (
-      <section className="relative isolate w-full min-h-[400px] sm:min-h-[500px] lg:h-125 overflow-hidden bg-[#080C14] flex items-center justify-center">
+      <section className={newLocal}>
         <div className="text-white text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-white border-r-transparent"></div>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-white border-r-transparent" />
           <p className="mt-4 text-lg">Loading job details...</p>
         </div>
       </section>
@@ -47,7 +48,7 @@ const BannerSection = ({ bannerData, jobData, loading }) => {
   const banner = bannerData || defaultBanner;
 
   return (
-    <section className="relative isolate w-full min-h-[400px] sm:min-h-[500px] lg:h-125 overflow-hidden bg-[#080C14]">
+    <section className="relative isolate w-full min-h-100 sm:min-h-125 lg:h-125 overflow-hidden bg-[#080C14]">
       <div className="absolute inset-0 z-0">
         {banner?.background?.src && (
           <img
@@ -134,7 +135,7 @@ const JobContentSection = ({
       <section className={`${bgColor} ${paddingY} ${paddingX} ${sectionClassName}`}>
         <div className="max-w-275 mx-auto">
           <div className="flex justify-center items-center py-20">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-[#009BE2] border-r-transparent"></div>
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-[#009BE2] border-r-transparent" />
           </div>
         </div>
       </section>
@@ -349,8 +350,7 @@ const JobsDetails = ({
   pageData: pageDataProp,
   ...pageData
 }) => {
-  // Get the slug from the URL
-  const { url } = usePage();
+
   const slug = window.location.pathname.split('/').pop();
 
   // State for job data
@@ -385,7 +385,7 @@ const JobsDetails = ({
 
   // Use the data from the correct nesting
   const actualPageData = pageDataProp || pageData || {};
-  
+
 
   // Get banner data from page data
   const bannerData = actualPageData.bannerData;
@@ -408,7 +408,7 @@ const JobsDetails = ({
         />
       );
     }
-console.log(jobData);
+    // console.log(jobData);
 
     if (component === 'JobContentSection') {
       return (

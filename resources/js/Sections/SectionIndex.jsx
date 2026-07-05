@@ -5,7 +5,7 @@ import React from 'react';
 // Import all section components
 import HomeBanner from './BannerSection/HomeBanner';
 import PageBannerSection from './BannerSection/PageBannerSection';
-import PageTagBannerSection from './BannerSection/PageTagBannerSection'; // NEW
+import PageTagBannerSection from './BannerSection/PageTagBannerSection';
 import AboutUsSection from './AboutUsSection/AboutUsSection';
 import OurActionSection from './OurActionSection/OurActionSection';
 import WhereWeWorkSection from './WhereWeWorkSection/WhereWeWorkSection';
@@ -27,12 +27,11 @@ import PublicationsSection from './PublicationsSection/PublicationsSection';
 import ImageGallerySection from './ImageGallerySection/ImageGallerySection';
 import VideoGallerySection from './VideoGallerySection/VideoGallerySection';
 
-// Component mapping with both old and new component names
+// Component mapping - only new names
 const sectionComponents = {
-  // New names
   HomeBanner,
   PageBannerSection,
-  PageTagBannerSection, // NEW
+  PageTagBannerSection,
   AboutUsSection,
   OurActionSection,
   WhereWeWorkSection,
@@ -53,43 +52,22 @@ const sectionComponents = {
   PublicationsSection,
   ImageGallerySection,
   VideoGallerySection,
-
-  // Old names for backward compatibility
-  'BannerSection': HomeBanner,
-  'PageBanner': PageBannerSection,
-  'PageTagBanner': PageTagBannerSection,
-  'AboutUs': AboutUsSection,
-  'OurAction': OurActionSection,
-  'WhereWeWork': WhereWeWorkSection,
-  'OurPrograms': OurProgramsSection,
-  'Stories': StoriesSection,
-  'Blog': BlogSection,
-  'Jobs': JobsSection,
-  'ProgramImpact': ProgramImpactSection,
-  'UpcomingEvents': UpcomingEventsSection,
-  'HeroFigure': HeroFigureSection,
-  'Cards': CardsSection,
-  'FAQ': FAQSection,
-  'ContactOffice': ContactOfficeSection,
-  'Address': AddressSection,
-  'ContactReach': ContactReachSection,
-  'FollowUS': FollowUSSection,
-  'Legal': LegalSection,
-  'Publications': PublicationsSection,
-  'ImageGallery': ImageGallerySection,
-  'VideoGallery': VideoGallerySection,
 };
 
 /**
  * Recursively extract the actual data from nested structures
  * Handles cases where data is nested multiple levels deep
  */
-const extractNestedData = (data) => {
+const extractNestedData = (data, depth = 0, maxDepth = 10) => {
   if (!data) return null;
+  if (depth > maxDepth) {
+    console.warn('extractNestedData: Max depth reached, returning data as-is');
+    return data;
+  }
 
   // If the data has a 'data' property and it's an object, recursively extract it
   if (data.data && typeof data.data === 'object') {
-    return extractNestedData(data.data);
+    return extractNestedData(data.data, depth + 1, maxDepth);
   }
 
   // If the data has the expected structure (section, mission, impact, image)
@@ -108,7 +86,6 @@ const extractNestedData = (data) => {
 
 /**
  * Extract section data from different data structures
- * Supports both old and new data formats
  */
 const extractSectionData = (section) => {
   if (!section) return null;
@@ -117,18 +94,14 @@ const extractSectionData = (section) => {
   if (section.data) {
     // For custom_section_data and shared_data, the actual data might be nested
     if (section.data_table === 'custom_section_data' || section.data_table === 'shared_data') {
-      // Recursively extract the actual data from nested structure
       const extractedData = extractNestedData(section.data);
 
       // Special handling for AboutUs
-      if (section.component === 'AboutUsSection' || section.component === 'AboutUs') {
-        // If extracted data has the expected structure
+      if (section.component === 'AboutUsSection') {
         if (extractedData && (extractedData.section || extractedData.mission || extractedData.impact || extractedData.image)) {
           return extractedData;
         }
-        // If extracted data is an object but doesn't have the expected structure
         if (extractedData && typeof extractedData === 'object' && !Array.isArray(extractedData)) {
-          // Try to map the data to the expected structure
           return {
             section: {
               title: extractedData.title || extractedData.section_title || 'About Us',
@@ -156,12 +129,10 @@ const extractSectionData = (section) => {
       }
 
       // Special handling for Stories
-      if (section.component === 'StoriesSection' || section.component === 'Stories') {
-        // If extracted data has the expected structure with section and stories
+      if (section.component === 'StoriesSection') {
         if (extractedData && (extractedData.section || extractedData.stories)) {
           return extractedData;
         }
-        // If extracted data is an array, wrap it in the expected structure
         if (Array.isArray(extractedData)) {
           return {
             section: {
@@ -192,12 +163,10 @@ const extractSectionData = (section) => {
     }
 
     // For stories (without data_table), return the data as is
-    if (section.component === 'StoriesSection' || section.component === 'Stories') {
-      // Check if section.data has the expected structure
+    if (section.component === 'StoriesSection') {
       if (section.data && (section.data.section || section.data.stories)) {
         return section.data;
       }
-      // If section.data is an array, wrap it
       if (Array.isArray(section.data)) {
         return {
           section: {
@@ -233,32 +202,25 @@ const extractSectionData = (section) => {
 
 /**
  * Build props for each component type
- * Supports both old and new prop names
  */
 const buildComponentProps = (component, sectionData, section) => {
-  // Don't include 'key' in the props object - it will be added separately
   const props = {
     ...(section.custom_props || {}),
   };
 
-  // Map based on component name (support both old and new)
   const componentName = section.component;
 
   switch (componentName) {
     case 'HomeBanner':
-    case 'BannerSection':
       props.bannerData = sectionData;
       break;
 
     case 'PageBannerSection':
-    case 'PageBanner':
       props.bannerData = sectionData;
       break;
 
-    case 'PageTagBannerSection': // NEW
-    case 'PageTagBanner': // NEW - old name alias
+    case 'PageTagBannerSection':
       props.bannerData = sectionData;
-      // Check if section has tags in custom_props
       if (section.custom_props?.tags) {
         props.tags = section.custom_props.tags;
       }
@@ -271,33 +233,26 @@ const buildComponentProps = (component, sectionData, section) => {
       break;
 
     case 'AboutUsSection':
-    case 'AboutUs':
       props.aboutUsData = sectionData;
       break;
 
     case 'OurActionSection':
-    case 'OurAction':
       props.actionData = sectionData;
       break;
 
     case 'WhereWeWorkSection':
-    case 'WhereWeWork':
       props.workData = sectionData;
       break;
 
     case 'OurProgramsSection':
-    case 'OurPrograms':
       props.programsData = sectionData;
       break;
 
     case 'StoriesSection':
-    case 'Stories':
       props.storiesData = sectionData;
       break;
 
     case 'BlogSection':
-    case 'Blog':
-      // BlogSection expects mainBlog and blogPosts
       if (Array.isArray(sectionData) && sectionData.length > 0) {
         props.mainBlog = sectionData[0] || null;
         props.blogPosts = sectionData.slice(1) || [];
@@ -305,17 +260,13 @@ const buildComponentProps = (component, sectionData, section) => {
         props.mainBlog = null;
         props.blogPosts = [];
       }
-      // Check if section has a title in custom_props
       if (section.custom_props?.sectionTitle) {
         props.sectionTitle = section.custom_props.sectionTitle;
       }
       break;
 
     case 'PublicationsSection':
-    case 'Publications':
-      // PublicationsSection expects mainPublication and publicationItems
       if (Array.isArray(sectionData) && sectionData.length > 0) {
-        // Find featured publication
         const featuredPub = sectionData.find(pub => pub.is_featured === true || pub.is_featured === 1);
         if (featuredPub) {
           props.mainPublication = featuredPub;
@@ -325,7 +276,6 @@ const buildComponentProps = (component, sectionData, section) => {
           props.publicationItems = sectionData.slice(1) || [];
         }
       } else if (typeof sectionData === 'object' && sectionData !== null) {
-        // If sectionData has mainPublication and publicationItems
         if (sectionData.mainPublication) {
           props.mainPublication = sectionData.mainPublication;
         }
@@ -337,17 +287,13 @@ const buildComponentProps = (component, sectionData, section) => {
           props.publicationItems = sectionData.publications;
         }
       }
-      // Check if section has a title in custom_props
       if (section.custom_props?.sectionTitle) {
         props.sectionTitle = section.custom_props.sectionTitle;
       }
       break;
 
     case 'ImageGallerySection':
-    case 'ImageGallery':
-      // ImageGallerySection expects galleryData
       props.galleryData = sectionData;
-      // Check if section has custom props
       if (section.custom_props?.sectionTitle) {
         props.sectionTitle = section.custom_props.sectionTitle;
       }
@@ -363,10 +309,7 @@ const buildComponentProps = (component, sectionData, section) => {
       break;
 
     case 'VideoGallerySection':
-    case 'VideoGallery':
-      // VideoGallerySection expects videoData
       props.videoData = sectionData;
-      // Check if section has custom props
       if (section.custom_props?.sectionTitle) {
         props.sectionTitle = section.custom_props.sectionTitle;
       }
@@ -382,75 +325,65 @@ const buildComponentProps = (component, sectionData, section) => {
       break;
 
     case 'JobsSection':
-    case 'Jobs':
       props.jobsData = sectionData;
       break;
 
     case 'ProgramImpactSection':
-    case 'ProgramImpact':
       props.impactData = sectionData;
       break;
 
     case 'UpcomingEventsSection':
-    case 'UpcomingEvents':
       props.eventsData = sectionData;
       break;
 
     case 'FAQSection':
-    case 'FAQ':
       props.faqData = sectionData;
       break;
 
     case 'ContactOfficeSection':
-    case 'ContactOffice':
       props.offices = Array.isArray(sectionData) ? sectionData : [];
       break;
 
     case 'AddressSection':
-    case 'Address':
       props.officesLocation = Array.isArray(sectionData) ? sectionData : [];
       break;
 
     case 'ContactReachSection':
-    case 'ContactReach':
-      props.image = sectionData?.image || '';
-      props.title = sectionData?.title || 'Reach out to us today!';
-      props.buttonText = sectionData?.buttonText || 'Submit Message';
+      // Handle both object and array data
+      if (Array.isArray(sectionData) && sectionData.length > 0) {
+        // If it's an array, use the first item
+        const firstItem = sectionData[0] || {};
+        props.image = firstItem.image || '';
+        props.title = firstItem.title || 'Reach out to us today!';
+        props.buttonText = firstItem.buttonText || 'Submit Message';
+      } else if (typeof sectionData === 'object' && sectionData !== null) {
+        props.image = sectionData.image || '';
+        props.title = sectionData.title || 'Reach out to us today!';
+        props.buttonText = sectionData.buttonText || 'Submit Message';
+      } else {
+        props.image = '';
+        props.title = 'Reach out to us today!';
+        props.buttonText = 'Submit Message';
+      }
       break;
 
     case 'FollowUSSection':
-    case 'FollowUS':
       props.socialItems = Array.isArray(sectionData) ? sectionData : [];
+      if (section.custom_props?.title) {
+        props.title = section.custom_props.title;
+      }
       break;
 
     case 'LegalSection':
-    case 'Legal':
       props.legalData = sectionData;
       break;
 
     case 'HeroFigureSection':
-    case 'HeroFigure':
       props.data = sectionData;
       break;
 
     case 'CardsSection':
-    case 'Cards':
       props.cardsData = sectionData;
-      break;
-
-    case 'ProgramContentSection':
-    case 'ProgramContent':
-      props.programData = sectionData;
-      break;
-
-    case 'BlogContentSection':
-    case 'BlogContent':
-      props.blogData = sectionData;
-      break;
-
-    case 'ContentSection':
-    case 'Content':
-      props.subPageData = sectionData;
       break;
 
     default:
@@ -463,7 +396,6 @@ const buildComponentProps = (component, sectionData, section) => {
 
 /**
  * SectionIndex Component - Main renderer
- * Supports both old and new section data formats
  */
 const SectionIndex = ({ sections }) => {
   if (!sections || sections.length === 0) {
@@ -473,7 +405,6 @@ const SectionIndex = ({ sections }) => {
   return (
     <>
       {sections.map((section) => {
-        // Find component by name (supports both old and new)
         const Component = sectionComponents[section.component];
 
         if (!Component) {
@@ -481,13 +412,9 @@ const SectionIndex = ({ sections }) => {
           return null;
         }
 
-        // Extract data (supports both old and new formats)
         const sectionData = extractSectionData(section);
-
-        // Build props (supports both old and new prop names)
         const props = buildComponentProps(section.component, sectionData, section);
 
-        // Pass key directly to component, not as part of props spread
         return <Component key={section.id} {...props} />;
       })}
     </>

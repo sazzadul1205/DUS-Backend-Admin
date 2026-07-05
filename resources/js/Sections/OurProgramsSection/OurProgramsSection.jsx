@@ -15,6 +15,11 @@ const hasValue = (value) => {
   return true;
 };
 
+// Generate placeholder image URL
+const getPlaceholderImage = (width = 800, height = 600, text = 'Program') => {
+  return `https://via.placeholder.com/${width}x${height}/009BE2/FFFFFF?text=${encodeURIComponent(text)}`;
+};
+
 // ============================================
 // DEFAULT SECTION DATA
 // ============================================
@@ -58,6 +63,7 @@ const OurProgramsSection = ({
   // HOOKS - Must be called unconditionally at the top
   // ============================================
   const [visibleCards, setVisibleCards] = useState([]);
+  const [imageErrors, setImageErrors] = useState({});
   const cardsRef = useRef([]);
 
   // ============================================
@@ -175,6 +181,23 @@ const OurProgramsSection = ({
     truncatedText = `${truncatedText}...`;
 
     return `<p class="font-400 text-[16px] sm:text-[18px] lg:text-[20px] text-[#524B48] leading-relaxed">${truncatedText}</p>`;
+  };
+
+  // ============================================
+  // IMAGE HANDLING
+  // ============================================
+  const handleImageError = (programId) => {
+    setImageErrors(prev => ({ ...prev, [programId]: true }));
+  };
+
+  const getImageSrc = (program) => {
+    if (imageErrors[program.id]) {
+      return getPlaceholderImage(800, 600, program.title || 'Program');
+    }
+    if (hasValue(program.image)) {
+      return program.image;
+    }
+    return getPlaceholderImage(800, 600, program.title || 'Program');
   };
 
   // ============================================
@@ -303,15 +326,14 @@ const OurProgramsSection = ({
                     </div>
 
                     {/* Right Image */}
-                    {hasValue(program.image) && (
-                      <div className="w-full lg:w-1/2">
-                        <img
-                          src={program.image}
-                          alt={program.title || "Program image"}
-                          className="w-full h-75 sm:h-100 lg:h-150 object-cover rounded-3xl hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    )}
+                    <div className="w-full lg:w-1/2">
+                      <img
+                        src={getImageSrc(program)}
+                        alt={program.title || "Program image"}
+                        className="w-full h-75 sm:h-100 lg:h-150 object-cover rounded-3xl hover:scale-105 transition-transform duration-300"
+                        onError={() => handleImageError(program.id)}
+                      />
+                    </div>
                   </div>
                 </div>
               );
