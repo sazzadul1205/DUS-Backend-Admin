@@ -271,6 +271,37 @@ class CustomSectionDataTableSeeder extends Seeder
         'created_at' => '2024-01-01 00:00:00',
         'updated_at' => '2024-01-01 00:00:00',
       ],
+
+      // ============================================
+      // GALLERY PAGE
+      // ============================================
+      [
+        'id' => 31,
+        'page_slug' => 'gallery',
+        'section_key' => 'banner',
+        'data' => '{"background":{"src":"/storage/Gallery/banner-default.jpg","alt":"Gallery Banner"},"overlay":{"darkOverlay":"bg-black/40 lg:bg-black/50","gradient":"bg-gradient-to-r from-black/85 via-black/10 to-transparent"},"tagTitle":"Our Gallery","tags":[{"label":"All","color":"#009BE2"},{"label":"Community Impact","color":"#FF6B6B"},{"label":"Education","color":"#4ECDC4"},{"label":"Microfinance","color":"#FFE66D"},{"label":"Climate Action","color":"#6C5CE7"},{"label":"Women Empowerment","color":"#FD79A8"}],"activeTag":"All"}',
+        'is_active' => 1,
+        'created_at' => '2024-01-01 00:00:00',
+        'updated_at' => '2024-01-01 00:00:00',
+      ],
+      [
+        'id' => 32,
+        'page_slug' => 'gallery',
+        'section_key' => 'image-gallery',
+        'data' => '{"sectionTitle":"DUS in Action","imageCountLabel":"Images","images":[{"id":1,"src":"https://placehold.co/600x400/009BE2/FFFFFF?text=Image+1","alt":"Gallery image 1","title":"Community Workshop"},{"id":2,"src":"https://placehold.co/600x400/FF6B6B/FFFFFF?text=Image+2","alt":"Gallery image 2","title":"Education Program"},{"id":3,"src":"https://placehold.co/600x400/4ECDC4/FFFFFF?text=Image+3","alt":"Gallery image 3","title":"Microfinance Group"},{"id":4,"src":"https://placehold.co/600x400/FFE66D/FFFFFF?text=Image+4","alt":"Gallery image 4","title":"Climate Action"},{"id":5,"src":"https://placehold.co/600x400/A8E6CF/FFFFFF?text=Image+5","alt":"Gallery image 5","title":"Women Empowerment"},{"id":6,"src":"https://placehold.co/600x400/FF8A5C/FFFFFF?text=Image+6","alt":"Gallery image 6","title":"Community Radio"}]}',
+        'is_active' => 1,
+        'created_at' => '2024-01-01 00:00:00',
+        'updated_at' => '2024-01-01 00:00:00',
+      ],
+      [
+        'id' => 33,
+        'page_slug' => 'gallery',
+        'section_key' => 'video-gallery',
+        'data' => '{"sectionTitle":"Video Gallery","videoCountLabel":"Videos","videos":[{"id":1,"title":"DUS Impact Story","description":"Watch how DUS is making a difference in coastal communities through sustainable development programs.","src":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","thumbnail":"https://placehold.co/600x400/009BE2/FFFFFF?text=Video+1"},{"id":2,"title":"Microfinance Success Stories","description":"Real stories of women entrepreneurs who transformed their lives through microfinance programs.","src":"https://www.youtube.com/watch?v=9bZkp7q19f0","thumbnail":"https://placehold.co/600x400/FF6B6B/FFFFFF?text=Video+2"},{"id":3,"title":"Community Radio - Voice of the Island","description":"How community radio is empowering local voices and connecting communities in Hatiya Island.","src":"https://www.youtube.com/watch?v=wZZ7oFKsKzY","thumbnail":"https://placehold.co/600x400/4ECDC4/FFFFFF?text=Video+3"}]}',
+        'is_active' => 1,
+        'created_at' => '2024-01-01 00:00:00',
+        'updated_at' => '2024-01-01 00:00:00',
+      ],
     ];
 
     DB::table('custom_section_data')->insert($customSectionData);
