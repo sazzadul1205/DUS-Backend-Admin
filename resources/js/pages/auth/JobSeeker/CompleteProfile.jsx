@@ -1,9 +1,8 @@
 // pages/auth/completeProfile.jsx
 
 // React
-import { useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { useEffect, useState, useCallback } from 'react';
+import { Head, router, useForm } from '@inertiajs/react';
 
 // sweetalert2
 import Swal from 'sweetalert2';
@@ -22,7 +21,6 @@ import {
   FaTrophy,
   FaEye,
   FaUser,
-  FaSave
 } from 'react-icons/fa';
 import { MdWork } from 'react-icons/md';
 
@@ -37,8 +35,6 @@ import ProfessionalInfo from './Steps/ProfessionalInfo';
 
 const CompleteProfile = ({ applicantProfile = null }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState(null);
   // Track which steps have been completed
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
@@ -92,7 +88,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         console.error('Error loading saved data:', error);
       }
     }
-  }, []);
+  }, [setData]);
 
   // Load applicant profile data when available
   useEffect(() => {
@@ -123,7 +119,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       // Save to localStorage
       saveToLocalStorage(nextData);
     }
-  }, [applicantProfile?.id]);
+  }, [applicantProfile, setData]);
 
   // Save data to localStorage whenever it changes
   const saveToLocalStorage = (dataToSave) => {
@@ -140,41 +136,24 @@ const CompleteProfile = ({ applicantProfile = null }) => {
   };
 
   // Wrapper for setData that also saves to localStorage
-  const handleSetData = (key, value) => {
+  const handleSetData = useCallback((key, value) => {
     setData(key, value);
-    const newData = { ...data, [key]: value };
-    saveToLocalStorage(newData);
-  };
-
-  // Manual save function
-  const handleSaveProgress = () => {
-    setIsSaving(true);
-    saveToLocalStorage(data);
+    // Get updated data after state update
     setTimeout(() => {
-      setIsSaving(false);
-      Swal.fire({
-        icon: 'success',
-        title: 'Progress Saved!',
-        text: 'Your progress has been saved locally.',
-        timer: 1500,
-        showConfirmButton: false,
-        background: '#ffffff',
-        customClass: {
-          popup: 'rounded-2xl'
-        }
-      });
-    }, 500);
-  };
+      const currentData = { ...data, [key]: value };
+      saveToLocalStorage(currentData);
+    }, 0);
+  }, [data, setData]);
 
   // Handle photo upload
-  const handlePhotoUpload = async (file) => {
+  const handlePhotoUpload = useCallback(async (file) => {
     if (!file) return null;
 
     const formData = new FormData();
     formData.append('photo', file);
 
     try {
-      const response = await fetch(route('profile.photo.upload'), {
+      const response = await fetch('/profile/photo', {
         method: 'POST',
         body: formData,
         headers: {
@@ -188,7 +167,6 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       }
 
       const result = await response.json();
-      setUploadedPhotoUrl(result.photo_url);
       return result.photo_path;
     } catch (error) {
       console.error('Photo upload error:', error);
@@ -200,12 +178,12 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       });
       return null;
     }
-  };
+  }, []);
 
   // ==================== STEP VALIDATION FUNCTIONS ====================
 
   // Validate Basic Info step (Step 0)
-  const validateBasicInfo = () => {
+  const validateBasicInfo = useCallback(() => {
     const errors = [];
     if (!data.first_name?.trim()) errors.push('First name is required');
     if (!data.last_name?.trim()) errors.push('Last name is required');
@@ -213,26 +191,26 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       errors.push('Phone number is required');
     }
     return errors;
-  };
+  }, [data.first_name, data.last_name, data.phone]);
 
   // Validate Professional Info step (Step 1)
-  const validateProfessionalInfo = () => {
+  const validateProfessionalInfo = useCallback(() => {
     const errors = [];
     // All fields are optional, so no validation needed
     return errors;
-  };
+  }, []);
 
   // Validate CV Upload step (Step 2)
-  const validateCVUpload = () => {
+  const validateCVUpload = useCallback(() => {
     const errors = [];
     if (!data.cvs || data.cvs.length === 0) {
       errors.push('Please upload at least one CV');
     }
     return errors;
-  };
+  }, [data.cvs]);
 
   // Validate Work Experience step (Step 3)
-  const validateWorkExperience = () => {
+  const validateWorkExperience = useCallback(() => {
     const errors = [];
     // Work experience is optional, but check for incomplete entries
     if (data.job_histories && data.job_histories.length > 0) {
@@ -247,10 +225,10 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       });
     }
     return errors;
-  };
+  }, [data.job_histories]);
 
   // Validate Education step (Step 4)
-  const validateEducation = () => {
+  const validateEducation = useCallback(() => {
     const errors = [];
     if (data.education_histories && data.education_histories.length > 0) {
       data.education_histories.forEach((edu, index) => {
@@ -264,10 +242,10 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       });
     }
     return errors;
-  };
+  }, [data.education_histories]);
 
   // Validate Achievements step (Step 5)
-  const validateAchievements = () => {
+  const validateAchievements = useCallback(() => {
     const errors = [];
     if (data.achievements && data.achievements.length > 0) {
       data.achievements.forEach((ach, index) => {
@@ -279,10 +257,10 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       });
     }
     return errors;
-  };
+  }, [data.achievements]);
 
   // Main validation function for a step
-  const validateStep = (stepIndex) => {
+  const validateStep = useCallback((stepIndex) => {
     let errors = [];
     switch (stepIndex) {
       case 0:
@@ -307,24 +285,17 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         break;
     }
     return errors;
-  };
+  }, [validateBasicInfo, validateProfessionalInfo, validateCVUpload, validateWorkExperience, validateEducation, validateAchievements]);
 
   // Check if a step is completed successfully
-  const isStepCompleted = (stepIndex) => {
+  const isStepCompleted = useCallback((stepIndex) => {
     const errors = validateStep(stepIndex);
     return errors.length === 0;
-  };
-
-  // Mark current step as completed when valid
-  const markCurrentStepCompleted = () => {
-    if (isStepCompleted(currentStep)) {
-      setCompletedSteps(prev => new Set([...prev, currentStep]));
-    }
-  };
+  }, [validateStep]);
 
   // ==================== NAVIGATION FUNCTIONS ====================
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     // Validate current step before proceeding
     const errors = validateStep(currentStep);
 
@@ -355,17 +326,17 @@ const CompleteProfile = ({ applicantProfile = null }) => {
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
     }
-  };
+  }, [currentStep, data, steps.length, validateStep]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (currentStep > 0) {
       saveToLocalStorage(data);
       setCurrentStep(currentStep - 1);
       window.scrollTo(0, 0);
     }
-  };
+  }, [currentStep, data]);
 
-  const handleEditStep = (stepIndex) => {
+  const handleEditStep = useCallback((stepIndex) => {
     // Allow going to any completed step or current step
     const isCurrentStep = stepIndex === currentStep;
     const isCompleted = completedSteps.has(stepIndex);
@@ -389,18 +360,18 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         confirmButtonText: 'Got it'
       });
     }
-  };
+  }, [currentStep, completedSteps, steps.length, data]);
 
   // Determine if a step is accessible from the ribbon
-  const isStepAccessible = (index) => {
+  const isStepAccessible = useCallback((index) => {
     if (index === currentStep) return true;
     if (completedSteps.has(index)) return true;
     if (index < currentStep) return true;
     return false;
-  };
+  }, [currentStep, completedSteps]);
 
   // ==================== HANDLE SUBMIT ====================
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(() => {
     Swal.fire({
       title: 'Submit Profile?',
       html: `
@@ -506,7 +477,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
         });
       }
     });
-  };
+  }, [data, handlePhotoUpload, post]);
 
   const steps = [
     { name: 'Basic Info', component: BasicInfo, icon: FaUser },
@@ -529,7 +500,7 @@ const CompleteProfile = ({ applicantProfile = null }) => {
     if (!isReviewPage && isStepCompleted(currentStep)) {
       setCompletedSteps(prev => new Set([...prev, currentStep]));
     }
-  }, [data, currentStep]);
+  }, [data, currentStep, isReviewPage, isStepCompleted]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-8 text-black">
@@ -561,7 +532,6 @@ const CompleteProfile = ({ applicantProfile = null }) => {
           <div className="mb-8 bg-white rounded-xl p-4 shadow-sm">
             <div className="flex justify-between mb-3">
               {steps.slice(0, -1).map((step, index) => {
-                const Icon = step.icon;
                 const isCompleted = completedSteps.has(index);
                 const isActive = index === currentStep;
                 const isAccessible = isStepAccessible(index);

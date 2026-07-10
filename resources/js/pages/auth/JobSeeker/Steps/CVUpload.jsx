@@ -20,12 +20,15 @@ import { BiCloudUpload } from 'react-icons/bi';
 // SweetAlert2 
 import Swal from 'sweetalert2';
 
+// Constants
 const MAX_CVS = 3;
 
 const CVUpload = ({ data, setData }) => {
+  // State
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
+  // Revoke object URLs when component unmounts
   useEffect(() => {
     return () => {
       data.cvs.forEach((cv) => {
@@ -34,8 +37,9 @@ const CVUpload = ({ data, setData }) => {
         }
       });
     };
-  }, []);
+  }, [data.cvs]);
 
+  // Handle drag events
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -46,6 +50,7 @@ const CVUpload = ({ data, setData }) => {
     }
   };
 
+  // Handle drop event
   const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -57,6 +62,7 @@ const CVUpload = ({ data, setData }) => {
     }
   };
 
+  // Handle file input change
   const handleFileSelect = async (e) => {
     const files = e.target.files;
     if (files && files[0]) {
@@ -64,6 +70,7 @@ const CVUpload = ({ data, setData }) => {
     }
   };
 
+  // Handle CV upload
   const uploadCV = async (file) => {
     // Check if already reached maximum CVs
     if (data.cvs.length >= MAX_CVS) {
@@ -103,17 +110,18 @@ const CVUpload = ({ data, setData }) => {
       const formData = new FormData();
       formData.append('cv', file);
 
-      const response = await fetch(route('profile.cv.upload'), {
+      const response = await fetch('/profile/cv', {
         method: 'POST',
         body: formData,
         headers: {
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
           'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
         },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
         throw new Error(errorData?.message || 'Upload failed');
       }
 
@@ -149,6 +157,7 @@ const CVUpload = ({ data, setData }) => {
     }
   };
 
+  // Remove CV
   const removeCV = (index) => {
     Swal.fire({
       title: 'Remove CV?',
@@ -162,7 +171,7 @@ const CVUpload = ({ data, setData }) => {
       if (result.isConfirmed) {
         const cvToRemove = data.cvs[index];
         if (cvToRemove?.id) {
-          await fetch(route('profile.cv.destroy', cvToRemove.id), {
+          await fetch(`/profile/cv/${cvToRemove.id}`, {
             method: 'DELETE',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
@@ -192,6 +201,7 @@ const CVUpload = ({ data, setData }) => {
     });
   };
 
+  // Set primary CV
   const setPrimaryCV = async (index) => {
     const newCVs = data.cvs.map((cv, idx) => ({
       ...cv,
@@ -201,7 +211,7 @@ const CVUpload = ({ data, setData }) => {
 
     const cv = data.cvs[index];
     if (cv?.id) {
-      await fetch(route('profile.cv.primary', cv.id), {
+      await fetch(`/profile/cv/${cv.id}/primary`, {
         method: 'PATCH',
         headers: {
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
@@ -211,6 +221,7 @@ const CVUpload = ({ data, setData }) => {
     }
   };
 
+  // Get file icon
   const getFileIcon = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
     if (extension === 'pdf') return <FaFilePdf className="h-8 w-8 text-red-500" />;
@@ -218,12 +229,14 @@ const CVUpload = ({ data, setData }) => {
     return <FaFileAlt className="h-8 w-8 text-gray-500" />;
   };
 
+  // Format file size
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes  } B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)  } KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`;
   };
 
+  // Calculate remaining slots
   const remainingSlots = MAX_CVS - data.cvs.length;
 
   return (

@@ -385,7 +385,7 @@ const Dashboard = () => {
                 <span>{progress.value}{progress.unit}</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2">
-                <div className="bg-white rounded-full h-2" style={{ width: `${progress.value}%` }}></div>
+                <div className="bg-white rounded-full h-2" style={{ width: `${progress.value}%` }} />
               </div>
             </div>
             <p className="text-sm opacity-90">

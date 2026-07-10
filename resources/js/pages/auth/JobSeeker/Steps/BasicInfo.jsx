@@ -1,5 +1,8 @@
 // pages/auth/Steps/BasicInfo.jsx
 
+// React
+import { useState, useRef, useEffect } from 'react';
+
 // Icons
 import {
   FaUser,
@@ -17,13 +20,21 @@ import {
   FaCheckCircle
 } from 'react-icons/fa';
 import { MdOutlineBloodtype } from 'react-icons/md';
-import { useState, useRef, useEffect } from 'react';
+
+// SweetAlert
+import Swal from 'sweetalert2';
 
 const BasicInfo = ({ data, setData }) => {
-  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+  // 
   const genders = ['Male', 'Female', 'Other'];
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+  // 
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  // 
   const fileInputRef = useRef(null);
 
   // Phone prefix
@@ -39,30 +50,41 @@ const BasicInfo = ({ data, setData }) => {
       // If no phone, set default prefix
       setData('phone', PHONE_PREFIX);
     }
-  }, []); // Run only once on mount
+  }, [data.phone, setData]); // Run only once on mount
 
   // Handle phone input changes while keeping the prefix
   const handlePhoneChange = (e) => {
-    let rawValue = e.target.value;
+    const rawValue = e.target.value;
+
+    // If empty, set to prefix only
+    if (!rawValue) {
+      setData('phone', PHONE_PREFIX);
+      return;
+    }
 
     // Ensure the prefix is always present at the beginning
+    let afterPrefix = rawValue;
     if (!rawValue.startsWith(PHONE_PREFIX)) {
-      rawValue = PHONE_PREFIX;
+      // Remove any non-digit characters from the start
+      const digits = rawValue.replace(/\D/g, '');
+      if (digits.length > 0) {
+        // If there are digits, add prefix
+        afterPrefix = `${PHONE_PREFIX}${digits}`;
+      } else {
+        // If no digits, just prefix
+        afterPrefix = PHONE_PREFIX;
+      }
+    } else {
+      // Extract the part after the prefix
+      const afterPrefixValue = rawValue.substring(PHONE_PREFIX.length);
+      // Remove all non-digit characters
+      const cleaned = afterPrefixValue.replace(/\D/g, '');
+      // Limit to 10 digits
+      const limited = cleaned.slice(0, 10);
+      afterPrefix = `${PHONE_PREFIX}${limited}`;
     }
 
-    // Extract the part after the prefix
-    let afterPrefix = rawValue.substring(PHONE_PREFIX.length);
-    // Remove all non-digit characters
-    afterPrefix = afterPrefix.replace(/\D/g, '');
-
-    // Optional: limit number of digits after prefix (e.g., max 10)
-    if (afterPrefix.length > 10) {
-      afterPrefix = afterPrefix.slice(0, 10);
-    }
-
-    // Combine prefix + clean digits
-    const newPhone = `${PHONE_PREFIX}${afterPrefix}`;
-    setData('phone', newPhone);
+    setData('phone', afterPrefix);
   };
 
   // Handle drag events
@@ -101,15 +123,43 @@ const BasicInfo = ({ data, setData }) => {
     // Check file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a valid image file (JPG, PNG, or GIF)');
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid File Type',
+        text: 'Please upload a valid image file (JPG, PNG, or GIF)',
+        confirmButtonColor: '#3B82F6',
+        confirmButtonText: 'OK',
+        timer: 3000,
+        timerProgressBar: true
+      });
       return;
     }
 
     // Check file size (2MB limit)
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size must be less than 2MB');
+      Swal.fire({
+        icon: 'warning',
+        title: 'File Too Large',
+        text: 'File size must be less than 2MB',
+        confirmButtonColor: '#3B82F6',
+        confirmButtonText: 'OK',
+        timer: 3000,
+        timerProgressBar: true
+      });
       return;
     }
+
+    // Success - show confirmation
+    Swal.fire({
+      icon: 'success',
+      title: 'Photo Uploaded!',
+      text: 'Your profile photo has been uploaded successfully.',
+      showConfirmButton: false,
+      timer: 1500,
+      timerProgressBar: true,
+      toast: true,
+      position: 'top-end'
+    });
 
     // Clean up previous preview URL
     if (previewUrl) {
@@ -121,16 +171,41 @@ const BasicInfo = ({ data, setData }) => {
     setData('photo', file);
   };
 
-  // Delete photo
+  // Delete photo with confirmation
   const handleDeletePhoto = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-    setData('photo', null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    Swal.fire({
+      title: 'Delete Photo?',
+      text: 'Are you sure you want to remove your profile photo?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#DC2626',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(null);
+        }
+        setData('photo', null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Your profile photo has been removed.',
+          showConfirmButton: false,
+          timer: 1500,
+          timerProgressBar: true,
+          toast: true,
+          position: 'top-end'
+        });
+      }
+    });
   };
 
   return (

@@ -10,13 +10,14 @@ return [
 
     'paths' => [
         'api/*',
-        'data/*',              // ← ADD THIS for your content API
-        'sanctum/csrf-cookie'
+        'data/*',
+        'sanctum/csrf-cookie',
+        '/manifest.json',
     ],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],  // ← Accepts ANY domain (fine for now)
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 

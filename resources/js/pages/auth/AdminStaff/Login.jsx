@@ -1,41 +1,48 @@
+/* eslint-disable no-undef */
 // pages/auth/admin-login.jsx
 
 import { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import {
   LoaderCircle, Eye, EyeOff, Shield, Star, Mail, Lock, ArrowRight,
-  ChevronUp, ChevronDown, ShieldCheck, Building2, Users
+  ChevronUp, ChevronDown, ShieldCheck, Building2
 } from 'lucide-react';
 
 export default function AdminLogin({ status, canResetPassword }) {
+  // Form state management using Inertia's useForm hook
   const { data, setData, post, processing, errors, reset } = useForm({
     email: '',
     password: '',
     remember: false,
   });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState(null);
-  const [currentDemoIndex, setCurrentDemoIndex] = useState(0);
+  // UI state management
+  const [showPassword, setShowPassword] = useState(false); // Toggle password visibility
+  const [focusedField, setFocusedField] = useState(null); // Track which field is focused for styling
+  const [currentDemoIndex, setCurrentDemoIndex] = useState(0); // Track current demo account in carousel
 
+  // Handle form submission
   const submit = (e) => {
     e.preventDefault();
     post(route('admin.login'), {
-      onFinish: () => reset('password'),
+      onFinish: () => reset('password'), // Reset password field after submission
     });
   };
 
+  // Fill form with demo account credentials
   const fillDemoAccount = (email, password) => {
-    setData({
-      email: email,
-      password: password,
-      remember: data.remember,
-    });
-    const passwordInput = document.getElementById('password');
-    if (passwordInput) passwordInput.focus();
+    setData('email', email);
+    setData('password', password);
+    setData('remember', data.remember); // Preserve remember me state
+
+    // Auto-focus password field after filling
+    setTimeout(() => {
+      const passwordInput = document.getElementById('password');
+      if (passwordInput) passwordInput.focus();
+    }, 100);
   };
 
-  // Admin/Staff Demo Accounts
+  // Admin/Staff Demo Accounts - Pre-configured accounts for testing
   const demoAccounts = [
     {
       role: 'Super Admin',
@@ -87,8 +94,10 @@ export default function AdminLogin({ status, canResetPassword }) {
     },
   ];
 
+  // Get current demo account from array
   const currentAccount = demoAccounts[currentDemoIndex];
 
+  // Carousel navigation functions
   const goToPrevious = () => {
     setCurrentDemoIndex((prev) => (prev === 0 ? demoAccounts.length - 1 : prev - 1));
   };
@@ -99,13 +108,22 @@ export default function AdminLogin({ status, canResetPassword }) {
 
   return (
     <>
+      {/* Page title for SEO */}
       <Head title="Admin Login" />
+
+      {/* Main container - full height with flex centering */}
       <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8">
+
+        {/* Content wrapper with fade animation */}
         <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
+
+          {/* Two-column layout: Login form (left) and Demo accounts (right) */}
           <main className="flex w-full max-w-83.75 flex-col lg:max-w-4xl lg:flex-row">
-            {/* Left side - Login Form */}
+
+            {/* LEFT COLUMN - Login Form */}
             <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20">
-              {/* Logo */}
+
+              {/* Logo Section */}
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 bg-[#1b1b18] rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-xl">JM</span>
@@ -116,6 +134,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                 </div>
               </div>
 
+              {/* Page Header */}
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Shield className="h-5 w-5 text-purple-600" />
@@ -126,8 +145,10 @@ export default function AdminLogin({ status, canResetPassword }) {
                 Enter your credentials to access the admin dashboard
               </p>
 
+              {/* Login Form */}
               <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-5">
+
                   {/* Email Field */}
                   <div className="grid gap-2">
                     <label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
@@ -150,9 +171,10 @@ export default function AdminLogin({ status, canResetPassword }) {
                         className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 text-sm focus:outline-none placeholder:text-[#706f6c]"
                       />
                     </div>
+                    {/* Email validation error */}
                     {errors.email && (
                       <p className="text-xs text-red-600 flex items-center gap-1">
-                        <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>
+                        <span className="inline-block w-1 h-1 bg-red-600 rounded-full" />
                         {errors.email}
                       </p>
                     )}
@@ -165,6 +187,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                         <Lock className="h-4 w-4 text-[#706f6c]" />
                         Password
                       </label>
+                      {/* Forgot password link (if enabled) */}
                       {canResetPassword && (
                         <a
                           href={route('password.request')}
@@ -189,6 +212,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                         placeholder="Enter your password"
                         className="w-full rounded-sm border border-[#19140035] px-3 py-2.5 pr-10 text-sm focus:outline-none placeholder:text-[#706f6c]"
                       />
+                      {/* Password visibility toggle */}
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -198,15 +222,16 @@ export default function AdminLogin({ status, canResetPassword }) {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
+                    {/* Password validation error */}
                     {errors.password && (
                       <p className="text-xs text-red-600 flex items-center gap-1">
-                        <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>
+                        <span className="inline-block w-1 h-1 bg-red-600 rounded-full" />
                         {errors.password}
                       </p>
                     )}
                   </div>
 
-                  {/* Remember Me */}
+                  {/* Remember Me Checkbox */}
                   <div className="flex items-center gap-3">
                     <input
                       id="remember"
@@ -242,10 +267,10 @@ export default function AdminLogin({ status, canResetPassword }) {
                   </button>
                 </div>
 
-                {/* No Google Login for Admin */}
+                {/* Divider with label */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#e3e3e0]"></div>
+                    <div className="w-full border-t border-[#e3e3e0]" />
                   </div>
                   <div className="relative flex justify-center text-xs">
                     <span className="bg-white px-3 text-[#706f6c]">
@@ -254,7 +279,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                   </div>
                 </div>
 
-                {/* Job Seeker Login Link */}
+                {/* Link to Job Seeker Login */}
                 <div className="text-center text-sm text-[#706f6c] border-t border-[#e3e3e0] pt-4">
                   <span className="text-[#706f6c]">Are you a job seeker? </span>
                   <a
@@ -266,20 +291,24 @@ export default function AdminLogin({ status, canResetPassword }) {
                 </div>
               </form>
 
-              {/* Status Message */}
+              {/* Status Message (success/error notifications) */}
               {status && (
                 <div className="mt-6 rounded-sm border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700 flex items-center gap-2">
-                  <span className="shrink-0 w-1.5 h-1.5 bg-green-600 rounded-full"></span>
+                  <span className="shrink-0 w-1.5 h-1.5 bg-green-600 rounded-full" />
                   {status}
                 </div>
               )}
             </div>
 
-            {/* Right side - Demo Accounts Carousel */}
+            {/* RIGHT COLUMN - Demo Accounts Carousel */}
             <div className="relative -mb-px aspect-335/376 w-full shrink-0 overflow-hidden rounded-t-lg lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-96 lg:rounded-t-none lg:rounded-r-lg">
+
+              {/* Gradient background */}
               <div className={`absolute inset-0 bg-linear-to-br ${currentAccount.bgGradient}`} />
 
               <div className="relative p-6 lg:p-8 flex flex-col justify-center h-full">
+
+                {/* Carousel Header */}
                 <div className="mb-6 text-center">
                   <div className="flex items-center justify-center gap-2 mb-3">
                     <Star className="h-5 w-5 text-[#F53003]" />
@@ -311,10 +340,12 @@ export default function AdminLogin({ status, canResetPassword }) {
                   </button>
                 </div>
 
-                {/* Current Demo Account Card */}
+                {/* Current Demo Account Card - Shows selected account details */}
                 <div className="transition-all duration-300 transform animate-fade-in">
                   <div className={`rounded-xl border shadow-lg overflow-hidden ${currentAccount.buttonBorder} bg-white`}>
                     <div className="p-5">
+
+                      {/* Account Header */}
                       <div className="flex items-start gap-3 mb-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${currentAccount.iconBg} transition-all duration-200`}>
                           <currentAccount.icon className={`h-6 w-6 ${currentAccount.iconColor}`} />
@@ -334,6 +365,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                         </div>
                       </div>
 
+                      {/* Account Credentials Display */}
                       <div className="space-y-2 mb-5 p-3 rounded-lg bg-[#FDFDFC] border border-[#e3e3e0]">
                         <div className="flex items-center gap-2 text-xs">
                           <Mail className="h-3 w-3 text-[#706f6c] shrink-0" />
@@ -346,11 +378,12 @@ export default function AdminLogin({ status, canResetPassword }) {
                           <Lock className="h-3 w-3 text-[#706f6c] shrink-0" />
                           <span className="text-[#706f6c]">Password:</span>
                           <span className="font-mono font-medium text-[#1b1b18] text-xs">
-                            Hidden
+                            Hidden {/* Password hidden for security */}
                           </span>
                         </div>
                       </div>
 
+                      {/* Use Account Button - Fills form with demo credentials */}
                       <button
                         type="button"
                         onClick={() => fillDemoAccount(currentAccount.email, currentAccount.password)}
@@ -363,7 +396,7 @@ export default function AdminLogin({ status, canResetPassword }) {
                   </div>
                 </div>
 
-                {/* Security Notice */}
+                {/* Security Notice Footer */}
                 <div className="mt-6 p-3 rounded-lg bg-yellow-50/80 backdrop-blur-sm border border-yellow-200">
                   <p className="text-xs text-yellow-800 text-center flex items-center justify-center gap-1">
                     <Shield className="h-3 w-3" />
@@ -372,13 +405,17 @@ export default function AdminLogin({ status, canResetPassword }) {
                 </div>
               </div>
 
+              {/* Border shadow overlay */}
               <div className="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg pointer-events-none" />
             </div>
           </main>
         </div>
-        <div className="hidden h-14.5 lg:block"></div>
+
+        {/* Spacer */}
+        <div className="hidden h-14.5 lg:block" />
       </div>
 
+      {/* Animation Styles */}
       <style>{`
         @keyframes fade-in {
           from {
