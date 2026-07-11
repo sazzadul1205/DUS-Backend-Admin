@@ -5,36 +5,36 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
 
 class ImageManagerController extends Controller
 {
-  /**
-   * The fixed path where images will be stored
-   */
-  protected string $imagePath;
-
-  /**
-   * The path for icons
-   */
+  protected $disk;
   protected string $iconPath;
+  protected string $imagePath;
 
   public function __construct()
   {
-    // Fixed path for general images
-    $this->imagePath = storage_path('app/public/images/managed');
+    // Use the public disk
+    $this->disk = Storage::disk('public');
 
-    // Fixed path for icons (public directory so they're accessible)
-    $this->iconPath = public_path('images');
+    // Paths in storage
+    $this->iconPath = 'images';
+    $this->imagePath = 'images/managed';
 
     // Ensure directories exist
-    if (!File::exists($this->imagePath)) {
-      File::makeDirectory($this->imagePath, 0755, true);
-    }
-    if (!File::exists($this->iconPath)) {
-      File::makeDirectory($this->iconPath, 0755, true);
+    try {
+      if (!$this->disk->exists($this->iconPath)) {
+        $this->disk->makeDirectory($this->iconPath);
+      }
+      if (!$this->disk->exists($this->imagePath)) {
+        $this->disk->makeDirectory($this->imagePath);
+      }
+    } catch (\Exception $e) {
+      Log::error('Failed to create storage directories: ' . $e->getMessage());
     }
   }
 
@@ -57,16 +57,47 @@ class ImageManagerController extends Controller
   public function updateIcon(Request $request): JsonResponse
   {
     try {
-      $request->validate([
-        'icon' => 'required|file|image|max:2048', // 2MB max
+      // Log the request for debugging
+      Log::info('Icon update request received', [
+        'has_file' => $request->hasFile('icon'),
+        'all_files' => $request->allFiles(),
+        'all_input' => $request->all()
       ]);
 
+      // Validate the request
+      $validator = validator($request->all(), [
+        'icon' => 'required|file|image|max:2048',
+      ]);
+
+      if ($validator->fails()) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Validation failed',
+          'errors' => $validator->errors()
+        ], 422);
+      }
+
       $file = $request->file('icon');
-      $extension = $file->getClientOriginalExtension();
+      if (!$file) {
+        return response()->json([
+          'success' => false,
+          'message' => 'No file uploaded'
+        ], 400);
+      }
+
+      // Log file details
+      Log::info('File details', [
+        'original_name' => $file->getClientOriginalName(),
+        'extension' => $file->getClientOriginalExtension(),
+        'mime_type' => $file->getMimeType(),
+        'size' => $file->getSize()
+      ]);
+
+      $extension = strtolower($file->getClientOriginalExtension());
 
       // Allowed extensions
       $allowed = ['png', 'ico', 'jpg', 'jpeg', 'svg', 'webp'];
-      if (!in_array(strtolower($extension), $allowed)) {
+      if (!in_array($extension, $allowed)) {
         return response()->json([
           'success' => false,
           'message' => 'Invalid file type. Allowed: ' . implode(', ', $allowed),
@@ -79,32 +110,47 @@ class ImageManagerController extends Controller
       // Generate new filename
       $filename = 'icon.' . $extension;
 
-      // If it's an SVG, keep it as SVG, otherwise convert to PNG and ICO
-      if ($extension === 'svg') {
-        $file->move($this->iconPath, $filename);
-      } else {
-        // Save as PNG
-        $pngFilename = 'icon.png';
-        $file->move($this->iconPath, $pngFilename);
+      // Store the file
+      $path = $this->disk->putFileAs($this->iconPath, $file, $filename);
 
-        // Try to create ICO version if GD is available
-        if (extension_loaded('gd')) {
-          try {
-            $this->convertToIco($this->iconPath . '/' . $pngFilename, $this->iconPath . '/icon.ico');
-          } catch (\Exception $e) {
-            // ICO conversion failed, but PNG is still available
+      if (!$path) {
+        throw new \Exception('Failed to store file');
+      }
+
+      // If it's a raster image, try to create additional formats
+      if (!in_array($extension, ['svg', 'ico'])) {
+        try {
+          // Create PNG version
+          $pngPath = $this->iconPath . '/icon.png';
+          $this->disk->put($pngPath, file_get_contents($file->getPathname()));
+
+          // Try to create ICO version
+          if (extension_loaded('gd')) {
+            $this->createIcoFromFile($file->getPathname(), 'icon.ico');
           }
+        } catch (\Exception $e) {
+          Log::warning('Failed to create additional formats: ' . $e->getMessage());
         }
       }
+
+      // Ensure storage link exists
+      $this->ensureStorageLinkExists();
 
       return response()->json([
         'success' => true,
         'message' => 'Icon updated successfully!',
         'data' => [
-          'icon' => asset('images/' . $filename),
+          'icon' => $this->getIconUrl($filename),
         ],
       ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Validation failed',
+        'errors' => $e->errors()
+      ], 422);
     } catch (\Exception $e) {
+      Log::error('Icon update failed: ' . $e->getMessage());
       return response()->json([
         'success' => false,
         'message' => 'Failed to update icon: ' . $e->getMessage(),
@@ -125,6 +171,7 @@ class ImageManagerController extends Controller
         'message' => 'Icon reset to default successfully!',
       ]);
     } catch (\Exception $e) {
+      Log::error('Icon reset failed: ' . $e->getMessage());
       return response()->json([
         'success' => false,
         'message' => 'Failed to reset icon: ' . $e->getMessage(),
@@ -137,45 +184,53 @@ class ImageManagerController extends Controller
    */
   protected function getCurrentIcon(): ?array
   {
-    $iconFiles = ['icon.png', 'icon.ico', 'icon.svg', 'icon.jpg', 'icon.jpeg', 'icon.webp'];
+    try {
+      $iconFiles = ['icon.png', 'icon.ico', 'icon.svg', 'icon.jpg', 'icon.jpeg', 'icon.webp'];
 
-    foreach ($iconFiles as $file) {
-      $path = $this->iconPath . '/' . $file;
-      if (File::exists($path)) {
-        return [
-          'name' => $file,
-          'url' => asset('images/' . $file),
-          'size' => $this->formatBytes(File::size($path)),
-          'last_modified' => date('Y-m-d H:i:s', File::lastModified($path)),
-        ];
+      foreach ($iconFiles as $file) {
+        $path = $this->iconPath . '/' . $file;
+        if ($this->disk->exists($path)) {
+          return [
+            'name' => $file,
+            'url' => $this->getIconUrl($file),
+            'size' => $this->formatBytes($this->disk->size($path)),
+            'last_modified' => date('Y-m-d H:i:s', $this->disk->lastModified($path)),
+          ];
+        }
       }
+    } catch (\Exception $e) {
+      Log::error('Failed to get current icon: ' . $e->getMessage());
     }
 
     return null;
   }
 
   /**
-   * Get available icons in the directory
+   * Get available icons
    */
   protected function getAvailableIcons(): array
   {
-    $files = File::files($this->iconPath);
-    $icons = [];
+    try {
+      $files = $this->disk->files($this->iconPath);
+      $icons = [];
 
-    foreach ($files as $file) {
-      $name = $file->getFilename();
-      // Only show icon files
-      if (str_starts_with($name, 'icon.')) {
-        $icons[] = [
-          'name' => $name,
-          'url' => asset('images/' . $name),
-          'size' => $this->formatBytes($file->getSize()),
-          'extension' => $file->getExtension(),
-        ];
+      foreach ($files as $file) {
+        $name = basename($file);
+        if (str_starts_with($name, 'icon.')) {
+          $icons[] = [
+            'name' => $name,
+            'url' => $this->getIconUrl($name),
+            'size' => $this->formatBytes($this->disk->size($file)),
+            'extension' => pathinfo($name, PATHINFO_EXTENSION),
+          ];
+        }
       }
-    }
 
-    return $icons;
+      return $icons;
+    } catch (\Exception $e) {
+      Log::error('Failed to get available icons: ' . $e->getMessage());
+      return [];
+    }
   }
 
   /**
@@ -183,59 +238,80 @@ class ImageManagerController extends Controller
    */
   protected function deleteOldIcons(): void
   {
-    $iconFiles = ['icon.png', 'icon.ico', 'icon.svg', 'icon.jpg', 'icon.jpeg', 'icon.webp', 'icon.gif'];
+    try {
+      $iconFiles = ['icon.png', 'icon.ico', 'icon.svg', 'icon.jpg', 'icon.jpeg', 'icon.webp', 'icon.gif'];
 
-    foreach ($iconFiles as $file) {
-      $path = $this->iconPath . '/' . $file;
-      if (File::exists($path)) {
-        File::delete($path);
+      foreach ($iconFiles as $file) {
+        $path = $this->iconPath . '/' . $file;
+        if ($this->disk->exists($path)) {
+          $this->disk->delete($path);
+        }
       }
+    } catch (\Exception $e) {
+      Log::error('Failed to delete old icons: ' . $e->getMessage());
     }
   }
 
   /**
-   * Convert PNG to ICO
+   * Create ICO from file
    */
-  protected function convertToIco(string $pngPath, string $icoPath): void
+  protected function createIcoFromFile(string $filePath, string $outputFilename): void
   {
-    if (!extension_loaded('gd')) {
-      throw new \Exception('GD extension is required for ICO conversion');
+    try {
+      // Create image from file
+      $image = imagecreatefromstring(file_get_contents($filePath));
+      if (!$image) {
+        throw new \Exception('Failed to create image from file');
+      }
+
+      // Get dimensions
+      $width = imagesx($image);
+      $height = imagesy($image);
+
+      // Create ICO content (simplified)
+      $icoContent = $this->createIcoContent($image);
+
+      // Store in storage
+      $this->disk->put($this->iconPath . '/' . $outputFilename, $icoContent);
+
+      imagedestroy($image);
+    } catch (\Exception $e) {
+      Log::warning('ICO conversion failed: ' . $e->getMessage());
     }
-
-    $image = imagecreatefrompng($pngPath);
-    if (!$image) {
-      throw new \Exception('Failed to create image from PNG');
-    }
-
-    // Save as ICO
-    imagealphablending($image, true);
-    imagesavealpha($image, true);
-
-    // Create ICO file using a simple method
-    // Note: This is a basic ICO converter, for production use a proper library
-    $this->saveIco($image, $icoPath);
-
-    imagedestroy($image);
   }
 
   /**
-   * Simple ICO file creator
+   * Create simple ICO content
    */
-  protected function saveIco($image, string $path): void
+  protected function createIcoContent($image): string
   {
+    // Simple ICO file creation
     $width = imagesx($image);
     $height = imagesy($image);
 
-    // Prepare ICO header (simplified)
-    $header = pack('vvv', 0, 1, 1);
+    // ICO header
+    $header = pack('vvv', 0, 1, 1); // Reserved, Type, Count
 
-    // Image data
+    // Icon directory entry
+    $dirEntry = pack(
+      'CCCCvvVV',
+      $width,
+      $height,
+      0, // Color count (0 for 32-bit) 
+      0, // Reserved
+      1, // Planes
+      32, // Bits per pixel
+      0, // Image size (calculated later)
+      22 // Offset to image data (header size + directory entry)
+    );
+
+    // Get PNG data
     ob_start();
     imagepng($image);
     $pngData = ob_get_clean();
 
-    // Write ICO file (simplified - for production use a proper library)
-    file_put_contents($path, $header . $pngData);
+    // Return complete ICO
+    return $header . $dirEntry . $pngData;
   }
 
   /**
@@ -250,5 +326,38 @@ class ImageManagerController extends Controller
       $i++;
     }
     return round($bytes, 2) . ' ' . $units[$i];
+  }
+
+  /**
+   * Get URL for an icon
+   */
+  protected function getIconUrl(string $filename): string
+  {
+    // Check if storage link exists
+    if (!file_exists(public_path('storage'))) {
+      $this->ensureStorageLinkExists();
+    }
+
+    return asset('storage/' . $this->iconPath . '/' . $filename);
+  }
+
+  /**
+   * Ensure the storage symbolic link exists
+   */
+  protected function ensureStorageLinkExists(): void
+  {
+    $linkPath = public_path('storage');
+    $targetPath = storage_path('app/public');
+
+    if (!file_exists($linkPath)) {
+      try {
+        if (function_exists('symlink')) {
+          @symlink($targetPath, $linkPath);
+          Log::info('Storage symbolic link created successfully');
+        }
+      } catch (\Exception $e) {
+        Log::warning('Could not create storage link: ' . $e->getMessage());
+      }
+    }
   }
 }

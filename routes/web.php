@@ -682,8 +682,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/cache/status', [CacheController::class, 'status'])->name('admin.cache.status');
 });
 
-Route::prefix('backend/icon')->middleware(['auth'])->group(function () {
-    Route::get('/', [ImageManagerController::class, 'index'])->name('backend.icon.index');
-    Route::post('/update', [ImageManagerController::class, 'updateIcon'])->name('backend.icon.update');
-    Route::delete('/reset', [ImageManagerController::class, 'resetIcon'])->name('backend.icon.reset');
+// ============================================
+// ICON MANAGER ROUTES (Admin only)
+// ============================================
+Route::middleware(['auth'])->prefix('backend/icon')->name('backend.icon.')->group(function () {
+    Route::get('/', [ImageManagerController::class, 'index'])->name('index');
+    Route::post('/update', [ImageManagerController::class, 'updateIcon'])->name('update');
+    Route::delete('/reset', [ImageManagerController::class, 'resetIcon'])->name('reset');
 });

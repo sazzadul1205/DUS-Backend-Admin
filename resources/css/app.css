@@ -9,6 +9,15 @@
     html {
         scroll-behavior: smooth;
     }
+
+    /* 
+        LOW PRIORITY DEFAULT: Buttons get cursor-pointer by default
+        BUT any Tailwind cursor class will override it
+        Using :where() gives it 0 specificity
+    */
+    button:where(:not([class*="cursor-"])) {
+        cursor: pointer;
+    }
 }
 
 * {

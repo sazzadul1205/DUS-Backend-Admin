@@ -303,8 +303,8 @@ export default function IconManagerIndex({ currentIcon, icons }) {
                   <div
                     key={icon.name}
                     className={`p-3 border rounded-lg text-center ${currentIcon?.name === icon.name
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <div className="w-12 h-12 mx-auto mb-2 border rounded-lg overflow-hidden">

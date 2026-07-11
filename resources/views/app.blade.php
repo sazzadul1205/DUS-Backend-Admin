@@ -50,25 +50,34 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- ✅ Dynamic Favicon - Check for custom icon -->
+    <!-- ✅ Dynamic Favicon from Storage -->
     @php
-        $iconPath = public_path('images/icon.png');
-        $iconSvgPath = public_path('images/icon.svg');
-        $iconIcoPath = public_path('images/icon.ico');
+        // Check if storage symbolic link exists
+        $storagePath = storage_path('app/public/images');
+        $iconPngPath = $storagePath . '/icon.png';
+        $iconSvgPath = $storagePath . '/icon.svg';
+        $iconIcoPath = $storagePath . '/icon.ico';
+
+        // Alternative check using Storage facade
+        use Illuminate\Support\Facades\Storage;
+        $disk = Storage::disk('public');
+        $hasIconPng = $disk->exists('images/icon.png');
+        $hasIconSvg = $disk->exists('images/icon.svg');
+        $hasIconIco = $disk->exists('images/icon.ico');
     @endphp
 
-    <!-- Favicon with dynamic detection -->
-    @if (file_exists($iconSvgPath))
-        <link rel="icon" href="{{ asset('images/icon.svg') }}" type="image/svg+xml">
+    <!-- Favicon with dynamic detection from storage -->
+    @if ($hasIconSvg)
+        <link rel="icon" href="{{ asset('storage/images/icon.svg') }}" type="image/svg+xml">
     @endif
 
-    @if (file_exists($iconPath))
-        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/icon.png') }}">
-        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/icon.png') }}">
-        <link rel="apple-touch-icon" href="{{ asset('images/icon.png') }}">
-    @elseif(file_exists($iconIcoPath))
-        <link rel="icon" href="{{ asset('images/icon.ico') }}" type="image/x-icon">
-        <link rel="shortcut icon" href="{{ asset('images/icon.ico') }}" type="image/x-icon">
+    @if ($hasIconPng)
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('storage/images/icon.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('storage/images/icon.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('storage/images/icon.png') }}">
+    @elseif($hasIconIco)
+        <link rel="icon" href="{{ asset('storage/images/icon.ico') }}" type="image/x-icon">
+        <link rel="shortcut icon" href="{{ asset('storage/images/icon.ico') }}" type="image/x-icon">
     @else
         <!-- Fallback default icon -->
         <link rel="icon" href="{{ asset('images/default-icon.png') }}" type="image/png">
