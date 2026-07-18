@@ -10,7 +10,7 @@ import Footer from '../Shared/Footer';
 
 const PublicLayout = ({ children, topBarData, navbarData, footerData, storageUrl }) => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       {/* TopBar */}
       <TopBar topBarData={topBarData} storageUrl={storageUrl} />
 

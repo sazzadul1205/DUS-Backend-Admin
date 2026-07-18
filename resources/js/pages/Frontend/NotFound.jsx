@@ -15,6 +15,7 @@ const NotFound = ({ topBarData, navbarData, footerData, storageUrl, pageTitle })
     >
       <Head title={pageTitle || 'Page Not Found | DUS'} />
 
+      {/* Main Content */}
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
         <div className="max-w-2xl w-full">
           {/* Main Card */}
@@ -22,7 +23,7 @@ const NotFound = ({ topBarData, navbarData, footerData, storageUrl, pageTitle })
             {/* Illustration */}
             <div className="mb-8">
               <div className="relative inline-block">
-                <div className="text-8xl sm:text-9xl mb-4 animate-bounce-slow">404</div>
+                <div className="text-8xl sm:text-9xl mb-4 animate-bounce-slow text-black">404</div>
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-[#009BE2]/20 rounded-full blur-sm" />
               </div>
 
