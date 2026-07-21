@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\SimpleLogger;
+use Illuminate\Support\Facades\Auth;
 
 class BlogController extends Controller
 {
@@ -68,37 +70,43 @@ class BlogController extends Controller
         if ($uploadedPath) {
           $data['image'] = $uploadedPath;
         } else {
-          // If upload fails, remove the image data
           unset($data['image']);
           Log::warning('Image upload failed for blog: ' . ($data['title'] ?? 'unknown'));
         }
       }
 
-      // Clear any session flash data that might contain large image data
       $this->cleanSessionOldInput();
 
-      // Auto-generate slug from title if not provided
       if (empty($data['slug'])) {
         $data['slug'] = $this->generateUniqueSlug($data['title']);
       }
 
-      // Ensure boolean values are cast correctly
       $data['is_featured'] = filter_var($data['is_featured'] ?? false, FILTER_VALIDATE_BOOLEAN);
       $data['is_active'] = filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
-
-      // Set default values if not provided
       $data['date'] = $data['date'] ?? now()->format('F j, Y');
       $data['author'] = $data['author'] ?? 'Admin';
       $data['read_time'] = (int)($data['read_time'] ?? 5);
 
-      // Ensure tags are stored as JSON
       if (isset($data['tags']) && is_array($data['tags'])) {
         $data['tags'] = array_values(array_unique(array_filter($data['tags'])));
       }
 
-      Blog::create($data);
+      $blog = Blog::create($data);
 
-      // Clear any large data from session before redirect
+      // Log blog creation
+      SimpleLogger::cms(
+        "Blog created: {$blog->title}",
+        [
+          'blog_id' => $blog->id,
+          'title' => $blog->title,
+          'slug' => $blog->slug,
+          'author' => $blog->author,
+          'is_active' => $blog->is_active,
+          'is_featured' => $blog->is_featured,
+          'created_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       session()->forget('_old_input');
 
       return redirect()->back()->with('success', '✅ Blog created successfully!');
@@ -143,9 +151,12 @@ class BlogController extends Controller
 
       $data = $request->all();
 
-      // Process image if it's a base64 string
+      // Track changes for logging
+      $oldTitle = $blog->title;
+      $oldStatus = $blog->is_active;
+      $oldFeatured = $blog->is_featured;
+
       if (!empty($data['image']) && $this->isBase64Image($data['image'])) {
-        // Delete old image if exists and is not a URL
         if ($blog->image && !filter_var($blog->image, FILTER_VALIDATE_URL)) {
           $this->deleteImageFile($blog->image);
         }
@@ -154,33 +165,50 @@ class BlogController extends Controller
         if ($uploadedPath) {
           $data['image'] = $uploadedPath;
         } else {
-          // If upload fails, keep the old image
           unset($data['image']);
           Log::warning('Image upload failed for blog update: ' . ($data['title'] ?? 'unknown'));
         }
       }
 
-      // Clear any session flash data that might contain large image data
       $this->cleanSessionOldInput();
 
-      // Auto-generate slug from title if needed
       if (empty($data['slug']) || ($data['title'] !== $blog->title && $data['slug'] === $blog->slug)) {
         $data['slug'] = $this->generateUniqueSlug($data['title'], $id);
       }
 
-      // Ensure boolean values are cast correctly
       $data['is_featured'] = filter_var($data['is_featured'] ?? false, FILTER_VALIDATE_BOOLEAN);
       $data['is_active'] = filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
       $data['read_time'] = (int)($data['read_time'] ?? 5);
 
-      // Ensure tags are stored as JSON
       if (isset($data['tags']) && is_array($data['tags'])) {
         $data['tags'] = array_values(array_unique(array_filter($data['tags'])));
       }
 
       $blog->update($data);
 
-      // Clear any large data from session before redirect
+      // Log the changes
+      $changes = [];
+      if ($oldTitle !== $blog->title) {
+        $changes['title'] = ['old' => $oldTitle, 'new' => $blog->title];
+      }
+      if ($oldStatus !== $blog->is_active) {
+        $changes['status'] = ['old' => $oldStatus ? 'active' : 'inactive', 'new' => $blog->is_active ? 'active' : 'inactive'];
+      }
+      if ($oldFeatured !== $blog->is_featured) {
+        $changes['featured'] = ['old' => $oldFeatured ? 'yes' : 'no', 'new' => $blog->is_featured ? 'yes' : 'no'];
+      }
+
+      if (!empty($changes)) {
+        SimpleLogger::cms(
+          "Blog updated: {$blog->title}",
+          [
+            'blog_id' => $blog->id,
+            'changes' => $changes,
+            'updated_by' => Auth::user()?->email ?? 'system'
+          ]
+        );
+      }
+
       session()->forget('_old_input');
 
       return redirect()->back()->with('success', '✅ Blog updated successfully!');
@@ -246,6 +274,16 @@ class BlogController extends Controller
   {
     try {
       $blog = Blog::findOrFail($id);
+
+      SimpleLogger::cms(
+        "Blog moved to trash: {$blog->title}",
+        [
+          'blog_id' => $blog->id,
+          'title' => $blog->title,
+          'deleted_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       $blog->delete();
 
       return redirect()->back()->with('success', '🗑️ Blog moved to trash successfully.');
@@ -264,35 +302,19 @@ class BlogController extends Controller
       $blog = Blog::withTrashed()->findOrFail($id);
       $blog->restore();
 
+      SimpleLogger::cms(
+        "Blog restored: {$blog->title}",
+        [
+          'blog_id' => $blog->id,
+          'title' => $blog->title,
+          'restored_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       return redirect()->back()->with('success', '🔄 Blog restored successfully.');
     } catch (\Exception $e) {
       Log::error('Blog restoration failed: ' . $e->getMessage(), ['blog_id' => $id]);
       return redirect()->back()->with('error', 'Failed to restore blog.');
-    }
-  }
-
-  /**
-   * Force delete a blog – also deletes embedded images from content
-   */
-  public function forceDelete(int $id)
-  {
-    try {
-      $blog = Blog::withTrashed()->findOrFail($id);
-
-      // Delete main image
-      if ($blog->image && !filter_var($blog->image, FILTER_VALIDATE_URL)) {
-        $this->deleteImageFile($blog->image);
-      }
-
-      // Delete images embedded in the content
-      $this->deleteImagesFromContent($blog->full_content);
-
-      $blog->forceDelete();
-
-      return redirect()->back()->with('success', '🗑️ Blog permanently deleted.');
-    } catch (\Exception $e) {
-      Log::error('Blog force deletion failed: ' . $e->getMessage(), ['blog_id' => $id]);
-      return redirect()->back()->with('error', 'Failed to permanently delete blog.');
     }
   }
 

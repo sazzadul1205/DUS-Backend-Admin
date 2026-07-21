@@ -13,7 +13,7 @@ use App\Models\EducationHistory;
 
 // Controllers
 use App\Http\Controllers\Controller;
-
+use App\Services\SimpleLogger;
 // Requests
 use Illuminate\Http\Request;
 
@@ -596,7 +596,7 @@ class ApplicantProfileController extends Controller
         // ==========================================
 
         $statsQuery = ApplicantProfile::query();
-        $this->applyFiltersToQuery($statsQuery, $request, false);
+        $this->applyFiltersToQuery($statsQuery, $request);
 
         $experienceStats = (clone $statsQuery)->selectRaw('
             MIN(experience_years) as min_exp,
@@ -730,7 +730,7 @@ class ApplicantProfileController extends Controller
     /**
      * Apply filters to a query (helper method to avoid duplication)
      */
-    private function applyFiltersToQuery(Builder $query, Request $request, bool $withRelations = true): void
+    private function applyFiltersToQuery(Builder $query, Request $request): void
     {
         if ($request->filled('search')) {
             $search = $request->search;
@@ -994,6 +994,17 @@ class ApplicantProfileController extends Controller
 
         $applicantProfile->update($profileData);
 
+        // Log profile update
+        SimpleLogger::users(
+            "✏️ Profile updated: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'profile_id' => $applicantProfile->id,
+                'section' => 'basic_info',
+                'updated_fields' => array_keys($profileData)
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Basic information updated successfully!',
@@ -1032,6 +1043,19 @@ class ApplicantProfileController extends Controller
             'current_job_title' => $validated['current_job_title'] ?? null,
             'social_links' => $validated['social_links'] ?? [],
         ]);
+
+        // Log professional info update
+        SimpleLogger::users(
+            "✏️ Professional info updated: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'profile_id' => $applicantProfile->id,
+                'section' => 'professional_info',
+                'experience_years' => $validated['experience_years'] ?? null,
+                'current_job_title' => $validated['current_job_title'] ?? null,
+                'has_social_links' => !empty($validated['social_links'])
+            ]
+        );
 
         return response()->json([
             'success' => true,
@@ -1258,6 +1282,17 @@ class ApplicantProfileController extends Controller
             'password' => Hash::make($validated['new_password'])
         ])->save();
 
+
+        // Log password change
+        SimpleLogger::security(
+            "🔑 Password changed: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'email' => Auth::user()->email
+            ]
+        );
+
+
         return response()->json([
             'success' => true,
             'message' => 'Password changed successfully!'
@@ -1365,7 +1400,7 @@ class ApplicantProfileController extends Controller
     /**
      * Handle photo upload
      */
-    private function handlePhotoUpload(UploadedFile $photo, int $userId): string
+    private function handlePhotoUpload(UploadedFile $photo, ?int $userId = null): string
     {
         // Simplified filename: YYYYMMDD_UUID.extension
         $datePrefix = date('Ymd');

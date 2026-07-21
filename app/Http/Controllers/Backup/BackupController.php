@@ -13,6 +13,8 @@ use ZipArchive;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Http\JsonResponse;
+use App\Services\SimpleLogger;
+use Illuminate\Support\Facades\Auth;
 
 class BackupController extends Controller
 {
@@ -74,7 +76,28 @@ class BackupController extends Controller
       $type = $request->input('type', 'full');
       $description = $request->input('description', 'Manual backup');
 
+      // Log backup initiation
+      SimpleLogger::system(
+        "📦 Manual backup initiated: {$type}",
+        [
+          'type' => $type,
+          'description' => $description,
+          'performed_by' => Auth::user()?->email ?? 'system',
+          'ip' => $request->ip()
+        ]
+      );
+
       $backupId = $this->createBackup($type, $description, 'manual');
+
+      // Log backup completion
+      SimpleLogger::system(
+        "✅ Manual backup completed: {$backupId}",
+        [
+          'backup_id' => $backupId,
+          'type' => $type,
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
 
       return response()->json([
         'success' => true,
@@ -83,6 +106,16 @@ class BackupController extends Controller
         'location' => $this->backupPath . '/' . $backupId . '.zip'
       ]);
     } catch (\Exception $e) {
+      // Log backup failure
+      SimpleLogger::system(
+        "❌ Manual backup failed",
+        [
+          'type' => $request->input('type', 'full'),
+          'error' => $e->getMessage(),
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       Log::error('Manual backup failed: ' . $e->getMessage());
       return response()->json([
         'success' => false,
@@ -97,7 +130,25 @@ class BackupController extends Controller
       $type = $request->input('type', 'full');
       $description = 'Automatic backup - ' . Carbon::now()->format('Y-m-d H:i:s');
 
+      // Log auto backup initiation
+      SimpleLogger::system(
+        "🔄 Automatic backup initiated: {$type}",
+        [
+          'type' => $type,
+          'performed_by' => 'system'
+        ]
+      );
+
       $backupId = $this->createBackup($type, $description, 'auto');
+
+      // Log auto backup completion
+      SimpleLogger::system(
+        "✅ Automatic backup completed: {$backupId}",
+        [
+          'backup_id' => $backupId,
+          'type' => $type
+        ]
+      );
 
       return response()->json([
         'success' => true,
@@ -106,6 +157,15 @@ class BackupController extends Controller
         'location' => $this->backupPath . '/' . $backupId . '.zip'
       ]);
     } catch (\Exception $e) {
+      // Log auto backup failure
+      SimpleLogger::system(
+        "❌ Automatic backup failed",
+        [
+          'type' => $request->input('type', 'full'),
+          'error' => $e->getMessage()
+        ]
+      );
+
       Log::error('Automatic backup failed: ' . $e->getMessage());
       return response()->json([
         'success' => false,
@@ -378,6 +438,15 @@ class BackupController extends Controller
         throw new \Exception('Backup ID is required');
       }
 
+      // Log backup deletion
+      SimpleLogger::system(
+        "🗑️ Backup deleted: {$backupId}",
+        [
+          'backup_id' => $backupId,
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       $zipPath = $this->backupPath . '/' . $backupId . '.zip';
       $infoPath = $this->backupPath . '/' . $backupId . '_info.json';
 
@@ -411,6 +480,16 @@ class BackupController extends Controller
         throw new \Exception('Backup ID is required');
       }
 
+      // Log restore initiation
+      SimpleLogger::system(
+        "🔄 Backup restore initiated: {$backupId} ({$type})",
+        [
+          'backup_id' => $backupId,
+          'type' => $type,
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       $zipPath = $this->backupPath . '/' . $backupId . '.zip';
 
       if (!File::exists($zipPath)) {
@@ -441,11 +520,32 @@ class BackupController extends Controller
       File::deleteDirectory($tempDir);
       $this->logRestore($backupId, $type, 'success');
 
+      // Log restore completion
+      SimpleLogger::system(
+        "✅ Backup restore completed: {$backupId}",
+        [
+          'backup_id' => $backupId,
+          'type' => $type,
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       return response()->json([
         'success' => true,
         'message' => 'Backup restored successfully!'
       ]);
     } catch (\Exception $e) {
+      // Log restore failure
+      SimpleLogger::system(
+        "❌ Backup restore failed",
+        [
+          'backup_id' => $request->input('backup_id'),
+          'type' => $request->input('type', 'full'),
+          'error' => $e->getMessage(),
+          'performed_by' => Auth::user()?->email ?? 'system'
+        ]
+      );
+
       Log::error('Restore failed: ' . $e->getMessage());
       return response()->json([
         'success' => false,

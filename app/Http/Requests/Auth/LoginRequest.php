@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\SimpleLogger;
 
 class LoginRequest extends FormRequest
 {
@@ -41,8 +42,20 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $email = $this->email;
+
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+
+            // Log failed attempt
+            SimpleLogger::security(
+                "❌ Failed login attempt for: {$email}",
+                [
+                    'email' => $email,
+                    'attempts' => RateLimiter::attempts($this->throttleKey()),
+                    'ip' => $this->ip()
+                ]
+            );
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
@@ -50,6 +63,16 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        // Log successful login
+        SimpleLogger::security(
+            "✅ User logged in: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'email' => Auth::user()->email,
+                'roles' => Auth::user()->roles->pluck('name')->implode(', ')
+            ]
+        );
     }
 
     /**
@@ -80,6 +103,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')) . '|' . $this->ip());
     }
 }

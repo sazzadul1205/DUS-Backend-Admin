@@ -25,9 +25,6 @@ class PublicJobListingController extends Controller
      */
     public function index(Request $request)
     {
-        // Public access - no permission check needed
-        // But we check if user is logged in for personalized features
-        $user = Auth::user();
 
         // Base query - only active, non-deleted jobs with upcoming deadlines
         $query = JobListing::where('is_active', true)

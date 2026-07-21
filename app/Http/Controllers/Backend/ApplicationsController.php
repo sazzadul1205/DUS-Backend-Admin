@@ -34,6 +34,8 @@ use setasign\Fpdi\Fpdi;
 // For zip
 use ZipArchive;
 
+use App\Services\SimpleLogger;
+
 class ApplicationsController extends Controller
 {
     /**
@@ -609,7 +611,23 @@ class ApplicationsController extends Controller
         ]);
 
         $application = Application::findOrFail($id);
+        $oldStatus = $application->status;
         $application->updateStatus($request->status, $request->notes);
+
+        // Log the status change
+        SimpleLogger::applications(
+            "Application #{$application->id} status changed: {$oldStatus} → {$request->status}",
+            [
+                'application_id' => $application->id,
+                'applicant_name' => $application->name,
+                'applicant_email' => $application->email,
+                'job_title' => $application->jobListing?->title ?? 'N/A',
+                'old_status' => $oldStatus,
+                'new_status' => $request->status,
+                'notes' => $request->notes,
+                'updated_by' => Auth::user()->email
+            ]
+        );
 
         return back()->with('success', 'Application status updated successfully.');
     }
@@ -645,6 +663,18 @@ class ApplicationsController extends Controller
             }
         });
 
+        // Log bulk status update
+        SimpleLogger::applications(
+            "Bulk status update: {$applications->count()} applications → {$request->status}",
+            [
+                'application_ids' => $request->application_ids,
+                'count' => $applications->count(),
+                'new_status' => $request->status,
+                'notes' => $request->notes,
+                'performed_by' => Auth::user()->email
+            ]
+        );
+
         return back()->with('success', count($applications) . ' applications updated successfully.');
     }
 
@@ -665,6 +695,20 @@ class ApplicationsController extends Controller
         }
 
         $application = Application::findOrFail($id);
+
+        // Log before deletion
+        SimpleLogger::applications(
+            "Application deleted: #{$application->id} - {$application->name}",
+            [
+                'application_id' => $application->id,
+                'applicant_name' => $application->name,
+                'applicant_email' => $application->email,
+                'job_title' => $application->jobListing?->title ?? 'N/A',
+                'status' => $application->status,
+                'deleted_by' => Auth::user()->email
+            ]
+        );
+
         $application->delete();
 
         return back()->with('success', 'Application deleted successfully.');
@@ -693,6 +737,16 @@ class ApplicationsController extends Controller
 
         $deleted = Application::whereIn('id', $request->application_ids)->delete();
 
+        // Log bulk deletion
+        SimpleLogger::applications(
+            "Bulk deleted {$deleted} applications",
+            [
+                'application_ids' => $request->application_ids,
+                'count' => $deleted,
+                'performed_by' => Auth::user()->email
+            ]
+        );
+
         return back()->with('success', $deleted . ' applications deleted successfully.');
     }
 
@@ -713,6 +767,19 @@ class ApplicationsController extends Controller
         }
 
         $application = Application::withTrashed()->findOrFail($id);
+
+        // Log before restoration
+        SimpleLogger::applications(
+            "Application restored: #{$application->id} - {$application->name}",
+            [
+                'application_id' => $application->id,
+                'applicant_name' => $application->name,
+                'applicant_email' => $application->email,
+                'job_title' => $application->jobListing?->title ?? 'N/A',
+                'restored_by' => Auth::user()->email
+            ]
+        );
+
         $application->restore();
 
         return back()->with('success', 'Application restored successfully.');
@@ -763,6 +830,19 @@ class ApplicationsController extends Controller
         }
 
         $application = Application::withTrashed()->findOrFail($id);
+
+        // Log before permanent deletion
+        SimpleLogger::applications(
+            "Application permanently deleted: #{$application->id} - {$application->name}",
+            [
+                'application_id' => $application->id,
+                'applicant_name' => $application->name,
+                'applicant_email' => $application->email,
+                'job_title' => $application->jobListing?->title ?? 'N/A',
+                'status' => $application->status,
+                'deleted_by' => Auth::user()->email
+            ]
+        );
 
         // Delete resume file if exists
         $resumePath = $application->getActualResumePath();
@@ -1158,6 +1238,19 @@ class ApplicationsController extends Controller
                 $application->id
             ));
 
+            // Log email sent
+            SimpleLogger::applications(
+                "Email sent to applicant: {$application->name}",
+                [
+                    'application_id' => $application->id,
+                    'applicant_name' => $application->name,
+                    'applicant_email' => $recipientEmail,
+                    'subject' => $request->subject,
+                    'job_title' => $jobTitle,
+                    'sent_by' => Auth::user()->email
+                ]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Email sent successfully to ' . $application->name
@@ -1241,6 +1334,18 @@ class ApplicationsController extends Controller
                 Log::error('Bulk email failed for application ' . $application->id . ': ' . $e->getMessage());
             }
         }
+
+        // Log bulk email
+        SimpleLogger::applications(
+            "Bulk email sent to {$successCount} applicants",
+            [
+                'application_ids' => $request->application_ids,
+                'success_count' => $successCount,
+                'failed_count' => $failedCount,
+                'subject' => $request->subject,
+                'sent_by' => Auth::user()->email
+            ]
+        );
 
         if ($failedCount > 0) {
             return response()->json([
@@ -1474,8 +1579,22 @@ class ApplicationsController extends Controller
         }
 
         try {
-            // Use the model helper so status and metadata are updated consistently.
+            $oldScore = $application->ats_score['percentage'] ?? 'N/A';
             $application->recalculateAtsScoreInline();
+            $newScore = $application->ats_score['percentage'] ?? 'N/A';
+
+            // Log ATS recalculation
+            SimpleLogger::ats(
+                "ATS recalculated for application #{$application->id}",
+                [
+                    'application_id' => $application->id,
+                    'applicant_name' => $application->name,
+                    'job_title' => $application->jobListing->title,
+                    'old_score' => $oldScore,
+                    'new_score' => $newScore,
+                    'calculated_by' => Auth::user()->email
+                ]
+            );
 
             if (request()->header('X-Inertia')) {
                 return redirect()->back()->with('success', 'ATS score recalculated successfully');
@@ -1490,6 +1609,16 @@ class ApplicationsController extends Controller
             Log::error('Error recalculating ATS score: ' . $e->getMessage(), [
                 'application_id' => $id
             ]);
+
+            // Log ATS failure
+            SimpleLogger::ats(
+                "ATS recalculation failed for application #{$application->id}",
+                [
+                    'application_id' => $application->id,
+                    'error' => $e->getMessage(),
+                    'attempted_by' => Auth::user()->email
+                ]
+            );
 
             $message = 'Failed to recalculate ATS score: ' . $e->getMessage();
 

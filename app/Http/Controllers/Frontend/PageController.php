@@ -564,7 +564,7 @@ class PageController extends Controller
   /**
    * Parse a value if it's a JSON string and in the list of keys that need parsing
    */
-  private function parseIfJsonString($value, string $dataKey, array $jsonDataKeys): mixed
+  private function parseIfJsonString(mixed $value, string $dataKey, array $jsonDataKeys): mixed
   {
     // Only parse if the data key is in the list
     if (!in_array($dataKey, $jsonDataKeys)) {

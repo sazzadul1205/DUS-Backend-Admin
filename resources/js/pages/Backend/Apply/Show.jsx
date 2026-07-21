@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/Pages/Backend/Apply/Show.jsx
 
 // React

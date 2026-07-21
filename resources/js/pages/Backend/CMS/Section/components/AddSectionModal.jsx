@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/CMS/Section/components/AddSectionModal.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';

@@ -11,11 +11,26 @@ use App\Models\Location;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Services\SimpleLogger;
 
 class DashboardController extends Controller
 {
   public function index()
   {
+
+    // Log dashboard access
+    if (Auth::check()) {
+      SimpleLogger::system(
+        "📊 Dashboard accessed by: " . Auth::user()->email,
+        [
+          'user_id' => Auth::id(),
+          'user_email' => Auth::user()->email,
+          'ip' => request()->ip()
+        ]
+      );
+    }
+
+
     $authUser = Auth::user();
     $user = $authUser instanceof User ? $authUser : null;
     $roles = $user?->roles?->pluck('slug')->all() ?? [];

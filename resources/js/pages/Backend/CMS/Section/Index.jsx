@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/CMS/Section/Index.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';

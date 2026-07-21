@@ -273,7 +273,7 @@ const RichTextEditor = ({
 
       // Upload to server
       const response = await axios.post(
-        // eslint-disable-next-line no-undef
+         
         route('admin.upload-editor-image'),
         { image: base64 },
         { headers: { 'Content-Type': 'application/json' } }

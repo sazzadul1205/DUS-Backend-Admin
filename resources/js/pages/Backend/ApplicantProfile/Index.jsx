@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/ApplicantProfile/Index.jsx
 
 import { useState, useEffect } from 'react';

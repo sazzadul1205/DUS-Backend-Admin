@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/Pages/Backend/Apply/Index.jsx
 
 // React

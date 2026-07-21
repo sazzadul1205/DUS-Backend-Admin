@@ -5,19 +5,35 @@ namespace App\Http\Controllers\JobListing;
 
 use Carbon\Carbon;
 use Inertia\Inertia;
+
+// Str
 use Illuminate\Support\Str;
+
+// Requests
 use Illuminate\Http\Request;
+
+// Facades
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
+
+// Controllers
 use App\Http\Controllers\Controller;
-use App\Models\Application;
+
+// Models
 use App\Models\User;
+use App\Models\JobView;
 use App\Models\Location;
 use App\Models\JobListing;
+use App\Models\Application;
 use App\Models\JobCategory;
-use App\Models\JobView;
+
+// Services
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+
+// Services
+use App\Services\SimpleLogger;
 
 class JobListingController extends Controller
 {
@@ -279,6 +295,21 @@ class JobListingController extends Controller
             $jobListing->locations()->sync($validated['location_ids']);
         }
 
+        // Log the activity
+        SimpleLogger::jobs(
+            "Job created: {$jobListing->title}",
+            [
+                'job_id' => $jobListing->id,
+                'title' => $jobListing->title,
+                'category' => $jobListing->category?->name ?? 'N/A',
+                'job_type' => $jobListing->job_type,
+                'experience_level' => $jobListing->experience_level,
+                'salary' => $jobListing->salary_min . ' - ' . $jobListing->salary_max,
+                'location_ids' => $validated['location_ids'] ?? [],
+                'created_by' => Auth::user()->email
+            ]
+        );
+
         Log::info('Job listing created', [
             'job_id' => $jobListing->id,
             'title' => $jobListing->title,
@@ -381,6 +412,12 @@ class JobListingController extends Controller
         $validated = $this->validateJobListing($request);
         $data = $this->prepareJobData($validated);
 
+        // Track changes for logging
+        $oldTitle = $jobListing->title;
+        $oldStatus = $jobListing->is_active;
+        $oldCategory = $jobListing->category_id;
+        $oldJobType = $jobListing->job_type;
+
         if ($jobListing->title !== $data['title']) {
             $data['slug'] = $this->generateUniqueSlug($data['title'], $jobListing->id);
         }
@@ -394,6 +431,27 @@ class JobListingController extends Controller
         if (isset($validated['location_ids'])) {
             $jobListing->locations()->sync($validated['location_ids']);
         }
+
+        // Log the activity with changes
+        $changes = [];
+        if ($oldTitle !== $jobListing->title) {
+            $changes['title'] = ['old' => $oldTitle, 'new' => $jobListing->title];
+        }
+        if ($oldStatus !== $jobListing->is_active) {
+            $changes['status'] = ['old' => $oldStatus ? 'active' : 'inactive', 'new' => $jobListing->is_active ? 'active' : 'inactive'];
+        }
+        if ($oldCategory !== $jobListing->category_id) {
+            $changes['category'] = ['old' => $jobListing->category?->name ?? 'N/A', 'new' => $jobListing->category?->name ?? 'N/A'];
+        }
+
+        SimpleLogger::jobs(
+            "Job updated: {$jobListing->title}",
+            [
+                'job_id' => $jobListing->id,
+                'changes' => $changes,
+                'updated_by' => Auth::user()->email
+            ]
+        );
 
         Log::info('Job listing updated', [
             'job_id' => $jobListing->id,
@@ -425,18 +483,30 @@ class JobListingController extends Controller
 
         try {
             $applicationsCount = $jobListing->applications()->count();
+            $jobTitle = $jobListing->title;
 
             if ($applicationsCount > 0) {
                 $jobListing->applications()->delete();
                 Log::info('Job listing and associated applications soft deleted', [
                     'job_id' => $jobListing->id,
-                    'job_title' => $jobListing->title,
+                    'job_title' => $jobTitle,
                     'applications_count' => $applicationsCount,
                     'deleted_by' => Auth::id()
                 ]);
             }
 
             $jobListing->delete();
+
+            // Log the deletion
+            SimpleLogger::jobs(
+                "Job deleted: {$jobTitle}",
+                [
+                    'job_id' => $jobListing->id,
+                    'title' => $jobTitle,
+                    'applications_count' => $applicationsCount,
+                    'deleted_by' => Auth::user()->email
+                ]
+            );
 
             DB::commit();
 
@@ -474,6 +544,17 @@ class JobListingController extends Controller
         $newStatus = !$jobListing->is_active;
         $jobListing->update(['is_active' => $newStatus]);
         $status = $newStatus ? 'activated' : 'deactivated';
+
+        // Log the status change
+        SimpleLogger::jobs(
+            "Job {$status}: {$jobListing->title}",
+            [
+                'job_id' => $jobListing->id,
+                'title' => $jobListing->title,
+                'new_status' => $newStatus ? 'active' : 'inactive',
+                'updated_by' => Auth::user()->email
+            ]
+        );
 
         Log::info('Job listing status toggled', [
             'job_id' => $jobListing->id,
@@ -587,6 +668,17 @@ class JobListingController extends Controller
                 ->where('job_listing_id', $jobListing->id)
                 ->restore();
 
+            // Log the restoration
+            SimpleLogger::jobs(
+                "Job restored: {$jobListing->title}",
+                [
+                    'job_id' => $jobListing->id,
+                    'title' => $jobListing->title,
+                    'applications_restored' => $restoredApplications,
+                    'restored_by' => Auth::user()->email
+                ]
+            );
+
             DB::commit();
 
             Log::info('Job listing and applications restored', [
@@ -637,6 +729,8 @@ class JobListingController extends Controller
         DB::beginTransaction();
 
         try {
+            $jobTitle = $jobListing->title;
+
             $applications = Application::withTrashed()
                 ->where('job_listing_id', $jobListing->id)
                 ->get();
@@ -645,23 +739,29 @@ class JobListingController extends Controller
                 $resumePath = $application->getActualResumePath();
                 if ($resumePath && Storage::disk('public')->exists($resumePath)) {
                     Storage::disk('public')->delete($resumePath);
-                    Log::info('Resume file deleted', [
-                        'application_id' => $application->id,
-                        'resume_path' => $resumePath
-                    ]);
                 }
-
                 $application->forceDelete();
             }
 
             $jobListing->locations()->detach();
             $jobListing->forceDelete();
 
+            // Log the permanent deletion
+            SimpleLogger::jobs(
+                "Job permanently deleted: {$jobTitle}",
+                [
+                    'job_id' => $id,
+                    'title' => $jobTitle,
+                    'applications_deleted' => $applications->count(),
+                    'deleted_by' => Auth::user()->email
+                ]
+            );
+
             DB::commit();
 
             Log::info('Job listing permanently deleted', [
                 'job_id' => $jobListing->id,
-                'title' => $jobListing->title,
+                'title' => $jobTitle,
                 'applications_deleted' => $applications->count(),
                 'deleted_by' => Auth::id()
             ]);
@@ -705,6 +805,16 @@ class JobListingController extends Controller
             ->whereNull('deleted_at')
             ->update(['is_active' => true]);
 
+        // Log bulk activation
+        SimpleLogger::jobs(
+            "Bulk activated {$count} jobs",
+            [
+                'job_ids' => $validated['job_ids'],
+                'count' => $count,
+                'performed_by' => Auth::user()->email
+            ]
+        );
+
         return redirect()->back()->with('success', "{$count} job listing(s) activated successfully.");
     }
 
@@ -731,6 +841,16 @@ class JobListingController extends Controller
         $count = JobListing::whereIn('id', $validated['job_ids'])
             ->whereNull('deleted_at')
             ->update(['is_active' => false]);
+
+        // Log bulk deactivation
+        SimpleLogger::jobs(
+            "Bulk deactivated {$count} jobs",
+            [
+                'job_ids' => $validated['job_ids'],
+                'count' => $count,
+                'performed_by' => Auth::user()->email
+            ]
+        );
 
         return redirect()->back()->with('success', "{$count} job listing(s) deactivated successfully.");
     }
@@ -767,6 +887,16 @@ class JobListingController extends Controller
         $count = JobListing::whereIn('id', $validated['job_ids'])
             ->whereNull('deleted_at')
             ->delete();
+
+        // Log bulk delete
+        SimpleLogger::jobs(
+            "Bulk deleted {$count} jobs",
+            [
+                'job_ids' => $validated['job_ids'],
+                'count' => $count,
+                'performed_by' => Auth::user()->email
+            ]
+        );
 
         Log::info('Bulk job listing delete', [
             'job_ids' => $validated['job_ids'],
@@ -1030,7 +1160,7 @@ class JobListingController extends Controller
     /**
      * Apply public filters to query
      */
-    private function applyPublicFilters($query, Request $request): void
+    private function applyPublicFilters(Builder $query, Request $request): void
     {
         if ($request->filled('search')) {
             $search = $request->search;
@@ -1070,7 +1200,7 @@ class JobListingController extends Controller
     /**
      * Apply public sorting to query
      */
-    private function applyPublicSorting($query, Request $request): void
+    private function applyPublicSorting(Builder $query, Request $request): void
     {
         $sort = $request->get('sort', 'latest');
         switch ($sort) {
@@ -1106,7 +1236,7 @@ class JobListingController extends Controller
     /**
      * Apply admin filters to query
      */
-    private function applyAdminFilters($query, Request $request): void
+    private function applyAdminFilters(Builder $query, Request $request): void
     {
         if ($request->filled('search')) {
             $search = $request->search;
@@ -1218,7 +1348,7 @@ class JobListingController extends Controller
     /**
      * Apply admin sorting to query
      */
-    private function applyAdminSorting($query, Request $request): void
+    private function applyAdminSorting(Builder $query, Request $request): void
     {
         $sortField = $request->input('sort_field', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
@@ -1401,7 +1531,7 @@ class JobListingController extends Controller
     /**
      * Format a public job listing for the API response
      */
-    private function formatPublicApiJob($job): array
+    private function formatPublicApiJob(JobListing $job): array
     {
         return [
             'id' => $job->id,
@@ -1420,7 +1550,7 @@ class JobListingController extends Controller
     /**
      * Format a public job listing for display
      */
-    private function formatPublicJobListing($jobListing): array
+    private function formatPublicJobListing(JobListing $jobListing): array
     {
         $description = strip_tags($jobListing->description);
         $truncated = substr($description, 0, 150) . (strlen($description) > 150 ? '...' : '');
@@ -1459,7 +1589,7 @@ class JobListingController extends Controller
     /**
      * Format a public job detail for display
      */
-    private function formatPublicJobDetail($jobListing, int $totalViews): array
+    private function formatPublicJobDetail(JobListing $jobListing, int $totalViews): array
     {
         return [
             'id' => $jobListing->id,
@@ -1508,7 +1638,7 @@ class JobListingController extends Controller
     /**
      * Format admin job listing for display
      */
-    private function formatAdminJobListing($jobListing): array
+    private function formatAdminJobListing(JobListing $jobListing): array
     {
         return [
             'id' => $jobListing->id,
@@ -1540,7 +1670,7 @@ class JobListingController extends Controller
     /**
      * Format admin job detail for display
      */
-    private function formatAdminJobDetail($jobListing, int $totalViews): array
+    private function formatAdminJobDetail(JobListing $jobListing, int $totalViews): array
     {
         return [
             'id' => $jobListing->id,
@@ -1578,7 +1708,7 @@ class JobListingController extends Controller
     /**
      * Format job for editing
      */
-    private function formatJobForEdit($jobListing, array $locationIds): array
+    private function formatJobForEdit(JobListing $jobListing, array $locationIds): array
     {
         return [
             'id' => $jobListing->id,
@@ -1610,7 +1740,7 @@ class JobListingController extends Controller
     /**
      * Format recent application for display
      */
-    private function formatRecentApplication($application): array
+    private function formatRecentApplication(Application $application): array
     {
         return [
             'id' => $application->id,
@@ -1661,7 +1791,7 @@ class JobListingController extends Controller
     /**
      * Get related jobs
      */
-    private function getRelatedJobs($jobListing): array
+    private function getRelatedJobs(JobListing $jobListing): array
     {
         return JobListing::where('category_id', $jobListing->category_id)
             ->where('id', '!=', $jobListing->id)
@@ -1679,7 +1809,7 @@ class JobListingController extends Controller
     /**
      * Record a job view
      */
-    private function recordJobView($jobListing): void
+    private function recordJobView(JobListing $jobListing): void
     {
         $ipAddress = request()->ip();
         $alreadyViewed = JobView::where('job_listing_id', $jobListing->id)
@@ -1696,7 +1826,7 @@ class JobListingController extends Controller
     /**
      * Record an admin job view
      */
-    private function recordAdminJobView($jobListing): void
+    private function recordAdminJobView(JobListing $jobListing): void
     {
         $ipAddress = request()->ip();
         $alreadyViewed = JobView::where('job_listing_id', $jobListing->id)
@@ -1712,7 +1842,7 @@ class JobListingController extends Controller
     /**
      * Generate a unique slug for a job listing
      */
-    private function generateUniqueSlug(string $title, $excludeId = null): string
+    private function generateUniqueSlug(string $title, ?int $excludeId = null): string
     {
         $slug = Str::slug($title);
         $originalSlug = $slug;
@@ -1793,7 +1923,7 @@ class JobListingController extends Controller
     /**
      * Get start date based on date range
      */
-    private function getStartDateFromRange(string $dateRange)
+    private function getStartDateFromRange(string $dateRange): ?Carbon
     {
         switch ($dateRange) {
             case 'today':

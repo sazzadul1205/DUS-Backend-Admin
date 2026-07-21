@@ -6,7 +6,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Frontend\SharedDataTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use App\Services\SimpleLogger;
+use Illuminate\Support\Facades\Auth;
 
 class CacheController extends Controller
 {
@@ -19,6 +20,16 @@ class CacheController extends Controller
   {
     // Optional: Add authorization check here
     // $this->authorize('manage-cache');
+
+    // Log cache clearing attempt
+    SimpleLogger::system(
+      "🗑️ Frontend cache clearing initiated",
+      [
+        'action' => 'clear_all',
+        'performed_by' => Auth::user()?->email ?? 'system',
+        'ip' => $request->ip()
+      ]
+    );
 
     // COMMENTED OUT FOR DEVELOPMENT
     // $this->clearFrontendCache();
@@ -43,6 +54,16 @@ class CacheController extends Controller
 
     // Cache::forget('frontend_cache_keys');
 
+    // Log cache clearing completion
+    SimpleLogger::system(
+      "✅ Frontend cache cleared successfully (development mode)",
+      [
+        'action' => 'clear_all',
+        'performed_by' => Auth::user()?->email ?? 'system',
+        'timestamp' => now()->toDateTimeString()
+      ]
+    );
+
     return response()->json([
       'success' => true,
       'message' => 'Cache clearing is temporarily disabled during development.',
@@ -58,9 +79,30 @@ class CacheController extends Controller
     // Optional: Add authorization check here
     // $this->authorize('manage-cache');
 
+    // Log page cache clearing
+    SimpleLogger::system(
+      "🗑️ Page cache clearing initiated: {$pageSlug}",
+      [
+        'action' => 'clear_page',
+        'page_slug' => $pageSlug,
+        'performed_by' => Auth::user()?->email ?? 'system',
+        'ip' => $request->ip()
+      ]
+    );
+
     // COMMENTED OUT FOR DEVELOPMENT
     // Cache::forget('frontend_page_' . $pageSlug);
     // Cache::forget('frontend_custom_' . $pageSlug);
+
+    // Log page cache clearing completion
+    SimpleLogger::system(
+      "✅ Page cache cleared: {$pageSlug} (development mode)",
+      [
+        'action' => 'clear_page',
+        'page_slug' => $pageSlug,
+        'performed_by' => Auth::user()?->email ?? 'system'
+      ]
+    );
 
     return response()->json([
       'success' => true,

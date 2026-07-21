@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/CMS/Section/components/modals/Editors/OurProgramsEditor.jsx
 
 import React, { useState, useEffect } from 'react';

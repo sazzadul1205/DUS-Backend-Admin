@@ -41,11 +41,11 @@ const JobSeekerLayout = ({ children }) => {
   };
 
   // Check if current route matches using Ziggy
-  const isRouteActive = (routeName, params = {}) => {
+  const isRouteActive = (routeName) => {
     try {
       if (typeof window !== 'undefined' && window.route) {
         // Check if the current route matches exactly
-        if (window.route().current(routeName, params)) {
+        if (window.route().current(routeName)) {
           return true;
         }
 
@@ -130,7 +130,7 @@ const JobSeekerLayout = ({ children }) => {
   // Render menu item
   const renderMenuItem = (item) => {
     const href = safeRoute(item.routeName, item.routeParams || {});
-    const isActive = isRouteActive(item.routeName, item.routeParams || {});
+    const isActive = isRouteActive(item.routeName);
 
     if (href === '#') {
       return null;

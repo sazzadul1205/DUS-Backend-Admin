@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/Pages/Public/JobListings/Show.jsx
 
 // React

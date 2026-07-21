@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/CMS/Section/components/SectionHeader.jsx
 
 /**

@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // pages/Backend/ApplicantProfile/Show.jsx
 
 // React

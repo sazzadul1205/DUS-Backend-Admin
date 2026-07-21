@@ -1,6 +1,6 @@
 // resources/js/pages/Backend/CMS/Shared/Index.jsx
 
-/* eslint-disable no-undef */
+ 
 // React
 import { useState, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';

@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 
 // Requests
 use App\Http\Requests\Auth\LoginRequest;
-
+use App\Services\SimpleLogger;
 // HTTP
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -45,8 +45,24 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
+    /**
+     * Destroy an authenticated session.
+     */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+
+        // Log logout
+        if ($user) {
+            SimpleLogger::security(
+                "🚪 User logged out: " . $user->email,
+                [
+                    'user_id' => $user->id,
+                    'email' => $user->email
+                ]
+            );
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

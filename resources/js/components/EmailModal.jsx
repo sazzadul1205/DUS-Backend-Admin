@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/components/EmailModal.jsx
 // React
 import { useState, useEffect } from 'react';

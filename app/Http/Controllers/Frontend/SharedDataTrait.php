@@ -57,7 +57,7 @@ trait SharedDataTrait
   /**
    * Transform asset placeholders in data
    */
-  private function transformAssetUrls($data, callable $asset): array
+  private function transformAssetUrls(mixed $data, callable $asset): array
   {
     // If data is null or empty, return empty array
     if (empty($data)) {

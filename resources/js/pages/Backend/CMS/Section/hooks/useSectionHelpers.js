@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+ 
 // resources/js/pages/Backend/CMS/Section/hooks/useSectionHelpers.js
 
 import { useState, useEffect, useCallback } from 'react';

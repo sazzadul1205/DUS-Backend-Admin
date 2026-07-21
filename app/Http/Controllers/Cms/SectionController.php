@@ -4,7 +4,6 @@
 namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
-use App\Models\JobListing;
 use App\Models\pages\Page;
 use App\Models\pages\SectionConfig;
 use App\Models\pages\CustomSectionData;
@@ -233,6 +232,8 @@ class SectionController extends Controller
   public function store(Request $request)
   {
     try {
+      $page = Page::findOrFail($request->page_id);
+
       $validator = Validator::make($request->all(), [
         'page_id' => 'required|exists:pages,id',
         'component' => 'required|string|max:255',
@@ -251,8 +252,6 @@ class SectionController extends Controller
       if ($validator->fails()) {
         return back()->withErrors($validator)->withInput();
       }
-
-      $page = Page::findOrFail($request->page_id);
 
       DB::beginTransaction();
 
@@ -807,7 +806,7 @@ class SectionController extends Controller
   /**
    * Delete images from data recursively
    */
-  protected function deleteImagesFromData($data): void
+  protected function deleteImagesFromData(mixed $data): void
   {
     if (is_array($data)) {
       foreach ($data as $key => $value) {
@@ -820,5 +819,77 @@ class SectionController extends Controller
     }
   }
 
-  // ... Continue with other helper methods (generateDataKey, getPropName, isSpecialComponent, etc.)
+  /**
+   * Generate a unique data key for the section.
+   */
+  protected function generateDataKey(string $component, string $sectionKey): string
+  {
+    return Str::snake($component) . '_' . Str::snake($sectionKey);
+  }
+
+  /**
+   * Get the frontend prop name for a section component.
+   */
+  protected function getPropName(string $component): string
+  {
+    return Str::camel($component);
+  }
+
+  /**
+   * Determine whether the component is a special layout component.
+   */
+  protected function isSpecialComponent(string $component): bool
+  {
+    return in_array($component, [
+      'page-banner',
+      'page-tag-banner',
+      'stories',
+      'upcoming-events',
+      'program-impact',
+      'where-we-work',
+      'video-gallery',
+    ], true);
+  }
+
+  /**
+   * Create default section data after the config is stored.
+   */
+  protected function handleSectionDataCreation(SectionConfig $sectionConfig): void
+  {
+    if ($sectionConfig->data_table !== 'custom_section_data') {
+      return;
+    }
+
+    $template = $this->getSectionDataTemplate($sectionConfig->section_key);
+    if ($template === null) {
+      return;
+    }
+
+    CustomSectionData::updateOrCreate(
+      [
+        'page_slug' => $sectionConfig->page_slug,
+        'section_key' => $sectionConfig->section_key,
+      ],
+      [
+        'data' => $template,
+        'is_active' => true,
+      ]
+    );
+  }
+
+  /**
+   * Get default data template for a section.
+   */
+  protected function getSectionDataTemplate(string $sectionKey): ?array
+  {
+    return match ($sectionKey) {
+      'banner' => ['title' => '', 'subtitle' => '', 'image' => ''],
+      'stories' => ['items' => []],
+      'upcoming-events' => ['events' => []],
+      'topbar' => ['links' => []],
+      'navbar' => ['links' => []],
+      'footer' => ['links' => []],
+      default => null,
+    };
+  }
 }

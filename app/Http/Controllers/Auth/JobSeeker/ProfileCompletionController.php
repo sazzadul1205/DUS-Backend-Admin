@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Auth/JobSeeker/ProfileCompletionController.php
 
 namespace App\Http\Controllers\Auth\JobSeeker;
 
@@ -24,6 +25,8 @@ use App\Models\ApplicantProfile;
 use App\Models\EducationHistory;
 use App\Models\User;
 
+use App\Services\SimpleLogger;
+
 class ProfileCompletionController extends Controller
 {
     // middleware
@@ -43,8 +46,6 @@ class ProfileCompletionController extends Controller
         if (!$user instanceof User) {
             abort(401);
         }
-
-        // ✅ REMOVED permission check - anyone with incomplete profile can complete it
 
         $profile = ApplicantProfile::where('user_id', $user->id)->first();
 
@@ -166,7 +167,7 @@ class ProfileCompletionController extends Controller
             abort(401);
         }
 
-        // ✅ REMOVED permission check - anyone can complete their own profile
+        //  permission check - anyone can complete their own profile
 
         $validated = $request->validate([
             // Basic Info
@@ -271,6 +272,19 @@ class ProfileCompletionController extends Controller
                 }
 
                 $this->activatePendingCvs($profile->id);
+
+                // Log profile completion
+                SimpleLogger::users(
+                    "✅ Profile completed: " . Auth::user()->email,
+                    [
+                        'user_id' => Auth::id(),
+                        'profile_id' => $profile->id,
+                        'completion_percentage' => $profile->completionPercentage(),
+                        'has_cv' => $profile->cvs()->count() > 0,
+                        'has_job_history' => $profile->jobHistories()->count() > 0,
+                        'has_education' => $profile->educationHistories()->count() > 0
+                    ]
+                );
             });
 
             return redirect()->route('backend.dashboard')->with('success', 'Profile completed successfully!');
@@ -292,7 +306,7 @@ class ProfileCompletionController extends Controller
     /**
      * Handle photo upload
      */
-    private function handlePhotoUpload(UploadedFile $photo, int $userId): string
+    private function handlePhotoUpload(UploadedFile $photo, ?int $userId = null): string
     {
         $datePrefix = date('Ymd');
         $uuid = Str::uuid();
@@ -315,8 +329,6 @@ class ProfileCompletionController extends Controller
         if (!$user instanceof User) {
             abort(401);
         }
-
-        // ✅ REMOVED permission check
 
         $request->validate([
             'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -342,6 +354,15 @@ class ProfileCompletionController extends Controller
         $profile->photo_path = $path;
         $profile->save();
 
+        // Log photo upload
+        SimpleLogger::users(
+            "📸 Profile photo uploaded: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'photo_path' => $path
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'photo_url' => asset('storage/' . $path),
@@ -353,15 +374,13 @@ class ProfileCompletionController extends Controller
     /**
      * Delete profile photo
      */
-    public function deletePhoto(Request $request)
+    public function deletePhoto()
     {
         $user = Auth::user();
 
         if (!$user instanceof User) {
             abort(401);
         }
-
-        // ✅ REMOVED permission check
 
         $profile = ApplicantProfile::where('user_id', $user->id)->first();
 
@@ -371,6 +390,14 @@ class ProfileCompletionController extends Controller
             }
             $profile->photo_path = null;
             $profile->save();
+
+            // Log photo deletion
+            SimpleLogger::users(
+                "📸 Profile photo deleted: " . Auth::user()->email,
+                [
+                    'user_id' => Auth::id()
+                ]
+            );
 
             return response()->json([
                 'success' => true,
@@ -477,8 +504,6 @@ class ProfileCompletionController extends Controller
             abort(401);
         }
 
-        // ✅ REMOVED permission check
-
         $validated = $request->validate([
             'cv' => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
@@ -515,6 +540,17 @@ class ProfileCompletionController extends Controller
             'status' => 'pending',
         ]);
 
+        // Log activity
+        SimpleLogger::users(
+            "📄 CV uploaded: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'cv_id' => $cv->id,
+                'original_name' => $cv->original_name,
+                'status' => 'pending'
+            ]
+        );
+
         return response()->json([
             'id' => $cv->id,
             'original_name' => $cv->original_name,
@@ -539,7 +575,6 @@ class ProfileCompletionController extends Controller
             abort(401);
         }
 
-        // ✅ REMOVED permission check
         // Only check ownership
         if ($cv->applicantProfile?->user_id !== $user->id) {
             abort(403);
@@ -548,6 +583,16 @@ class ProfileCompletionController extends Controller
         if ($cv->cv_path && Storage::disk('public')->exists($cv->cv_path)) {
             Storage::disk('public')->delete($cv->cv_path);
         }
+
+        // Log CV deletion
+        SimpleLogger::users(
+            "📄 CV deleted: " . Auth::user()->email,
+            [
+                'user_id' => Auth::id(),
+                'cv_id' => $cv->id,
+                'original_name' => $cv->original_name
+            ]
+        );
 
         $cv->forceDelete();
         ApplicantCv::reorderCvs($cv->applicant_profile_id);

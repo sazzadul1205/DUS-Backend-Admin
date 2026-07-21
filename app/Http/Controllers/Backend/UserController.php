@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Services\SimpleLogger;
 
 class UserController extends Controller
 {
@@ -165,6 +166,19 @@ class UserController extends Controller
             // Assign role using RBAC system
             $user->assignRole($validated['role_slug'], Auth::id());
 
+            // Log user creation
+            SimpleLogger::users(
+                "User created: {$user->name} ({$user->email})",
+                [
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $validated['role_slug'],
+                    'verified' => true,
+                    'created_by' => Auth::user()->email
+                ]
+            );
+
             Log::info('User created and auto-verified', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
@@ -211,6 +225,10 @@ class UserController extends Controller
         ]);
 
         try {
+            $oldName = $user->name;
+            $oldEmail = $user->email;
+            $oldRole = $user->roles->pluck('slug')->first();
+
             $updateData = [
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -225,6 +243,29 @@ class UserController extends Controller
 
             // Sync role using RBAC system
             $user->syncRoles([$validated['role_slug']]);
+
+            // Log the changes
+            $changes = [];
+            if ($oldName !== $validated['name']) {
+                $changes['name'] = ['old' => $oldName, 'new' => $validated['name']];
+            }
+            if ($oldEmail !== $validated['email']) {
+                $changes['email'] = ['old' => $oldEmail, 'new' => $validated['email']];
+            }
+            if ($oldRole !== $validated['role_slug']) {
+                $changes['role'] = ['old' => $oldRole, 'new' => $validated['role_slug']];
+            }
+
+            if (!empty($changes)) {
+                SimpleLogger::users(
+                    "User updated: {$user->name} ({$user->email})",
+                    [
+                        'user_id' => $user->id,
+                        'changes' => $changes,
+                        'updated_by' => Auth::user()->email
+                    ]
+                );
+            }
 
             Log::info('User updated', [
                 'user_id' => $user->id,
@@ -271,6 +312,16 @@ class UserController extends Controller
             'email_verified_at' => now(),
         ]);
 
+        SimpleLogger::users(
+            "User verified: {$user->name} ({$user->email})",
+            [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'verified_by' => Auth::user()->email
+            ]
+        );
+
         Log::info('User manually verified', [
             'user_id' => $user->id,
             'user_email' => $user->email,
@@ -314,7 +365,19 @@ class UserController extends Controller
 
         try {
             $userName = $user->name;
+            $userEmail = $user->email;
+
             $user->delete();
+
+            SimpleLogger::users(
+                "User soft deleted: {$userName} ({$userEmail})",
+                [
+                    'user_id' => $user->id,
+                    'name' => $userName,
+                    'email' => $userEmail,
+                    'deleted_by' => Auth::user()->email
+                ]
+            );
 
             Log::info('User soft deleted', [
                 'user_id' => $user->id,
@@ -355,6 +418,16 @@ class UserController extends Controller
         try {
             $user->restore();
 
+            SimpleLogger::users(
+                "User restored: {$user->name} ({$user->email})",
+                [
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'restored_by' => Auth::user()->email
+                ]
+            );
+
             Log::info('User restored', [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
@@ -393,7 +466,19 @@ class UserController extends Controller
 
         try {
             $userName = $user->name;
+            $userEmail = $user->email;
+
             $user->forceDelete();
+
+            SimpleLogger::users(
+                "User permanently deleted: {$userName} ({$userEmail})",
+                [
+                    'user_id' => $id,
+                    'name' => $userName,
+                    'email' => $userEmail,
+                    'deleted_by' => Auth::user()->email
+                ]
+            );
 
             Log::info('User force deleted permanently', [
                 'user_id' => $id,
