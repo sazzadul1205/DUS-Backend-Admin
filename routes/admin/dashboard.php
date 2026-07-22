@@ -52,6 +52,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
     // ===== NOTIFICATION ROUTES =====
     require __DIR__ . '/../notifications.php';
 
+    // ===== LOG ROUTES =====
+    require __DIR__ . '/logs.php';
+
     // ===== APPLICANT PROFILE ROUTES =====
     // Admin routes for managing applicant profiles
     require __DIR__ . '/../applicant-profiles.php';
@@ -59,8 +62,9 @@ Route::middleware(['auth', 'verified', 'profile.complete'])->group(function () {
     // Owner routes for applicant profiles
     require __DIR__ . '/applicant.php';
 
-    // ===== JOB SEEKER APPLICATION ROUTES =====
+    // Job Seeker routes
     require __DIR__ . '/../apply.php';
+
 
     // Cache Management (Admin only)
     Route::prefix('cache')->name('cache.')->group(function () {

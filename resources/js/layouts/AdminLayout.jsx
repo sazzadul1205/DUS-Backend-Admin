@@ -411,6 +411,16 @@ const AdminLayout = ({ children }) => {
       });
     }
 
+    // System Logs - URL: /backend/logs
+    // if (hasAnyPermission(['logs.view', 'logs.manage'])) {
+    items.push({
+      name: 'System Logs',
+      routeName: 'backend.logs.index',
+      icon: FiFileText,
+      description: 'View system activity logs'
+    });
+    // }
+
     // Backup Management - URL: /backend/backup
     if (hasPermission('backup.manage')) {
       items.push({
