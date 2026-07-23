@@ -80,7 +80,7 @@ class ContentService
 
         'programs' => Program::active()->ordered()->get(),
 
-        'publications' => Publication::active()->latest()->get(), // 👈 FIXED: Added publications
+        'publications' => Publication::active()->latest()->get(),
 
         'shared_data' => SharedData::ofType($sectionKey)->active()->first(),
 

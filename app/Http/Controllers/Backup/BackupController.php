@@ -268,7 +268,6 @@ class BackupController extends Controller
 
       $firstTable = $tables[0] ?? null;
       if (!$firstTable) {
-        throw new \Exception('No tables found in database');
       }
 
       $tableKeys = array_keys((array) $firstTable);
@@ -291,19 +290,25 @@ class BackupController extends Controller
         $sql .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
         $sql .= $createTable[0]->{'Create Table'} . ";\n\n";
 
-        $rows = DB::table($tableName)->limit(1000)->get();
-        if ($rows->count() > 0) {
-          $sql .= "INSERT INTO `{$tableName}` VALUES\n";
-          $values = [];
-          foreach ($rows as $row) {
+        // --- FIX: Use chunking to get ALL rows, not just first 1000 ---
+        $sql .= "INSERT INTO `{$tableName}` VALUES\n";
+        $insertChunks = [];
+
+        DB::table($tableName)->orderBy('id')->chunk(1000, function ($chunk) use (&$insertChunks) {
+          foreach ($chunk as $row) {
             $rowArray = (array) $row;
             $escapedValues = array_map(function ($value) {
-              if ($value === null) return 'NULL';
-              return "'" . addslashes((string)$value) . "'";
+              return $value === null ? 'NULL' : "'" . addslashes((string)$value) . "'";
             }, $rowArray);
-            $values[] = "(" . implode(',', $escapedValues) . ")";
+            $insertChunks[] = "(" . implode(',', $escapedValues) . ")";
           }
-          $sql .= implode(",\n", $values) . ";\n\n";
+        });
+
+        if (!empty($insertChunks)) {
+          $sql .= implode(",\n", $insertChunks) . ";\n\n";
+        } else {
+          // No rows, remove the "INSERT INTO" line
+          $sql = substr($sql, 0, -strlen("INSERT INTO `{$tableName}` VALUES\n"));
         }
       }
 

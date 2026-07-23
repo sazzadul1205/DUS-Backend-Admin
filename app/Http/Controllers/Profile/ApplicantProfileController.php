@@ -1305,17 +1305,12 @@ class ApplicantProfileController extends Controller
     public function destroy(ApplicantProfile $applicantProfile)
     {
         $user = Auth::user();
-
-        // Check if user is logged in
         if (!$user instanceof User) {
             abort(401);
         }
-
-        // Only profile owner can delete their own profile
         if ($user->id !== $applicantProfile->user_id) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
-
         if ($applicantProfile->trashed()) {
             return response()->json([
                 'success' => false,
@@ -1324,22 +1319,19 @@ class ApplicantProfileController extends Controller
         }
 
         DB::transaction(function () use ($applicantProfile) {
-            foreach ($applicantProfile->cvs as $cv) {
-                if ($cv->cv_path && Storage::disk('public')->exists($cv->cv_path)) {
-                    Storage::disk('public')->delete($cv->cv_path);
-                }
-                $cv->forceDelete();
-            }
-
+            // FIX: Soft‑delete child records (not force delete)
+            $applicantProfile->cvs()->delete();
             $applicantProfile->jobHistories()->delete();
             $applicantProfile->educationHistories()->delete();
             $applicantProfile->achievements()->delete();
 
-            if ($applicantProfile->photo_path && Storage::disk('public')->exists($applicantProfile->photo_path)) {
-                Storage::disk('public')->delete($applicantProfile->photo_path);
-            }
-            $applicantProfile->photo_path = null;
-            $applicantProfile->save();
+            // Keep photo_path untouched (will be available on restore)
+            // If you want to delete the photo too, uncomment the lines below:
+            // if ($applicantProfile->photo_path && Storage::disk('public')->exists($applicantProfile->photo_path)) {
+            //     Storage::disk('public')->delete($applicantProfile->photo_path);
+            //     $applicantProfile->photo_path = null;
+            //     $applicantProfile->save();
+            // }
 
             $applicantProfile->delete();
         });

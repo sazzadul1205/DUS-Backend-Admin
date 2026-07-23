@@ -237,30 +237,27 @@ class PageController extends Controller
 
   /**
    * Map page slug + detail flag to the correct Inertia component.
+   * - Detail pages: use specific detail components (AboutDetails, BlogDetails, etc.)
+   * - Listing pages: use GenericPage for all main pages
    */
   private function resolveComponent(string $pageSlug, ?string $detailSlug): string
   {
-    $normalizedPageSlug = $pageSlug === 'blogs' ? 'blog' : $pageSlug;
-
-    $specificPages = [
-      'home' => 'Frontend/Home/Home',
-      'about' => 'Frontend/About/About',
-      'contact' => 'Frontend/ContactUs/ContactUs',
-    ];
-
-    $detailPages = [
-      'about' => 'Frontend/AboutDetails/AboutDetails',
-      'blog' => 'Frontend/BlogDetails/BlogDetails',
-      'projects-programs' => 'Frontend/ProjectsAndProgramsDetails/ProjectsAndProgramsDetails',
-      'publications' => 'Frontend/PublicationDetails/PublicationDetails',
-      'jobs' => 'Frontend/JobsDetails/JobsDetails',
-    ];
-
+    // Detail pages - use their specific detail components
     if ($detailSlug) {
-      return $detailPages[$normalizedPageSlug] ?? 'Frontend/GenericPage';
+      $detailPages = [
+        'about' => 'Frontend/AboutDetails/AboutDetails',
+        'blog' => 'Frontend/BlogDetails/BlogDetails',
+        'blogs' => 'Frontend/BlogDetails/BlogDetails',
+        'projects-programs' => 'Frontend/ProjectsAndProgramsDetails/ProjectsAndProgramsDetails',
+        'publications' => 'Frontend/PublicationDetails/PublicationDetails',
+        'jobs' => 'Frontend/JobsDetails/JobsDetails',
+      ];
+
+      return $detailPages[$pageSlug] ?? 'Frontend/GenericPage';
     }
 
-    return $specificPages[$normalizedPageSlug] ?? 'Frontend/GenericPage';
+    // Main listing pages - all use GenericPage
+    return 'Frontend/GenericPage';
   }
 
   /**
