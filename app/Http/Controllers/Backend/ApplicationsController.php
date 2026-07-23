@@ -8,13 +8,14 @@ use App\Http\Controllers\Controller;
 
 // Mails
 use App\Mail\ApplicationEmail;
-
+use App\Mail\NewsletterBulkEmail;
 // Models
 use App\Models\User;
 use App\Models\Location;
 use App\Models\JobListing;
 use App\Models\Application;
 use App\Models\JobCategory;
+use App\Models\NewsletterSubscription;
 // HTTP
 use Illuminate\Http\Request;
 
@@ -35,6 +36,7 @@ use setasign\Fpdi\Fpdi;
 use ZipArchive;
 
 use App\Services\SimpleLogger;
+use Illuminate\Support\Facades\Validator;
 
 class ApplicationsController extends Controller
 {
@@ -1273,92 +1275,58 @@ class ApplicationsController extends Controller
      */
     public function sendBulkEmail(Request $request)
     {
-        $user = Auth::user();
-
-        // Check if user is logged in
-        if (!$user instanceof User) {
-            abort(401);
-        }
-
-        if (!$user->hasPermission('applications.bulk_email.send')) {
-            return response()->json(['error' => 'You do not have permission to send bulk emails.'], 403);
-        }
-
-        $request->validate([
-            'application_ids' => 'required|array',
-            'application_ids.*' => 'exists:applications,id',
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:newsletter_subscriptions,id',
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
         ]);
 
-        $applications = Application::with(['jobListing', 'applicantProfile'])
-            ->whereIn('id', $request->application_ids)
-            ->get();
-
-        if ($applications->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No applications found.'
-            ], 404);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
         }
 
-        $successCount = 0;
+        $subscribers = NewsletterSubscription::whereIn('id', $request->ids)
+            ->where('status', NewsletterSubscription::STATUS_SUBSCRIBED)
+            ->get();
+
+        if ($subscribers->isEmpty()) {
+            return back()->with('error', 'No active subscribers selected.');
+        }
+
+        $sentCount = 0;
         $failedCount = 0;
         $failedEmails = [];
 
-        foreach ($applications as $application) {
+        foreach ($subscribers as $subscriber) {
             try {
-                $recipientEmail = $application->email ?? $application->applicantProfile?->email ?? $application->user?->email;
-
-                if (!$recipientEmail) {
-                    $failedCount++;
-                    $failedEmails[] = $application->name . ' (No email address)';
-                    continue;
-                }
-
-                $jobTitle = $application->jobListing->title ?? null;
-                $companyName = $application->jobListing->employer->name ?? config('app.name');
-
-                Mail::to($recipientEmail)->send(new ApplicationEmail(
+                Mail::to($subscriber->email)->send(new NewsletterBulkEmail(
+                    $subscriber,
                     $request->subject,
-                    $request->content,
-                    $application->name,
-                    $jobTitle,
-                    $companyName,
-                    $application->id
+                    $request->content
                 ));
-                $successCount++;
+                $sentCount++;
             } catch (\Exception $e) {
+                Log::error('Failed to send bulk email: ' . $e->getMessage(), [
+                    'email' => $subscriber->email,
+                    'subject' => $request->subject,
+                ]);
                 $failedCount++;
-                $failedEmails[] = $application->email ?? $application->name;
-                Log::error('Bulk email failed for application ' . $application->id . ': ' . $e->getMessage());
+                $failedEmails[] = $subscriber->email;
             }
         }
 
-        // Log bulk email
-        SimpleLogger::applications(
-            "Bulk email sent to {$successCount} applicants",
-            [
-                'application_ids' => $request->application_ids,
-                'success_count' => $successCount,
-                'failed_count' => $failedCount,
-                'subject' => $request->subject,
-                'sent_by' => Auth::user()->email
-            ]
-        );
-
+        // Build flash message
+        $message = "Emails sent: {$sentCount}";
         if ($failedCount > 0) {
-            return response()->json([
-                'success' => true,
-                'message' => "Sent to {$successCount} applicant(s). Failed: {$failedCount}",
-                'failed_emails' => $failedEmails
-            ]);
+            $message .= ", Failed: {$failedCount}";
+            if (!empty($failedEmails)) {
+                $message .= " (Failed: " . implode(', ', $failedEmails) . ")";
+            }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => "Email sent successfully to {$successCount} applicant(s)."
-        ]);
+        // ✅ Return Inertia response - redirect back with flash message
+        return back()->with('success', $message);
     }
 
     /**

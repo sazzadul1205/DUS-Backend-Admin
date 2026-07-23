@@ -1,9 +1,9 @@
 // resources/js/components/Footer.jsx
 
 /**
- * ============================================
+ * 
  * FOOTER - Site Footer Component
- * ============================================
+ * 
  * 
  * PURPOSE:
  * - Renders the website footer with all sections
@@ -30,7 +30,7 @@
  *   OurProgramLinkIcon: string
  * }
  * 
- * ============================================
+ * 
  */
 
 // React
@@ -50,9 +50,7 @@ import {
   FaTelegram
 } from 'react-icons/fa6';
 
-// ============================================
 // UTILITY: Check if value exists
-// ============================================
 const hasValue = (value) => {
   if (value === undefined || value === null) return false;
   if (typeof value === 'string') return value.trim().length > 0;
@@ -61,9 +59,7 @@ const hasValue = (value) => {
   return true;
 };
 
-// ============================================
 // ICON MAPPING - Extended with common social icons
-// ============================================
 const iconMap = {
   FaFacebook,
   FaInstagram,
@@ -115,22 +111,19 @@ const getIconComponent = (iconName) => {
  * @returns {JSX.Element} Rendered footer
  */
 const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-logo.png' }) => {
-  // ============================================
-  // STATE - All hooks must be called unconditionally
-  // ============================================
+  // STATE
   const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
-  const [submitMessageType, setSubmitMessageType] = useState(''); // 'success' | 'error'
+  const [name, setName] = useState('');
   const [logoError, setLogoError] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessageType, setSubmitMessageType] = useState('');
+
+  // Mobile accordion
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState({
     quickLinks: false,
     programs: false
   });
-
-  // ============================================
-  // HOOKS - All useCallback must be called before early return
-  // ============================================
 
   /**
    * Build image URL with storage path
@@ -171,7 +164,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
   }, []);
 
   /**
-   * Handle newsletter subscription
+   * Handle newsletter subscription - Updated to use Laravel route
    */
   const handleSubscribe = useCallback(async (e) => {
     e.preventDefault();
@@ -193,23 +186,39 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
     setSubmitMessageType('');
 
     try {
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('/api/newsletter/subscribe', {
+      // Get CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+      // 🔥 Use the Laravel route for newsletter subscription
+      const response = await fetch('/newsletter/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'X-CSRF-TOKEN': csrfToken,
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim() || null,
+          source: 'footer',
+        }),
       });
 
-      if (response.ok) {
-        setSubmitMessage('Successfully subscribed to our newsletter! 🎉');
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitMessage(data.message || 'Successfully subscribed to our newsletter! 🎉');
         setSubmitMessageType('success');
         setEmail('');
+        setName('');
       } else {
-        const data = await response.json().catch(() => ({}));
-        setSubmitMessage(data.message || 'Subscription failed. Please try again.');
+        // Handle validation errors
+        if (data.errors) {
+          const errorMessages = Object.values(data.errors).flat();
+          setSubmitMessage(errorMessages[0] || 'Subscription failed. Please check your email.');
+        } else {
+          setSubmitMessage(data.message || 'Subscription failed. Please try again.');
+        }
         setSubmitMessageType('error');
       }
     } catch (error) {
@@ -223,7 +232,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
         setSubmitMessageType('');
       }, 5000);
     }
-  }, [email]);
+  }, [email, name]);
 
   /**
    * Render link with icon
@@ -251,14 +260,10 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
     );
   }, [getImageSrc]);
 
-  // ============================================
   // EARLY RETURN - After all hooks
-  // ============================================
   if (!hasValue(footerData)) return null;
 
-  // ============================================
   // DESTRUCTURE DATA
-  // ============================================
   const {
     logo = {},
     description = '',
@@ -274,18 +279,17 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
     OurProgramLinkIcon = ''
   } = footerData;
 
-  // ============================================
+
   // CHECK FOR CONTENT
-  // ============================================
   const hasLogo = hasValue(logo.src);
+  const hasPrograms = hasValue(programs);
+  const hasQuickLinks = hasValue(quickLinks);
   const hasDescription = hasValue(description);
   const hasSocialLinks = hasValue(socialLinks);
+  const hasNewsletter = hasValue(newsletter.title);
   const hasAddress = hasValue(address.title) || hasValue(address.details);
   const hasContact = hasValue(contact.title) || hasValue(contact.numbers);
   const hasEmailInfo = hasValue(emailInfo.title) || hasValue(emailInfo.addresses);
-  const hasQuickLinks = hasValue(quickLinks);
-  const hasPrograms = hasValue(programs);
-  const hasNewsletter = hasValue(newsletter.title);
   const hasBottomFooter = hasValue(bottomFooter.copyright) || hasValue(bottomFooter.links);
 
   // If no content, don't render anything
@@ -294,26 +298,19 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
     return null;
   }
 
-  // ============================================
   // COMPUTED VALUES
-  // ============================================
   const logoUrl = logoError ? defaultLogo : (getImageSrc(logo.src) || defaultLogo);
   const itemsPerColumn = hasPrograms ? Math.ceil(programs.length / 2) : 0;
   const firstProgramColumn = hasPrograms ? programs.slice(0, itemsPerColumn) : [];
   const secondProgramColumn = hasPrograms ? programs.slice(itemsPerColumn) : [];
 
-  // ============================================
-  // RENDER
-  // ============================================
   return (
     <div>
       {/* Main Footer */}
       <footer className='bg-[#080C14] rounded-t-2xl lg:rounded-t-4xl' role="contentinfo">
         <div className='mx-auto flex flex-col lg:flex-row px-5 lg:px-50 pt-10 lg:pt-37.5 gap-8 lg:gap-50'>
 
-          {/* ============================================
-              LEFT COLUMN - Logo, Description, Social, Contact
-              ============================================ */}
+          {/* LEFT COLUMN - Logo, Description, Social, Contact */}
           <div className='w-full lg:w-1/3'>
             {/* Logo */}
             {hasLogo && (
@@ -419,9 +416,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
             )}
           </div>
 
-          {/* ============================================
-              RIGHT COLUMN - Quick Links, Programs, Newsletter
-              ============================================ */}
+          {/* RIGHT COLUMN - Quick Links, Programs, Newsletter */}
           {(hasQuickLinks || hasPrograms || hasNewsletter) && (
             <div className='w-full lg:w-2/3'>
 
@@ -463,9 +458,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
                 </div>
               )}
 
-              {/* ============================================
-                  MOBILE: Accordion for links
-                  ============================================ */}
+              {/* MOBILE: Accordion for links */}
               <div className='md:hidden space-y-4'>
                 {/* Quick Links Accordion */}
                 {hasQuickLinks && (
@@ -532,9 +525,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
                 )}
               </div>
 
-              {/* ============================================
-                  NEWSLETTER SECTION
-                  ============================================ */}
+              {/* NEWSLETTER SECTION - Updated with name field and route */}
               {hasNewsletter && (
                 <div className='pt-10 mt-5 border-t border-gray-700'>
                   <h2 className='text-xl lg:text-[28px] font-bold text-white text-center lg:text-left'>
@@ -542,38 +533,59 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
                   </h2>
 
                   <form onSubmit={handleSubscribe} className='space-y-3 pt-5' noValidate>
-                    <label htmlFor="footer-email" className="text-gray-300 text-sm block text-center lg:text-left">
-                      Email Address <span className="text-red-400">*</span>
-                    </label>
-                    <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2'>
+                    {/* Name Field - Optional */}
+                    <div>
+                      <label htmlFor="footer-name" className="text-gray-300 text-sm block text-center lg:text-left">
+                        Your Name <span className="text-gray-500 text-xs">(optional)</span>
+                      </label>
                       <input
-                        type="email"
-                        id="footer-email"
-                        name="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder={newsletter.placeholder || 'Enter your email address'}
-                        className="flex-1 py-3 px-4 bg-[#080C14] border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#009BE2] focus:border-transparent transition-all text-white placeholder:text-gray-500 text-sm lg:text-base"
-                        required
-                        aria-label="Email address for newsletter subscription"
-                        aria-describedby={submitMessage ? "newsletter-message" : undefined}
+                        type="text"
+                        id="footer-name"
+                        name="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter your name"
+                        className="w-full mt-2 py-3 px-4 bg-[#080C14] border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#009BE2] focus:border-transparent transition-all text-white placeholder:text-gray-500 text-sm lg:text-base"
                         disabled={isSubmitting}
                       />
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="bg-[#009BE2] hover:bg-[#009BE2]/80 disabled:bg-[#009BE2]/50 disabled:cursor-not-allowed px-6 py-3 rounded-md font-semibold text-white transition-all duration-200 text-sm lg:text-base flex items-center justify-center gap-2 min-w-30"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Subscribing...
-                          </>
-                        ) : (
-                          newsletter.buttonText || 'Subscribe'
-                        )}
-                      </button>
                     </div>
+
+                    {/* Email Field */}
+                    <div>
+                      <label htmlFor="footer-email" className="text-gray-300 text-sm block text-center lg:text-left">
+                        Email Address <span className="text-red-400">*</span>
+                      </label>
+                      <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2'>
+                        <input
+                          type="email"
+                          id="footer-email"
+                          name="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder={newsletter.placeholder || 'Enter your email address'}
+                          className="flex-1 py-3 px-4 bg-[#080C14] border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#009BE2] focus:border-transparent transition-all text-white placeholder:text-gray-500 text-sm lg:text-base"
+                          required
+                          aria-label="Email address for newsletter subscription"
+                          aria-describedby={submitMessage ? "newsletter-message" : undefined}
+                          disabled={isSubmitting}
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="bg-[#009BE2] hover:bg-[#009BE2]/80 disabled:bg-[#009BE2]/50 disabled:cursor-not-allowed px-6 py-3 rounded-md font-semibold text-white transition-all duration-200 text-sm lg:text-base flex items-center justify-center gap-2 min-w-30"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Subscribing...
+                            </>
+                          ) : (
+                            newsletter.buttonText || 'Subscribe'
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
                     {submitMessage && (
                       <p
                         id="newsletter-message"
@@ -592,9 +604,7 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
         </div>
       </footer>
 
-      {/* ============================================
-          BOTTOM FOOTER - Copyright & Legal Links
-          ============================================ */}
+      {/* BOTTOM FOOTER - Copyright & Legal Links */}
       {hasBottomFooter && (
         <div className='bg-[#080C14] border-t border-[#090C40] px-5 lg:px-50 py-6'>
           <div className='flex flex-col sm:flex-row justify-between items-center gap-4'>
@@ -627,5 +637,4 @@ const Footer = ({ footerData, storageUrl = '', defaultLogo = '/images/default-lo
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders
 export default memo(Footer);

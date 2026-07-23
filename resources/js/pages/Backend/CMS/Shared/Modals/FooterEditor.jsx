@@ -10,9 +10,7 @@ import Swal from 'sweetalert2';
 import { FaTimes } from 'react-icons/fa';
 import { FaPlus, FaTrash, FaUpload, FaSpinner } from 'react-icons/fa6';
 
-// ============================================
 // CONSTANTS
-// ============================================
 const SOCIAL_ICON_OPTIONS = [
   { value: 'FaFacebook', label: 'Facebook' },
   { value: 'FaInstagram', label: 'Instagram' },
@@ -46,21 +44,21 @@ export default function FooterEditor({
   isLoading = false,
   setIsLoading = null
 }) {
-  // ============================================
+
   // STATE
-  // ============================================
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [navItems, setNavItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [itemsError, setItemsError] = useState(null);
+
+  // REF
   const fileInputRef = useRef(null);
   const quickLinkIconInputRef = useRef(null);
   const programLinkIconInputRef = useRef(null);
 
-  // ============================================
+
   // FETCH NAVIGATION ITEMS
-  // ============================================
   const fetchNavItems = useCallback(async () => {
     setLoadingItems(true);
     setItemsError(null);
@@ -103,9 +101,7 @@ export default function FooterEditor({
     fetchNavItems();
   }, [fetchNavItems]);
 
-  // ============================================
   // LOGO HANDLING
-  // ============================================
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -199,13 +195,10 @@ export default function FooterEditor({
     });
   };
 
-  // ============================================
   // LINK ICON HANDLING (NEW)
-  // ============================================
   const handleLinkIconDrag = (e, type) => {
     e.preventDefault();
     e.stopPropagation();
-    // Set drag active state for specific icon
     setDragActive(type === 'quick' ? 'quick' : 'program');
   };
 
@@ -280,9 +273,7 @@ export default function FooterEditor({
     });
   };
 
-  // ============================================
   // ITEM SELECTION HELPERS
-  // ============================================
   const getDropdownItems = useCallback(() => {
     const items = [];
     const pages = navItems.filter(item => item.type === 'page');
@@ -313,9 +304,7 @@ export default function FooterEditor({
     }
   }, [navItems, updateFormData]);
 
-  // ============================================
   // CONTACT NUMBER HANDLING
-  // ============================================
   const addContactNumber = () => {
     const currentNumbers = formData.contact?.numbers || [];
     updateFormData('contact.numbers', [...currentNumbers, '']);
@@ -343,9 +332,7 @@ export default function FooterEditor({
     updateFormData('contact.numbers', newNumbers);
   };
 
-  // ============================================
   // SOCIAL LINK HANDLING
-  // ============================================
   const addSocialLink = () => {
     addArrayItem('socialLinks', {
       iconName: 'FaFacebook',
@@ -355,9 +342,7 @@ export default function FooterEditor({
     });
   };
 
-  // ============================================
   // BOTTOM FOOTER LINK HANDLING
-  // ============================================
   const addBottomLink = () => {
     const currentLinks = formData.bottomFooter?.links || [];
     updateFormData('bottomFooter.links', [...currentLinks, { text: '', url: '/' }]);
@@ -376,9 +361,7 @@ export default function FooterEditor({
     updateFormData('bottomFooter.links', newLinks);
   };
 
-  // ============================================
   // EMAIL ADDRESS HANDLING
-  // ============================================
   const addEmailAddress = () => {
     const currentAddresses = formData.email?.addresses || [];
     updateFormData('email.addresses', [...currentAddresses, '']);
@@ -406,9 +389,7 @@ export default function FooterEditor({
     updateFormData('email.addresses', newAddresses);
   };
 
-  // ============================================
   // COMPUTED
-  // ============================================
   const isDisabled = isLoading || uploading || loadingItems;
   const dropdownItems = getDropdownItems();
   const hasDuplicateLinks = (items) => {
@@ -420,9 +401,7 @@ export default function FooterEditor({
   const quickLinksHaveDuplicates = hasDuplicateLinks(formData.quickLinks);
   const programsHaveDuplicates = hasDuplicateLinks(formData.programs);
 
-  // ============================================
   // RENDER LINK ICON DROP ZONE
-  // ============================================
   const renderLinkIconDropZone = (type, label, fieldName, currentValue, inputRef) => {
     const isDragActive = dragActive === type;
 
@@ -503,14 +482,9 @@ export default function FooterEditor({
     );
   };
 
-  // ============================================
-  // RENDER
-  // ============================================
   return (
     <div className="space-y-4 w-full">
-      {/* ============================================
-          LOGO SECTION
-          ============================================ */}
+      {/* LOGO SECTION */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Logo
@@ -601,9 +575,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          DESCRIPTION
-          ============================================ */}
+      {/* DESCRIPTION */}
       <div>
         <label className="block text-sm font-medium text-gray-700">
           Footer Description
@@ -619,9 +591,7 @@ export default function FooterEditor({
         />
       </div>
 
-      {/* ============================================
-          ADDRESS
-          ============================================ */}
+      {/*  ADDRESS */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Address & Contact</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-2">
@@ -650,9 +620,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          CONTACT NUMBERS
-          ============================================ */}
+      {/* CONTACT NUMBERS */}
       <div className="w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <div>
@@ -702,9 +670,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          EMAIL ADDRESSES
-          ============================================ */}
+      {/* EMAIL ADDRESSES */}
       <div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <div>
@@ -754,9 +720,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          SOCIAL LINKS
-          ============================================ */}
+      {/* SOCIAL LINKS */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Social Links</h3>
         <p className="text-xs text-gray-500 mb-2">Add social media links for your organization</p>
@@ -819,9 +783,7 @@ export default function FooterEditor({
         </button>
       </div>
 
-      {/* ============================================
-          QUICK LINKS
-          ============================================ */}
+      {/* QUICK LINKS */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Quick Links</h3>
         <p className="text-xs text-gray-500 mb-2">Select pages from dropdown or enter custom links</p>
@@ -902,9 +864,7 @@ export default function FooterEditor({
         </button>
       </div>
 
-      {/* ============================================
-          PROGRAMS
-          ============================================ */}
+      {/* PROGRAMS */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Programs</h3>
         <p className="text-xs text-gray-500 mb-2">Select programs from dropdown or enter custom links</p>
@@ -975,6 +935,7 @@ export default function FooterEditor({
             </button>
           </div>
         ))}
+
         <button
           type="button"
           onClick={() => addArrayItem('programs', { name: '', url: '/' })}
@@ -985,9 +946,7 @@ export default function FooterEditor({
         </button>
       </div>
 
-      {/* ============================================
-          NEWSLETTER
-          ============================================ */}
+      {/* NEWSLETTER */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Newsletter</h3>
         <p className="text-xs text-gray-500 mb-2">Configure the newsletter subscription section</p>
@@ -1028,9 +987,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          BOTTOM FOOTER
-          ============================================ */}
+      {/* BOTTOM FOOTER */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Bottom Footer</h3>
         <p className="text-xs text-gray-500 mb-2">Copyright and legal links</p>
@@ -1090,9 +1047,7 @@ export default function FooterEditor({
         </div>
       </div>
 
-      {/* ============================================
-          LINK ICONS (Updated with Drag & Drop)
-          ============================================ */}
+      {/* LINK ICONS (Updated with Drag & Drop) */}
       <div>
         <h3 className="font-semibold text-lg pt-2">Link Icons</h3>
         <p className="text-xs text-gray-500 mb-2">Small icons shown next to links (optional)</p>

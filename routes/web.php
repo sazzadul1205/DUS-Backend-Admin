@@ -13,6 +13,12 @@
 require __DIR__ . '/api.php';
 
 // ============================================
+// SECTION 1.5: NEWSLETTER ROUTES (ADD THIS)
+// URL: /newsletter/*
+// ============================================
+require __DIR__ . '/newsletter.php';
+
+// ============================================
 // SECTION 2: PUBLIC FRONTEND ROUTES
 // URL: /* (catch-all for public pages)
 // ============================================

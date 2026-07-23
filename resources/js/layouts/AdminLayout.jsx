@@ -1,13 +1,11 @@
 // resources/js/layouts/AdminLayout.jsx
 
 // IMPORTS
-
-// React
 import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // Icons
-import { FaSearchLocation, FaLayerGroup, FaFileArchive } from "react-icons/fa";
+import { FaSearchLocation, FaLayerGroup, FaFileArchive, FaEnvelope } from "react-icons/fa";
 import {
   FiHome, FiBell, FiBriefcase, FiFileText, FiSettings, FiLogOut,
   FiChevronDown, FiChevronRight, FiPlusCircle, FiUsers, FiBarChart2,
@@ -323,15 +321,14 @@ const AdminLayout = ({ children }) => {
       const subs = [];
 
       // Pages - URL: /backend/cms/pages
-      // Add activeAliases to detect section pages too!
       if (hasPermission('pages.view')) {
         subs.push({
           name: 'Pages',
           routeName: 'backend.cms.pages.index',
           icon: FiFileText,
           activeAliases: [
-            '/backend/cms/sections',      // Any sections page
-            '/backend/cms/sections/page', // Sections for a specific page
+            '/backend/cms/sections',
+            '/backend/cms/sections/page',
           ],
         });
       }
@@ -381,6 +378,17 @@ const AdminLayout = ({ children }) => {
         });
       }
 
+      // ============================================
+      // 🔥 NEWSLETTER - URL: /backend/newsletter
+      // ============================================
+      if (hasAnyPermission(['newsletter.view', 'newsletter.manage'])) {
+        subs.push({
+          name: 'Newsletter',
+          routeName: 'backend.newsletter.index',
+          icon: FaEnvelope,
+        });
+      }
+
       if (subs.length) {
         items.push({
           name: 'CMS Management',
@@ -412,14 +420,12 @@ const AdminLayout = ({ children }) => {
     }
 
     // System Logs - URL: /backend/logs
-    // if (hasAnyPermission(['logs.view', 'logs.manage'])) {
     items.push({
       name: 'System Logs',
       routeName: 'backend.logs.index',
       icon: FiFileText,
       description: 'View system activity logs'
     });
-    // }
 
     // Backup Management - URL: /backend/backup
     if (hasPermission('backup.manage')) {
@@ -429,6 +435,7 @@ const AdminLayout = ({ children }) => {
         icon: FaFileArchive
       });
     }
+
     return items;
   }, [hasAnyPermission, hasPermission, notificationMeta.unread_count]);
 

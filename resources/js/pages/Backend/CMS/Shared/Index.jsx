@@ -1,6 +1,6 @@
 // resources/js/pages/Backend/CMS/Shared/Index.jsx
 
- 
+
 // React
 import { useState, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -13,7 +13,7 @@ import {
   MdExpandLess,
   MdWarning
 } from 'react-icons/md';
-import { FaSpinner } from 'react-icons/fa'; // Only spinner from FA
+import { FaSpinner } from 'react-icons/fa'; 
 
 // SweetAlert
 import Swal from 'sweetalert2';
@@ -195,6 +195,9 @@ export default function SharedData({ sharedData }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [editingItem, closeEdit]);
 
+  // ============================================
+  // HANDLE SUBMIT - Close modal on success
+  // ============================================
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -218,9 +221,13 @@ export default function SharedData({ sharedData }) {
       onSuccess: () => {
         setLoading(false);
         setHasUnsavedChanges(false);
-        closeEdit();
 
-        // Refresh the page data
+        // Close modal first
+        setEditingItem(null);
+        setFormData({});
+        setIsUploading(false);
+
+        // Then show success message
         Swal.fire({
           icon: 'success',
           title: 'Updated!',
@@ -228,6 +235,9 @@ export default function SharedData({ sharedData }) {
           timer: 2000,
           showConfirmButton: false,
         });
+
+        // Refresh the page data
+        router.reload({ only: ['sharedData'] });
       },
       onError: (errors) => {
         setLoading(false);
@@ -463,6 +473,7 @@ export default function SharedData({ sharedData }) {
                   onClick={closeEdit}
                   className="p-2 hover:bg-gray-100 rounded-lg transition cursor-pointer"
                   aria-label="Close modal"
+                  disabled={loading}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
