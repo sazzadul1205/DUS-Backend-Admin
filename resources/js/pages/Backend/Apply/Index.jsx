@@ -1,4 +1,4 @@
- 
+
 // resources/js/Pages/Backend/Apply/Index.jsx
 
 // React
@@ -339,7 +339,7 @@ export default function ApplyIndex({ applications: initialApplications, stats: i
   // Format salary
   const formatSalary = (salary) => {
     if (!salary) return null;
-    return `${new Intl.NumberFormat('en-US').format(salary)  } BDT`;
+    return `${new Intl.NumberFormat('en-US').format(salary)} BDT`;
   };
 
   // Get stats cards
@@ -426,9 +426,7 @@ export default function ApplyIndex({ applications: initialApplications, stats: i
     );
   };
 
-  // Admin can see all applications, job seekers only see their own
-  const applicationsCount = applicationItems.length;
-
+  
   return (
     <AuthenticatedLayout>
       <Head title={showTrashed ? "Withdrawn Applications" : "My Applications"} />
@@ -509,33 +507,39 @@ export default function ApplyIndex({ applications: initialApplications, stats: i
 
           {/* Applications Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {applicationsCount === 0 && (
-              <div className="col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <FaBriefcase className="text-gray-400 text-2xl" />
+            {/* Filtered items based on showTrashed */}
+            {(showTrashed
+              ? applicationItems.filter(app => app.deleted_at)
+              : applicationItems.filter(app => !app.deleted_at)
+            ).length === 0 && (
+                <div className="col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <FaBriefcase className="text-gray-400 text-2xl" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {showTrashed ? 'No withdrawn applications' : 'No applications yet'}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {showTrashed ? 'Withdrawn applications will appear here.' : 'Start applying for jobs to see them here.'}
+                  </p>
+                  {!showTrashed && (
+                    <Link
+                      href={route('public.jobs.index')}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition mt-4"
+                    >
+                      <FaPlus size={12} /> Browse Jobs
+                    </Link>
+                  )}
                 </div>
-                <h3 className="text-lg font-medium text-gray-900">
-                  {showTrashed ? 'No withdrawn applications' : 'No applications yet'}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {showTrashed ? 'Withdrawn applications will appear here.' : 'Start applying for jobs to see them here.'}
-                </p>
-                {!showTrashed && (
-                  <Link
-                    href={route('public.jobs.index')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition mt-4"
-                  >
-                    <FaPlus size={12} /> Browse Jobs
-                  </Link>
-                )}
-              </div>
-            )}
+              )}
 
-            {applicationItems.map((app) => {
+            {(showTrashed
+              ? applicationItems.filter(app => app.deleted_at)
+              : applicationItems.filter(app => !app.deleted_at)
+            ).map((app) => {
               const trashed = !!app.deleted_at;
               const isPending = !trashed && app.status === 'pending';
               const isProcessing = app.ats_calculation_status === 'processing';
-              // For admin, check if this is the user's own application
               const isOwnApplication = currentUser?.id === app.user_id;
 
               return (

@@ -1,7 +1,7 @@
 // resources/js/pages/Backend/Applications/Index.jsx
 
 // React
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 // Inertia
 import { Head, router, usePage, Link } from '@inertiajs/react';
@@ -17,19 +17,14 @@ import useEmailModal from '../../../hooks/useEmailModal';
 
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
-import { Can } from '../../../components/Auth/Can';
 
 // Icons
 import {
   FaBriefcase,
-  FaBuilding,
-  FaCalendarAlt,
   FaChartLine,
-  FaCheck,
   FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
-  FaClock,
   FaDownload,
   FaEnvelope,
   FaEye,
@@ -42,14 +37,11 @@ import {
   FaTimes,
   FaTrash,
   FaTrashRestore,
-  FaUser,
   FaUserCheck,
   FaUserSlash,
-  FaUsers,
   FaChevronDown,
   FaChevronUp,
   FaCheckDouble,
-  FaStar,
   FaRegBuilding,
   FaSort,
   FaSortUp,
@@ -74,52 +66,8 @@ export default function Index({
 }) {
   const { flash } = usePage().props;
 
-  // Use centralized auth hook
-  const {
-    user: currentUser,
-    isAuthenticated,
-    hasAnyPermission,
-    hasRole,
-  } = useAuth();
-
-  // Check permissions for application management
-  const isSuperAdmin = hasRole('super-admin');
-  const canViewApplications = hasAnyPermission(['applications.view', 'applications.manage']);
-  const canEmailApplicants = hasAnyPermission(['applications.email', 'applications.manage']);
-  const canDownloadResumes = hasAnyPermission(['applications.download', 'applications.manage']);
-  const canUpdateApplications = hasAnyPermission(['applications.update', 'applications.manage']);
-  const canDeleteApplications = hasAnyPermission(['applications.destroy', 'applications.manage']);
-  const canRestoreApplications = hasAnyPermission(['applications.restore', 'applications.manage']);
-
-  // If user doesn't have permission to view applications, show access denied
-  if (!canViewApplications) {
-    return (
-      <AuthenticatedLayout>
-        <Head title="Access Denied" />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaShieldAlt className="w-10 h-10 text-red-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
-            <p className="text-gray-500 mt-2">You don't have permission to view applications.</p>
-          </div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
-
-  // Safe initial filters
+  // MOVE THIS BEFORE useState declarations that use it
   const safeInitialFilters = (initialFilters && !Array.isArray(initialFilters)) ? initialFilters : {};
-
-  // Use the email modal hook
-  const {
-    isEmailModalOpen,
-    emailRecipients,
-    emailModalTitle,
-    openEmailModal,
-    closeEmailModal,
-  } = useEmailModal();
 
   // States
   const [selectedApps, setSelectedApps] = useState([]);
@@ -132,25 +80,14 @@ export default function Index({
   const [sortField, setSortField] = useState(safeInitialFilters.sort || 'created_at');
   const [sortDirection, setSortDirection] = useState(safeInitialFilters.direction || 'desc');
 
-  // Statuses
-  const statuses = ['pending', 'shortlisted', 'rejected', 'hired'];
-
-  // Date range options
-  const dateRangeOptions = [
-    { value: '', label: 'Any Time' },
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'this_week', label: 'This Week' },
-    { value: 'this_month', label: 'This Month' },
-    { value: 'last_month', label: 'Last Month' },
-  ];
-
-  // Trash filter options
-  const trashOptions = [
-    { value: '', label: 'Without Trash' },
-    { value: 'with', label: 'With Trash' },
-    { value: 'only', label: 'Only Trash' },
-  ];
+  // Use the email modal hook
+  const {
+    isEmailModalOpen,
+    emailRecipients,
+    emailModalTitle,
+    openEmailModal,
+    closeEmailModal,
+  } = useEmailModal();
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -173,6 +110,78 @@ export default function Index({
     trashed: safeInitialFilters.trashed || '',
     per_page: safeInitialFilters.per_page || '7',
   });
+
+  // Use centralized auth hook
+  const {
+    hasAnyPermission,
+  } = useAuth();
+
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: flash.success,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: flash.error,
+        confirmButtonColor: '#d33',
+      });
+    }
+  }, [flash]);
+
+  // Check permissions for application management
+  const canViewApplications = hasAnyPermission(['applications.view', 'applications.manage']);
+  const canEmailApplicants = hasAnyPermission(['applications.email.send', 'applications.manage']);
+  const canDeleteApplications = hasAnyPermission(['applications.destroy', 'applications.manage']);
+  const canRestoreApplications = hasAnyPermission(['applications.restore', 'applications.manage']);
+  const canDownloadResumes = hasAnyPermission(['applications.download_resume', 'applications.manage']);
+  const canUpdateApplications = hasAnyPermission(['applications..status.update', 'applications.manage']);
+
+  // If user doesn't have permission to view applications, show access denied
+  if (!canViewApplications) {
+    return (
+      <AuthenticatedLayout>
+        <Head title="Access Denied" />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaShieldAlt className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+            <p className="text-gray-500 mt-2">You don't have permission to view applications.</p>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    );
+  }
+
+  // Statuses
+  const statuses = ['pending', 'shortlisted', 'rejected', 'hired'];
+
+  // Date range options
+  const dateRangeOptions = [
+    { value: '', label: 'Any Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'yesterday', label: 'Yesterday' },
+    { value: 'this_week', label: 'This Week' },
+    { value: 'this_month', label: 'This Month' },
+    { value: 'last_month', label: 'Last Month' },
+  ];
+
+  // Trash filter options
+  const trashOptions = [
+    { value: '', label: 'Without Trash' },
+    { value: 'with', label: 'With Trash' },
+    { value: 'only', label: 'Only Trash' },
+  ];
 
   // Get applications array from paginated response
   const applicationItems = applications?.data || [];
@@ -618,7 +627,7 @@ export default function Index({
           try {
             filename = decodeURIComponent(filename);
           } catch (e) {
-            // Use as is
+            console.error(e);
           }
         }
       }
@@ -668,7 +677,7 @@ export default function Index({
       });
       return;
     }
-    window.location.href = route('backend.applications.download', appId);
+    window.location.href = route('backend.applications.download_resume', appId);
   };
 
   // Handle single delete
@@ -831,7 +840,7 @@ export default function Index({
   // Format salary
   const formatSalary = (salary) => {
     if (!salary) return null;
-    return `${new Intl.NumberFormat('en-US').format(salary)  } BDT`;
+    return `${new Intl.NumberFormat('en-US').format(salary)} BDT`;
   };
 
   // Check if any filter is active
@@ -847,27 +856,6 @@ export default function Index({
       filters[key] !== '' && filters[key] !== null && filters[key] !== undefined && key !== 'per_page'
     ).length;
   };
-
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: flash.success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: flash.error,
-        confirmButtonColor: '#d33',
-      });
-    }
-  }, [flash]);
 
   // Get status counts
   const pendingCount = statusCounts?.pending || 0;

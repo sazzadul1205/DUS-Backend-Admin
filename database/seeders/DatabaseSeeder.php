@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use Database\Seeders\RBAC\RBACSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
@@ -59,28 +60,7 @@ class DatabaseSeeder extends Seeder
         $this->call(JobViewSeeder::class);
 
         // ==========================================
-        // STEP 8: DUS Frontend Content Seeders
-        // ==========================================
-        $this->call([
-            // Pages and content tables
-            \Database\Seeders\pages\PagesTableSeeder::class,
-            \Database\Seeders\pages\AboutContentTableSeeder::class,
-            \Database\Seeders\pages\BlogsTableSeeder::class,
-            \Database\Seeders\pages\ProgramsTableSeeder::class,
-            \Database\Seeders\pages\PublicationSeeder::class,
-
-            // Custom section data
-            \Database\Seeders\pages\CustomSectionDataTableSeeder::class,
-
-            // Shared data (TopBar, Navbar, Footer, FAQ, Upcoming Events)
-            \Database\Seeders\pages\SharedDataTableSeeder::class,
-
-            // Section configurations
-            \Database\Seeders\pages\SectionConfigsTableSeeder::class,
-        ]);
-
-        // ==========================================
-        // STEP 9: Clean storage directories
+        // STEP 8: Clean storage directories
         // ==========================================
         Storage::disk('public')->deleteDirectory('cvs');
         Storage::disk('public')->deleteDirectory('profile_photos');
@@ -88,7 +68,7 @@ class DatabaseSeeder extends Seeder
         Storage::disk('public')->deleteDirectory('applicant-photos');
 
         // ==========================================
-        // STEP 10: Create test user
+        // STEP 9: Create test user
         // ==========================================
         User::updateOrCreate(
             ['email' => 'test@example.com'],

@@ -18,10 +18,12 @@ Route::prefix('admin-profile')->name('admin-profile.')->group(function () {
   Route::delete('/icon/reset', [AdminProfileController::class, 'resetIcon'])->name('icon.reset');
 });
 
-// Employer Profile
 Route::prefix('employer')->name('employer.')->group(function () {
   Route::get('/profile/{id?}', [EmployerProfileController::class, 'show'])->whereNumber('id')->name('profile.show');
   Route::get('/profile/edit', [EmployerProfileController::class, 'edit'])->name('profile.edit');
   Route::patch('/profile', [EmployerProfileController::class, 'update'])->name('profile.update');
   Route::put('/profile/password', [EmployerProfileController::class, 'updatePassword'])->name('profile.password.update');
+  // ADD THESE TWO LINES:
+  Route::post('/profile/{id}/restore', [EmployerProfileController::class, 'restore'])->name('profile.restore');
+  Route::delete('/profile/{id}/force', [EmployerProfileController::class, 'forceDestroy'])->name('profile.force-destroy');
 });

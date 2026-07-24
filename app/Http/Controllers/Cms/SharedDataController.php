@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\SharedData;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -20,15 +23,24 @@ class SharedDataController extends Controller
   /**
    * Display shared data management page
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('shared_data.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view shared data.');
+    }
+
     $sharedData = SharedData::whereIn('type', [
       'topbar',
       'navbar',
       'footer',
       'faq',
       'upcoming-events',
-      'stories',
+      'stories'
     ])->get();
 
     return Inertia::render('Backend/CMS/Shared/Index', [
@@ -41,6 +53,14 @@ class SharedDataController extends Controller
    */
   public function update(Request $request, int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('shared_data.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update shared data.');
+    }
+
     $shared = SharedData::findOrFail($id);
 
     $validator = Validator::make($request->all(), [

@@ -12,8 +12,9 @@ use App\Models\pages\Blog;
 use App\Models\pages\Program;
 use App\Models\pages\AboutContent;
 use App\Models\pages\Publication;
-
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -83,6 +84,14 @@ class SectionController extends Controller
    */
   public function index(int $pageId)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view sections.');
+    }
     try {
       $page = Page::withTrashed()->findOrFail($pageId);
 
@@ -174,6 +183,13 @@ class SectionController extends Controller
    */
   public function updateOrder(Request $request, int $pageId)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.update')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     try {
       $page = Page::findOrFail($pageId);
 
@@ -231,6 +247,13 @@ class SectionController extends Controller
    */
   public function store(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create sections.');
+    }
     try {
       $page = Page::findOrFail($request->page_id);
 
@@ -296,6 +319,13 @@ class SectionController extends Controller
    */
   public function update(Request $request, int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update sections.');
+    }
     try {
       $sectionConfig = SectionConfig::withTrashed()->findOrFail($id);
 
@@ -412,6 +442,13 @@ class SectionController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete sections.');
+    }
     try {
       DB::beginTransaction();
 
@@ -452,6 +489,13 @@ class SectionController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore sections.');
+    }
     try {
       DB::beginTransaction();
 
@@ -493,6 +537,13 @@ class SectionController extends Controller
    */
   public function forceDelete(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to permanently delete sections.');
+    }
     try {
       DB::beginTransaction();
 
@@ -535,6 +586,14 @@ class SectionController extends Controller
    */
   public function trashed(int $pageId)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view trashed sections.');
+    }
     try {
       $page = Page::withTrashed()->findOrFail($pageId);
 
@@ -566,6 +625,14 @@ class SectionController extends Controller
    */
   public function trashedCount(int $pageId)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.view')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $page = Page::findOrFail($pageId);
 
@@ -588,6 +655,13 @@ class SectionController extends Controller
    */
   public function getAboutContentOptions()
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('sections.view')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     try {
       $items = AboutContent::where('is_active', true)
         ->orderBy('title')
@@ -620,11 +694,6 @@ class SectionController extends Controller
       ], 500);
     }
   }
-
-  // ... Rest of the helper methods (generateDataKey, getPropName, isSpecialComponent, 
-  // handleSectionDataCreation, getSectionDataTemplate, normalizeColorValues, 
-  // processDataImages, processArray, isBase64Image, uploadImage, getImageExtension, 
-  // deleteImage, isImagePath, deleteImagesFromData)
 
   /**
    * Normalize color values in the data array

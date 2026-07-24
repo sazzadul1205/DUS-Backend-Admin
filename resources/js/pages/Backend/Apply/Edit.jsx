@@ -26,7 +26,6 @@ import {
   FaBriefcase,
   FaClock,
   FaStar,
-  FaBuilding,
   FaMapMarkerAlt,
   FaSave,
   FaSpinner,
@@ -48,12 +47,32 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
   const {
     user: currentUser,
     isAuthenticated,
-    hasRole,
     hasAnyPermission,
   } = useAuth();
 
+
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: flash.error,
+        confirmButtonColor: '#3b82f6',
+      });
+    }
+    if (flash?.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: flash.success,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  }, [flash]);
+
   // Check if user is the owner of this application
-  const isJobSeeker = hasRole('job_seeker');
   const isOwner = currentUser?.id === application?.user_id;
   const canEditApplications = hasAnyPermission(['apply.update', 'apply.edit', 'applications.update', 'applications.manage']);
 
@@ -77,7 +96,9 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingAts, setIsLoadingAts] = useState(false);
   const [showAtsPreview, setShowAtsPreview] = useState(false);
-  const [originalCvId, setOriginalCvId] = useState(currentCvId);
+
+  // Cv state
+  const originalCvId = currentCvId;
 
   // If user is not authenticated, show access denied
   if (!isAuthenticated) {
@@ -160,26 +181,6 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
     );
   }
 
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: flash.error,
-        confirmButtonColor: '#3b82f6',
-      });
-    }
-    if (flash?.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: flash.success,
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    }
-  }, [flash]);
 
   // Check if salary input should be shown
   const showSalaryInput = () => {
@@ -283,7 +284,7 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
   };
 
   // Preview ATS score before saving
-  const handlePreviewAts = async () => {
+  const handlePreviewAts = () => {
     if (!formData.cv_id) {
       Swal.fire({
         icon: 'warning',
@@ -333,6 +334,7 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
     }
 
     if (formData.phone && formData.phone.trim()) {
+      // eslint-disable-next-line no-useless-escape
       const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{4,10}$/;
       if (!phoneRegex.test(formData.phone.trim())) {
         newErrors.phone = 'Please enter a valid phone number';
@@ -458,7 +460,7 @@ export default function ApplyEdit({ application, jobListing, cvs, currentCvId })
   // Format currency
   const formatCurrency = (amount) => {
     if (!amount) return null;
-    return `${new Intl.NumberFormat('en-US').format(amount)  } BDT`;
+    return `${new Intl.NumberFormat('en-US').format(amount)} BDT`;
   };
 
   // Check if job is expired

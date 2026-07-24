@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\AboutContent;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -18,14 +21,20 @@ class AboutContentController extends Controller
   /**
    * Display about content items
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view about content.');
+    }
+
     try {
       $items = AboutContent::withTrashed()->orderBy('display_order')->get();
-
-      return Inertia::render('Backend/CMS/About/Index', [
-        'items' => $items,
-      ]);
+      return Inertia::render('Backend/CMS/About/Index', ['items' => $items]);
     } catch (\Exception $e) {
       Log::error('Failed to fetch about content: ' . $e->getMessage());
       return Inertia::render('Backend/CMS/About/Index', [
@@ -40,6 +49,15 @@ class AboutContentController extends Controller
    */
   public function store(Request $request)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create about content.');
+    }
+
     try {
       $validator = Validator::make($request->all(), [
         'slug' => 'required|string|unique:about_content,slug',
@@ -131,6 +149,14 @@ class AboutContentController extends Controller
    */
   public function update(Request $request, int $id)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update about content.');
+    }
     try {
       $about = AboutContent::withTrashed()->findOrFail($id);
 
@@ -225,6 +251,14 @@ class AboutContentController extends Controller
    */
   public function toggleStatus(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change about content status.');
+    }
+
     try {
       $about = AboutContent::findOrFail($id);
       $about->is_active = !$about->is_active;
@@ -243,6 +277,14 @@ class AboutContentController extends Controller
    */
   public function toggleFeatured(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change featured status.');
+    }
+
     try {
       $about = AboutContent::findOrFail($id);
 
@@ -267,6 +309,15 @@ class AboutContentController extends Controller
    */
   public function updateOrder(Request $request)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.update')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $validator = Validator::make($request->all(), [
         'orders' => 'required|array',
@@ -296,6 +347,14 @@ class AboutContentController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete about content.');
+    }
+
     try {
       $about = AboutContent::findOrFail($id);
       $about->delete();
@@ -312,6 +371,14 @@ class AboutContentController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore about content.');
+    }
+
     try {
       $about = AboutContent::withTrashed()->findOrFail($id);
       $about->restore();
@@ -328,6 +395,15 @@ class AboutContentController extends Controller
    */
   public function forceDelete(int $id)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('about.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to permanently delete about content.');
+    }
+
     try {
       $about = AboutContent::withTrashed()->findOrFail($id);
 

@@ -1,7 +1,7 @@
 // resources/js/pages/Backend/Statistics/Index.jsx
 
-import { useState, useEffect } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import { Head, router } from '@inertiajs/react';
 import {
   FaChartLine,
   FaBriefcase,
@@ -14,7 +14,6 @@ import {
   FaMapMarkerAlt,
   FaChartPie,
   FaChartBar,
-  FaCalendarAlt,
   FaArrowUp,
   FaArrowDown,
   FaMinus,
@@ -25,8 +24,7 @@ import {
 import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 
 // Auth
-import { useAuth } from '../../../hooks/useAuth';;
-import { Can } from '../../../components/Auth/Can';
+import { useAuth } from '../../../hooks/useAuth';
 import { CanAny } from '../../../components/Auth/CanAny';
 
 
@@ -73,23 +71,14 @@ export default function StatisticsIndex({
   topEmployers,
   topEmployersByApplications,
   dateRange,
-  filters
 }) {
-  const { flash } = usePage().props;
 
   // Use centralized auth hook
   const {
-    user: currentUser,
     hasAnyPermission,
-    hasRole
   } = useAuth();
 
   // Check permissions for viewing statistics
-  const isSuperAdmin = hasRole('super-admin');
-  const canViewAtsAnalytics = hasAnyPermission(['statistics.ats', 'statistics.manage']);
-  const canViewJobAnalytics = hasAnyPermission(['statistics.jobs', 'statistics.manage']);
-  const canViewEmployerAnalytics = hasAnyPermission(['statistics.employers', 'statistics.manage']);
-  const canViewApplicationAnalytics = hasAnyPermission(['statistics.applications', 'statistics.manage']);
   const canViewStatistics = hasAnyPermission(['statistics.view', 'statistics.manage', 'dashboard.view']);
 
   // State

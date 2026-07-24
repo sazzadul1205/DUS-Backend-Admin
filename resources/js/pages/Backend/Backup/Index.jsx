@@ -33,8 +33,14 @@ export default function BackupIndex({ backups, backupLogs, storageInfo, config }
   const [loading, setLoading] = useState(false);
   // Format date
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   };
 
   // Get trigger icon
@@ -250,13 +256,18 @@ export default function BackupIndex({ backups, backupLogs, storageInfo, config }
     }
   };
 
-  // Download backup
+  // Download backup using hidden anchor (avoids pop‑up blockers)
   const downloadBackup = (backupId) => {
     try {
       const url = route('backend.backup.download', { backup_id: backupId });
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup_${backupId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error(error);
+      console.error('Download error:', error);
       Swal.fire({
         icon: 'error',
         title: 'Download Failed',

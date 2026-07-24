@@ -25,7 +25,6 @@ import {
   FaBuilding,
   FaCalendarAlt,
   FaChartLine,
-  FaCheck,
   FaChevronLeft,
   FaChevronRight,
   FaDownload,
@@ -39,20 +38,13 @@ import {
   FaTimes,
   FaUserCheck,
   FaUserSlash,
-  FaUsers,
   FaChevronDown,
   FaChevronUp,
   FaCheckDouble,
   FaFileExcel,
   FaFileCsv,
-  FaUser,
-  FaClock,
   FaCheckCircle,
-  FaTimesCircle,
-  FaStar,
   FaTrash,
-  FaFileArchive,
-  FaRegBuilding,
   FaSort,
   FaSortUp,
   FaSortDown,
@@ -64,34 +56,91 @@ import Swal from 'sweetalert2';
 
 export default function JobApplications({
   job,
-  applications: initialApplications,
-  filters: initialFilters = {},
-  statusCounts: initialStatusCounts = {},
   filterOptions = {},
+  filters: initialFilters = {},
+  applications: initialApplications,
 }) {
   // Auth
   const { flash } = usePage().props;
 
+  // States
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedApps, setSelectedApps] = useState([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState({});
+  const [pendingDeletes, setPendingDeletes] = useState({});
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [applications, setApplications] = useState(initialApplications);
+  const [sortField, setSortField] = useState(safeInitialFilters.sort || 'created_at');
+  const [sortDirection, setSortDirection] = useState(safeInitialFilters.direction || 'desc');
+
+  // Use the email modal hook
+  const {
+    isEmailModalOpen,
+    emailRecipients,
+    emailModalTitle,
+    openEmailModal,
+    closeEmailModal,
+  } = useEmailModal();
+
+  // Comprehensive filter states
+  const [filters, setFilters] = useState({
+    status: safeInitialFilters.status || '',
+    search: safeInitialFilters.search || '',
+    min_ats_score: safeInitialFilters.min_ats_score || '',
+    max_ats_score: safeInitialFilters.max_ats_score || '',
+    min_experience: safeInitialFilters.min_experience || '',
+    max_experience: safeInitialFilters.max_experience || '',
+    min_salary: safeInitialFilters.min_salary || '',
+    max_salary: safeInitialFilters.max_salary || '',
+    education_level: safeInitialFilters.education_level || '',
+    date_from: safeInitialFilters.date_from || '',
+    date_to: safeInitialFilters.date_to || '',
+    date_range: safeInitialFilters.date_range || '',
+  });
+
   // Use centralized auth hook
   const {
     user: currentUser,
-    isAuthenticated,
     hasAnyPermission,
     hasRole,
   } = useAuth();
 
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.success && Object.keys(pendingUpdates).length === 0 && Object.keys(pendingDeletes).length === 0) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: flash.success,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: flash.error,
+        confirmButtonColor: '#d33',
+      });
+    }
+  }, [flash, pendingDeletes, pendingUpdates]);
+
   // Check permissions for application management
-  const isSuperAdmin = hasRole('super-admin');
   const isEmployer = hasRole('employer') || hasRole('employer-admin');
   const canViewApplications = hasAnyPermission(['applications.view', 'applications.manage']);
-  const canEmailApplicants = hasAnyPermission(['applications.email', 'applications.manage']);
-  const canDownloadResumes = hasAnyPermission(['applications.download', 'applications.manage']);
-  const canUpdateApplications = hasAnyPermission(['applications.update', 'applications.manage']);
   const canExportApplications = hasAnyPermission(['applications.export', 'applications.manage']);
   const canDeleteApplications = hasAnyPermission(['applications.destroy', 'applications.manage']);
+  const canEmailApplicants = hasAnyPermission(['applications.email.send', 'applications.manage']);
+  const canDownloadResumes = hasAnyPermission(['applications.download_resume', 'applications.manage']);
+  const canUpdateApplications = hasAnyPermission(['applications.status.update', 'applications.manage']);
 
   // Check if user owns this job
-  const isJobOwner = isEmployer && currentUser?.employer_id === job?.employer_id;
+  const isJobOwner = isEmployer && currentUser?.id === job?.user_id;
 
   // If user doesn't have permission to view applications and doesn't own the job, show access denied
   if (!canViewApplications && !isJobOwner) {
@@ -113,45 +162,6 @@ export default function JobApplications({
 
   // Safe initial filters
   const safeInitialFilters = (initialFilters && !Array.isArray(initialFilters)) ? initialFilters : {};
-
-  // Use the email modal hook
-  const {
-    isEmailModalOpen,
-    emailRecipients,
-    emailModalTitle,
-    openEmailModal,
-    closeEmailModal,
-  } = useEmailModal();
-
-  // States
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedApps, setSelectedApps] = useState([]);
-  const [isExporting, setIsExporting] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState({});
-  const [pendingDeletes, setPendingDeletes] = useState({});
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [applications, setApplications] = useState(initialApplications);
-  const [sortField, setSortField] = useState(safeInitialFilters.sort || 'created_at');
-  const [sortDirection, setSortDirection] = useState(safeInitialFilters.direction || 'desc');
-
-  // Comprehensive filter states
-  const [filters, setFilters] = useState({
-    status: safeInitialFilters.status || '',
-    search: safeInitialFilters.search || '',
-    min_ats_score: safeInitialFilters.min_ats_score || '',
-    max_ats_score: safeInitialFilters.max_ats_score || '',
-    min_experience: safeInitialFilters.min_experience || '',
-    max_experience: safeInitialFilters.max_experience || '',
-    min_salary: safeInitialFilters.min_salary || '',
-    max_salary: safeInitialFilters.max_salary || '',
-    education_level: safeInitialFilters.education_level || '',
-    date_from: safeInitialFilters.date_from || '',
-    date_to: safeInitialFilters.date_to || '',
-    date_range: safeInitialFilters.date_range || '',
-  });
 
   // Statuses
   const statuses = ['pending', 'shortlisted', 'rejected', 'hired'];
@@ -366,12 +376,15 @@ export default function JobApplications({
     const filenameStarMatch = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
     if (filenameStarMatch?.[1]) {
       try {
+        // eslint-disable-next-line no-useless-escape
         return decodeURIComponent(filenameStarMatch[1].replace(/(^\"|\"$)/g, ''));
       } catch {
+        // eslint-disable-next-line no-useless-escape
         return filenameStarMatch[1].replace(/(^\"|\"$)/g, '');
       }
     }
 
+    // eslint-disable-next-line no-useless-escape
     const filenameMatch = contentDisposition.match(/filename\s*=\s*\"?([^\";]+)\"?/i);
     return filenameMatch?.[1] ?? null;
   };
@@ -838,7 +851,7 @@ export default function JobApplications({
     }
 
     try {
-      const url = route('backend.applications.download', app.id);
+      const url = route('backend.applications.download_resume', app.id);
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'same-origin',
@@ -900,7 +913,7 @@ export default function JobApplications({
     };
     setApplications(updatedApplications);
 
-    router.put(route('backend.applications.update-status', appId), {
+    router.put(route('backend.applications.status.update-status', appId), {
       status: newStatus,
       notes: `Status updated to ${newStatus}`,
     }, {
@@ -1010,7 +1023,7 @@ export default function JobApplications({
   // Format salary
   const formatSalary = (salary) => {
     if (!salary) return null;
-    return `${new Intl.NumberFormat('en-US').format(salary)  } BDT`;
+    return `${new Intl.NumberFormat('en-US').format(salary)} BDT`;
   };
 
   // Check if any filter is active
@@ -1050,27 +1063,6 @@ export default function JobApplications({
   const canBulkStatusUpdate = canUpdateApplications && selectedApps.length > 0;
   const canBulkDownload = canDownloadResumes && selectedApps.length > 0;
   const canBulkDelete = canDeleteApplications && selectedApps.length > 0;
-
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.success && Object.keys(pendingUpdates).length === 0 && Object.keys(pendingDeletes).length === 0) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: flash.success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: flash.error,
-        confirmButtonColor: '#d33',
-      });
-    }
-  }, [flash]);
 
   // Pagination component
   const Pagination = () => {
@@ -1510,7 +1502,7 @@ export default function JobApplications({
                       Send Email
                     </button>
                   )}
-                  
+
                   {canBulkStatusUpdate && (
                     <select
                       onChange={(e) => handleBulkStatusUpdate(e.target.value)}
@@ -1526,7 +1518,7 @@ export default function JobApplications({
                       ))}
                     </select>
                   )}
-                  
+
                   {canBulkDownload && (
                     <button
                       onClick={handleBulkDownload}
@@ -1548,7 +1540,7 @@ export default function JobApplications({
                       }
                     </button>
                   )}
-                  
+
                   {canBulkDelete && (
                     <button
                       onClick={handleBulkDelete}
@@ -1559,7 +1551,7 @@ export default function JobApplications({
                       Delete All
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => setSelectedApps([])}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200"

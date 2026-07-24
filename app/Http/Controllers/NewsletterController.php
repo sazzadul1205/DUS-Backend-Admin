@@ -6,7 +6,9 @@ namespace App\Http\Controllers;
 use App\Models\NewsletterSubscription;
 use App\Mail\NewsletterWelcomeEmail;
 use App\Mail\NewsletterTestEmail;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -199,6 +201,15 @@ class NewsletterController extends Controller
    */
   public function adminIndex(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view newsletter subscribers.');
+    }
+
     $query = NewsletterSubscription::query();
 
     // Filter by status
@@ -246,6 +257,15 @@ class NewsletterController extends Controller
    */
   public function adminExport(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.export')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to export newsletter subscribers.');
+    }
+
     $validator = Validator::make($request->all(), [
       'status' => 'nullable|in:all,subscribed,unsubscribed,bounced',
       'format' => 'nullable|in:csv,excel',
@@ -299,6 +319,13 @@ class NewsletterController extends Controller
    */
   public function adminBulkDelete(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.delete')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     $validator = Validator::make($request->all(), [
       'ids' => 'required|array',
       'ids.*' => 'integer|exists:newsletter_subscriptions,id',
@@ -325,6 +352,15 @@ class NewsletterController extends Controller
    */
   public function adminBulkUnsubscribe(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.update')) { // or use newsletter.send? We'll add a new permission if needed, but for now use newsletter.send
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+
     $validator = Validator::make($request->all(), [
       'ids' => 'required|array',
       'ids.*' => 'integer|exists:newsletter_subscriptions,id',
@@ -356,6 +392,13 @@ class NewsletterController extends Controller
    */
   public function adminDestroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.delete')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     $subscriber = NewsletterSubscription::findOrFail($id);
     $subscriber->delete();
 
@@ -370,6 +413,13 @@ class NewsletterController extends Controller
    */
   public function adminUnsubscribe(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.update')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     $subscriber = NewsletterSubscription::findOrFail($id);
 
     if (!$subscriber->isSubscribed()) {
@@ -392,6 +442,13 @@ class NewsletterController extends Controller
    */
   public function adminResubscribe(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.update')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     $subscriber = NewsletterSubscription::findOrFail($id);
 
     if ($subscriber->isSubscribed()) {
@@ -414,6 +471,15 @@ class NewsletterController extends Controller
    */
   public function adminSendTest(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.send')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+
     $validator = Validator::make($request->all(), [
       'email' => 'required|email',
       'subject' => 'nullable|string|max:255',
@@ -450,6 +516,13 @@ class NewsletterController extends Controller
    */
   public function sendBulkEmail(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('newsletter.send')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     $validator = Validator::make($request->all(), [
       'ids' => 'required|array',
       'ids.*' => 'integer|exists:newsletter_subscriptions,id',

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -13,6 +15,15 @@ class EditorImageUploadController extends Controller
   // Upload image
   public function upload(Request $request)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('cms.dashboard')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     $request->validate([
       'image' => 'required|string',
     ]);
@@ -56,6 +67,15 @@ class EditorImageUploadController extends Controller
 
   public function deleteImages(Request $request)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('cms.dashboard')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     $request->validate([
       'urls' => 'required|array',
       'urls.*' => 'string',

@@ -8,7 +8,6 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
 import { Can } from '../../../components/Auth/Can';
-import { CanAny } from '../../../components/Auth/CanAny';
 
 import {
   FaArrowLeft,
@@ -31,7 +30,6 @@ import {
   FaDatabase,
   FaEye,
   FaLock,
-  FaChartLine,
   FaTag,
   FaIdCard,
   FaUserTag,
@@ -45,7 +43,6 @@ export default function Show({ role, users, permissions, moduleAccess, isDeleted
     user: currentUser,
     hasAnyPermission,
     hasRole,
-    isAuthenticated
   } = useAuth();
 
   // Check permissions for role management
@@ -143,12 +140,6 @@ export default function Show({ role, users, permissions, moduleAccess, isDeleted
     );
   }
 
-  // Helper functions - Date formatting
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  };
-
   // Helper functions - Date Time formatting
   const formatDateTime = (date) => {
     if (!date) return 'N/A';
@@ -159,16 +150,6 @@ export default function Show({ role, users, permissions, moduleAccess, isDeleted
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  // Level Badge Color Generator
-  const getLevelBadge = (level) => {
-    if (!level) return 'bg-gray-100 text-gray-600';
-    if (level <= 10) return 'bg-red-100 text-red-700';
-    if (level <= 30) return 'bg-orange-100 text-orange-700';
-    if (level <= 60) return 'bg-yellow-100 text-yellow-700';
-    if (level <= 80) return 'bg-blue-100 text-blue-700';
-    return 'bg-green-100 text-green-700';
   };
 
   // Access Level Badge Color Generator

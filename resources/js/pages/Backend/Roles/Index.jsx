@@ -1,6 +1,6 @@
 // resources/js/pages/Backend/Roles/Index.jsx
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 
 // Icons
@@ -21,8 +21,6 @@ import {
   FaTimes,
   FaChevronDown,
   FaChevronUp,
-  FaCheckCircle,
-  FaBan,
   FaCheckDouble,
   FaChevronLeft,
   FaChevronRight,
@@ -37,7 +35,6 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
 import { Can } from '../../../components/Auth/Can';
-import { CanAny } from '../../../components/Auth/CanAny';
 
 // SweetAlert2
 import Swal from 'sweetalert2';
@@ -50,15 +47,34 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
     user: currentUser,
     hasAnyPermission,
     hasRole,
-    isAuthenticated
   } = useAuth();
+
+  // States
+  const [cloningId, setCloningId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [restoringId, setRestoringId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
+  // Pagination state
+  const [roles, setRoles] = useState(initialRoles);
+  const [stats, setStats] = useState(initialStats);
+
+  // Filter states - synced with URL/backend
+  const [filters, setFilters] = useState({
+    search: initialFilters.search || '',
+    status: initialFilters.status || 'all',
+    minLevel: initialFilters.min_level || '',
+    maxLevel: initialFilters.max_level || '',
+  });
 
   // Check permissions for role management
   const isSuperAdmin = hasRole('super-admin');
   const canViewRoles = hasAnyPermission(['roles.view', 'roles.manage']);
   const canEditRoles = hasAnyPermission(['roles.update', 'roles.manage']);
   const canCloneRoles = hasAnyPermission(['roles.create', 'roles.manage']);
-  const canCreateRoles = hasAnyPermission(['roles.create', 'roles.manage']);
   const canExportRoles = hasAnyPermission(['roles.export', 'roles.manage']);
   const canToggleStatus = hasAnyPermission(['roles.update', 'roles.manage']);
   const canDeleteRoles = hasAnyPermission(['roles.destroy', 'roles.manage']);
@@ -101,48 +117,8 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
     return !isRoleProtected(role) && !role.is_default;
   };
 
-  // If user doesn't have permission to view roles, show access denied
-  if (!canViewRoles) {
-    return (
-      <AuthenticatedLayout>
-        <Head title="Access Denied" />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaShieldAlt className="w-10 h-10 text-red-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
-            <p className="text-gray-500 mt-2">You don't have permission to view roles.</p>
-          </div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
-
-  // States
-  const [cloningId, setCloningId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [togglingId, setTogglingId] = useState(null);
-  const [restoringId, setRestoringId] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState([]);
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
-
-  // Pagination state
-  const [roles, setRoles] = useState(initialRoles);
-  const [stats, setStats] = useState(initialStats);
-  const [currentPage, setCurrentPage] = useState(initialRoles?.current_page || 1);
-
-  // Filter states - synced with URL/backend
-  const [filters, setFilters] = useState({
-    search: initialFilters.search || '',
-    status: initialFilters.status || 'all',
-    minLevel: initialFilters.min_level || '',
-    maxLevel: initialFilters.max_level || '',
-  });
-
-  // Build query params for the index route
-  const buildIndexQueryParams = (pageNumber = 1, nextFilters = filters) => {
+  // Build query params for the index route - MOVED BEFORE useEffect
+  const buildIndexQueryParams = useCallback((pageNumber = 1, nextFilters = filters) => {
     const params = { page: pageNumber };
 
     const search = (nextFilters.search || '').trim();
@@ -159,7 +135,51 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
     }
 
     return params;
-  };
+  }, [filters]);
+
+  // Apply filters whenever filters change (with pagination)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      router.get(route('backend.roles.index'), buildIndexQueryParams(1, filters), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onSuccess: (page) => {
+          setRoles(page.props.roles);
+          setStats(page.props.stats);
+        },
+      });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [buildIndexQueryParams, filters]);
+
+  // Keep local roles in sync
+  useEffect(() => {
+    setRoles(initialRoles);
+    setStats(initialStats);
+  }, [initialRoles, initialStats]);
+
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: flash.success,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: flash.error,
+        confirmButtonColor: '#2563eb',
+      });
+    }
+  }, [flash]);
 
   // Get roles array from paginated response
   const roleItems = useMemo(() => {
@@ -184,30 +204,35 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
     return null;
   }, [roles]);
 
-  // Apply filters whenever filters change (with pagination)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      router.get(route('backend.roles.index'), buildIndexQueryParams(1, filters), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        onSuccess: (page) => {
-          setRoles(page.props.roles);
-          setStats(page.props.stats);
-          setCurrentPage(1);
-        },
-      });
-    }, 300);
+  // Sort roles for display
+  const sortedRoles = useMemo(() => {
+    return [...roleItems].sort((a, b) => {
+      // Deleted roles go to bottom
+      if (a.deleted_at && !b.deleted_at) return 1;
+      if (!a.deleted_at && b.deleted_at) return -1;
 
-    return () => clearTimeout(timeoutId);
-  }, [filters]);
+      // Sort by level (highest first, e.g. 100 -> 1)
+      return (b.level ?? 0) - (a.level ?? 0);
+    });
+  }, [roleItems]);
 
-  // Keep local roles in sync
-  useEffect(() => {
-    setRoles(initialRoles);
-    setStats(initialStats);
-    setCurrentPage(initialRoles?.current_page || 1);
-  }, [initialRoles, initialStats]);
+  // If user doesn't have permission to view roles, show access denied
+  if (!canViewRoles) {
+    return (
+      <AuthenticatedLayout>
+        <Head title="Access Denied" />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaShieldAlt className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+            <p className="text-gray-500 mt-2">You don't have permission to view roles.</p>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    );
+  }
 
   // Handle page change
   const handlePageChange = (pageNumber) => {
@@ -221,23 +246,10 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
       onSuccess: (inertiaPage) => {
         setRoles(inertiaPage.props.roles);
         setStats(inertiaPage.props.stats);
-        setCurrentPage(inertiaPage.props.roles?.current_page || inertiaPage.props.roles?.meta?.current_page || pageNumber);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
     });
   };
-
-  // Sort roles for display
-  const sortedRoles = useMemo(() => {
-    return [...roleItems].sort((a, b) => {
-      // Deleted roles go to bottom
-      if (a.deleted_at && !b.deleted_at) return 1;
-      if (!a.deleted_at && b.deleted_at) return -1;
-
-      // Sort by level (highest first, e.g. 100 -> 1)
-      return (b.level ?? 0) - (a.level ?? 0);
-    });
-  }, [roleItems]);
 
   // Handle filter change
   const handleFilterChange = (key, value) => {
@@ -715,27 +727,6 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
     );
   };
 
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: flash.success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: flash.error,
-        confirmButtonColor: '#2563eb',
-      });
-    }
-  }, [flash]);
-
   // Status
   const activeCount = stats?.active || 0;
   const defaultCount = stats?.default || 0;
@@ -1010,9 +1001,8 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
                   )}
 
                   {sortedRoles.map((role, index) => {
-                    const trashed = role.deleted_at != null;
+                    const trashed = role.deleted_at !== null && role.deleted_at !== undefined && role.deleted_at !== 'null' && role.deleted_at !== '';
                     const isDefault = role.is_default;
-                    const isProtected = isRoleProtected(role);
                     const canEdit = canEditSpecificRole(role);
                     const canDelete = canDeleteSpecificRole(role);
                     const canToggle = canToggleStatus && !isDefault && (isSuperAdmin || role.level < (currentUser?.highest_role_level || 100));
@@ -1071,7 +1061,7 @@ export default function RolesIndex({ roles: initialRoles, filters: initialFilter
                               </div>
                               {role.description && (
                                 <div className={`text-xs mt-1 ${trashed ? 'text-gray-400' : 'text-gray-400'}`}>
-                                  {role.description.length > 60 ? `${role.description.substring(0, 60)  }...` : role.description}
+                                  {role.description.length > 60 ? `${role.description.substring(0, 60)}...` : role.description}
                                 </div>
                               )}
                             </div>

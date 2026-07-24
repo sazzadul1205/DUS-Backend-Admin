@@ -1,36 +1,15 @@
 <?php
-// database/seeders/RBACSeeder.php - COMPLETE WITH ALL PERMISSIONS (CMS INCLUDED)
+// database/seeders/RBAC/PermissionsSeeder.php
 
-namespace Database\Seeders;
+namespace Database\Seeders\RBAC;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-class RBACSeeder extends Seeder
+class PermissionsSeeder extends Seeder
 {
   public function run(): void
   {
-    // Get super admin user (first admin user created)
-    $superAdmin = DB::table('users')->where('email', 'superadmin@jobportal.com')->first();
-    $adminUser = DB::table('users')->where('email', 'admin@jobportal.com')->first();
-    $createdBy = $superAdmin?->id ?? $adminUser?->id ?? 1;
-
-    // Disable foreign key checks to allow truncation
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
-
-    // Clear existing data in correct order
-    DB::table('user_roles')->truncate();
-    DB::table('role_permissions')->truncate();
-    DB::table('role_module_access')->truncate();
-    DB::table('permissions')->truncate();
-    DB::table('roles')->truncate();
-
-    // Re-enable foreign key checks
-    DB::statement('SET FOREIGN_KEY_CHECKS=1');
-
-    // ==========================================
-    // 1. INSERT ALL PERMISSIONS (COMPLETE LIST)
-    // ==========================================
     $permissions = [
       // Dashboard Module
       ['name' => 'View Dashboard', 'slug' => 'dashboard.view', 'module' => 'dashboard', 'action' => 'view'],
@@ -93,7 +72,7 @@ class RBACSeeder extends Seeder
       ['name' => 'Delete Program', 'slug' => 'programs.destroy', 'module' => 'programs', 'action' => 'destroy'],
       ['name' => 'Manage Programs', 'slug' => 'programs.manage', 'module' => 'programs', 'action' => 'manage'],
 
-      // CMS Publication CRUD Permissions (add this block)
+      // CMS Publication CRUD Permissions
       ['name' => 'View Publications', 'slug' => 'publications.view', 'module' => 'publications', 'action' => 'view'],
       ['name' => 'Create Publication', 'slug' => 'publications.create', 'module' => 'publications', 'action' => 'create'],
       ['name' => 'Update Publication', 'slug' => 'publications.update', 'module' => 'publications', 'action' => 'update'],
@@ -405,7 +384,48 @@ class RBACSeeder extends Seeder
       ['name' => 'View Employers', 'slug' => 'employer.view', 'module' => 'employer', 'action' => 'view'],
       ['name' => 'Update Employer', 'slug' => 'employer.update', 'module' => 'employer', 'action' => 'update'],
       ['name' => 'Delete Employer', 'slug' => 'employer.destroy', 'module' => 'employer', 'action' => 'destroy'],
+
+      // ==========================================
+      // NEW: LOGS MODULE
+      // ==========================================
+      ['name' => 'View Logs', 'slug' => 'logs.view', 'module' => 'logs', 'action' => 'view'],
+      ['name' => 'Export Logs', 'slug' => 'logs.export', 'module' => 'logs', 'action' => 'export'],
+      ['name' => 'Clear Logs', 'slug' => 'logs.clear', 'module' => 'logs', 'action' => 'clear'],
+
+      // ==========================================
+      // NEW: CACHE MODULE
+      // ==========================================
+      ['name' => 'Manage Cache', 'slug' => 'cache.manage', 'module' => 'cache', 'action' => 'manage'],
+      ['name' => 'Clear Cache', 'slug' => 'cache.clear', 'module' => 'cache', 'action' => 'clear'],
+      ['name' => 'View Cache Status', 'slug' => 'cache.status', 'module' => 'cache', 'action' => 'status'],
+
+      // ==========================================
+      // NEW: NEWSLETTER MODULE
+      // ==========================================
+      ['name' => 'View Newsletter Subscribers', 'slug' => 'newsletter.view', 'module' => 'newsletter', 'action' => 'view'],
+      ['name' => 'Export Newsletter Subscribers', 'slug' => 'newsletter.export', 'module' => 'newsletter', 'action' => 'export'],
+      ['name' => 'Delete Newsletter Subscriber', 'slug' => 'newsletter.delete', 'module' => 'newsletter', 'action' => 'delete'],
+      ['name' => 'Send Newsletter Email', 'slug' => 'newsletter.send', 'module' => 'newsletter', 'action' => 'send'],
+
+      // ==========================================
+      // NEW: NEWSLETTER UPDATE PERMISSION
+      // ==========================================
+      ['name' => 'Update Newsletter Subscriber', 'slug' => 'newsletter.update', 'module' => 'newsletter', 'action' => 'update'],
+
+      // ==========================================
+      // NEW: BACKUP MODULE
+      // ==========================================
+      ['name' => 'View Backups', 'slug' => 'backup.view', 'module' => 'backup', 'action' => 'view'],
+      ['name' => 'Create Backup', 'slug' => 'backup.create', 'module' => 'backup', 'action' => 'create'],
+      ['name' => 'Download Backup', 'slug' => 'backup.download', 'module' => 'backup', 'action' => 'download'],
+      ['name' => 'Delete Backup', 'slug' => 'backup.delete', 'module' => 'backup', 'action' => 'delete'],
+      ['name' => 'Restore Backup', 'slug' => 'backup.restore', 'module' => 'backup', 'action' => 'restore'],
     ];
+
+    // Disable foreign key checks
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    DB::table('permissions')->truncate();
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
     // Insert permissions
     foreach ($permissions as $permission) {
@@ -420,290 +440,6 @@ class RBACSeeder extends Seeder
           'updated_at' => now(),
         ]
       );
-    }
-
-    // ==========================================
-    // 2. INSERT ROLES (ONLY 4 ROLES)
-    // ==========================================
-    $roles = [
-      [
-        'name' => 'Super Admin',
-        'slug' => 'super-admin',
-        'description' => 'Full system access with all permissions',
-        'level' => 100,
-        'is_default' => false,
-        'is_active' => true,
-        'created_by' => $createdBy,
-        'updated_by' => $createdBy,
-      ],
-      [
-        'name' => 'Admin',
-        'slug' => 'admin',
-        'description' => 'Administrative access with most permissions',
-        'level' => 90,
-        'is_default' => false,
-        'is_active' => true,
-        'created_by' => $createdBy,
-        'updated_by' => $createdBy,
-      ],
-      [
-        'name' => 'Employer',
-        'slug' => 'employer',
-        'description' => 'Employer who can post jobs and manage applications',
-        'level' => 50,
-        'is_default' => false,
-        'is_active' => true,
-        'created_by' => $createdBy,
-        'updated_by' => $createdBy,
-      ],
-      [
-        'name' => 'Job Seeker',
-        'slug' => 'job-seeker',
-        'description' => 'Regular job seeker who can apply to jobs',
-        'level' => 20,
-        'is_default' => true,
-        'is_active' => true,
-        'created_by' => $createdBy,
-        'updated_by' => $createdBy,
-      ],
-    ];
-
-    foreach ($roles as $role) {
-      DB::table('roles')->updateOrInsert(
-        ['slug' => $role['slug']],
-        [
-          'name' => $role['name'],
-          'description' => $role['description'],
-          'level' => $role['level'],
-          'is_default' => $role['is_default'],
-          'is_active' => $role['is_active'],
-          'created_by' => $role['created_by'],
-          'updated_by' => $role['updated_by'],
-          'created_at' => now(),
-          'updated_at' => now(),
-        ]
-      );
-    }
-
-    // Get role IDs
-    $superAdminRoleId = DB::table('roles')->where('slug', 'super-admin')->value('id');
-    $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
-    $employerRoleId = DB::table('roles')->where('slug', 'employer')->value('id');
-    $jobSeekerRoleId = DB::table('roles')->where('slug', 'job-seeker')->value('id');
-
-    // Clear existing role_permissions
-    DB::table('role_permissions')->whereIn('role_id', [
-      $superAdminRoleId,
-      $adminRoleId,
-      $employerRoleId,
-      $jobSeekerRoleId
-    ])->delete();
-
-    // ==========================================
-    // 3. ASSIGN PERMISSIONS TO ROLES
-    // ==========================================
-
-    $allPermissionIds = DB::table('permissions')->pluck('id');
-
-    // SUPER ADMIN gets ALL permissions
-    foreach ($allPermissionIds as $permissionId) {
-      DB::table('role_permissions')->updateOrInsert(
-        ['role_id' => $superAdminRoleId, 'permission_id' => $permissionId],
-        ['granted' => true, 'created_at' => now(), 'updated_at' => now()]
-      );
-    }
-
-    // ADMIN gets ALL permissions
-    foreach ($allPermissionIds as $permissionId) {
-      DB::table('role_permissions')->updateOrInsert(
-        ['role_id' => $adminRoleId, 'permission_id' => $permissionId],
-        ['granted' => true, 'created_at' => now(), 'updated_at' => now()]
-      );
-    }
-
-    // EMPLOYER gets Employment related permissions (NO CMS permissions)
-    $employerPermissionSlugs = [
-      'dashboard.view',
-      'dashboard.stats.view',
-      'dashboard.employer',
-      'job_listings.view',
-      'job_listings.create',
-      'job_listings.store',
-      'job_listings.edit',
-      'job_listings.update',
-      'job_listings.show',
-      'job_listings.destroy',
-      'job_listings.toggle_active',
-      'job_listings.applications',
-      'job.view.any',
-      'job.view.own',
-      'job.edit.own',
-      'jobs.manage',
-      'applications.view',
-      'applications.view.for_own_jobs',
-      'applications.show',
-      'applications.status.update',
-      'applications.bulk_status.update',
-      'applications.download_resume',
-      'applications.bulk_download_resumes',
-      'applications.email.send',
-      'applications.bulk_email.send',
-      'application.view.own',
-      'application.view.any',
-      'application.shortlist',
-      'application.reject',
-      'categories.view',
-      'category.view',
-      'categories.get_active',
-      'locations.view',
-      'location.view',
-      'locations.get_active',
-      'employer_profile.view',
-      'employer_profile.edit',
-      'employer_profile.update',
-      'employer_profile.update_password',
-      'notifications.view',
-      'notifications.mark_read',
-      'notifications.mark_all_read',
-      'statistics.view',
-      'statistics.ats',
-      'statistics.jobs',
-      'statistics.dashboard',
-      'applicant-profiles.view',
-      'applicant-profiles.view.any',
-      'applicant-profiles.show',
-    ];
-
-    foreach ($employerPermissionSlugs as $slug) {
-      $permId = DB::table('permissions')->where('slug', $slug)->value('id');
-      if ($permId) {
-        DB::table('role_permissions')->updateOrInsert(
-          ['role_id' => $employerRoleId, 'permission_id' => $permId],
-          ['granted' => true, 'created_at' => now(), 'updated_at' => now()]
-        );
-      }
-    }
-
-    // JOB SEEKER - NO permissions
-
-    // ==========================================
-    // 4. SET ROLE MODULE ACCESS
-    // ==========================================
-
-    DB::table('role_module_access')->whereIn('role_id', [
-      $superAdminRoleId,
-      $adminRoleId,
-      $employerRoleId,
-      $jobSeekerRoleId
-    ])->delete();
-
-    $moduleAccess = [
-      // Super Admin - Full Access
-      ['role_id' => $superAdminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'cms', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'pages', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'about', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'blogs', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'programs', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'custom_sections', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'shared_data', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'sections', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'job_listings', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'public_jobs', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'applications', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'categories', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'locations', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'applicant_profiles', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'profiles', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'admin_profile', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'employer_profile', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'notifications', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'roles', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'users', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'statistics', 'access_level' => 'manage'],
-      ['role_id' => $superAdminRoleId, 'module' => 'publications', 'access_level' => 'manage'],
-
-      // Admin - Full Access
-      ['role_id' => $adminRoleId, 'module' => 'dashboard', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'cms', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'pages', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'about', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'blogs', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'programs', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'custom_sections', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'shared_data', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'sections', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'job_listings', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'public_jobs', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'applications', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'categories', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'locations', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'applicant_profiles', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'profiles', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'admin_profile', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'employer_profile', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'notifications', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'roles', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'users', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'statistics', 'access_level' => 'manage'],
-      ['role_id' => $adminRoleId, 'module' => 'publications', 'access_level' => 'manage'],
-
-      // Employer - Employment Related (NO CMS)
-      ['role_id' => $employerRoleId, 'module' => 'dashboard', 'access_level' => 'write'],
-      ['role_id' => $employerRoleId, 'module' => 'job_listings', 'access_level' => 'write'],
-      ['role_id' => $employerRoleId, 'module' => 'applications', 'access_level' => 'write'],
-      ['role_id' => $employerRoleId, 'module' => 'categories', 'access_level' => 'read'],
-      ['role_id' => $employerRoleId, 'module' => 'locations', 'access_level' => 'read'],
-      ['role_id' => $employerRoleId, 'module' => 'employer_profile', 'access_level' => 'write'],
-      ['role_id' => $employerRoleId, 'module' => 'notifications', 'access_level' => 'write'],
-      ['role_id' => $employerRoleId, 'module' => 'statistics', 'access_level' => 'read'],
-      ['role_id' => $employerRoleId, 'module' => 'applicant_profiles', 'access_level' => 'read'],
-
-      // Job Seeker - NO ACCESS
-      ['role_id' => $jobSeekerRoleId, 'module' => 'dashboard', 'access_level' => 'no_access'],
-      ['role_id' => $jobSeekerRoleId, 'module' => 'public_jobs', 'access_level' => 'no_access'],
-      ['role_id' => $jobSeekerRoleId, 'module' => 'apply', 'access_level' => 'no_access'],
-      ['role_id' => $jobSeekerRoleId, 'module' => 'profiles', 'access_level' => 'no_access'],
-      ['role_id' => $jobSeekerRoleId, 'module' => 'applicant_profiles', 'access_level' => 'no_access'],
-      ['role_id' => $jobSeekerRoleId, 'module' => 'notifications', 'access_level' => 'no_access'],
-    ];
-
-    foreach ($moduleAccess as $access) {
-      DB::table('role_module_access')->updateOrInsert(
-        ['role_id' => $access['role_id'], 'module' => $access['module']],
-        ['access_level' => $access['access_level'], 'created_at' => now(), 'updated_at' => now()]
-      );
-    }
-
-    // ==========================================
-    // 5. ASSIGN ROLES TO EXISTING USERS
-    // ==========================================
-    $users = DB::table('users')->whereNull('deleted_at')->get();
-
-    foreach ($users as $user) {
-      $roleSlug = 'job-seeker';
-
-      if ($user->email === 'superadmin@jobportal.com') {
-        $roleSlug = 'super-admin';
-      } elseif ($user->email === 'admin@jobportal.com') {
-        $roleSlug = 'admin';
-      } elseif (str_contains($user->email, '@company.com')) {
-        $roleSlug = 'employer';
-      }
-
-      $roleId = DB::table('roles')->where('slug', $roleSlug)->value('id');
-      if ($roleId) {
-        DB::table('user_roles')->updateOrInsert(
-          ['user_id' => $user->id, 'role_id' => $roleId],
-          [
-            'assigned_by' => $createdBy,
-            'assigned_at' => now(),
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-          ]
-        );
-      }
     }
   }
 }

@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\Publication;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -18,14 +21,20 @@ class PublicationController extends Controller
   /**
    * Display publications
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view publications.');
+    }
+
     try {
       $items = Publication::withTrashed()->orderBy('created_at', 'desc')->get();
-
-      return Inertia::render('Backend/CMS/Publications/Index', [
-        'items' => $items,
-      ]);
+      return Inertia::render('Backend/CMS/Publications/Index', ['items' => $items]);
     } catch (\Exception $e) {
       Log::error('Failed to fetch publications: ' . $e->getMessage());
       return Inertia::render('Backend/CMS/Publications/Index', [
@@ -40,6 +49,13 @@ class PublicationController extends Controller
    */
   public function store(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create publications.');
+    }
     try {
       $validator = Validator::make($request->all(), [
         'title' => 'required|string|max:255',
@@ -132,6 +148,13 @@ class PublicationController extends Controller
    */
   public function update(Request $request, int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update publications.');
+    }
     try {
       $publication = Publication::withTrashed()->findOrFail($id);
 
@@ -234,6 +257,13 @@ class PublicationController extends Controller
    */
   public function toggleStatus(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change publication status.');
+    }
     try {
       $publication = Publication::findOrFail($id);
       $publication->is_active = !$publication->is_active;
@@ -252,6 +282,13 @@ class PublicationController extends Controller
    */
   public function toggleFeatured(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change featured status.');
+    }
     try {
       $publication = Publication::findOrFail($id);
 
@@ -276,6 +313,13 @@ class PublicationController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete publications.');
+    }
     try {
       $publication = Publication::findOrFail($id);
       $publication->delete();
@@ -292,6 +336,13 @@ class PublicationController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore publications.');
+    }
     try {
       $publication = Publication::withTrashed()->findOrFail($id);
       $publication->restore();
@@ -308,6 +359,13 @@ class PublicationController extends Controller
    */
   public function forceDelete(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('publications.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to permanently delete publications.');
+    }
     try {
       $publication = Publication::withTrashed()->findOrFail($id);
 

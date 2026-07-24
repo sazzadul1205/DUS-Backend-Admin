@@ -4,14 +4,13 @@
 import { useState } from 'react';
 
 // Inertia
-import { Head, router, Link } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 
 // Layout
 import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
-import { Can } from '../../../components/Auth/Can';
 
 // Icons
 import {
@@ -20,12 +19,10 @@ import {
   FaBuilding,
   FaCalendarAlt,
   FaChartLine,
-  FaCheck,
   FaCheckCircle,
   FaClock,
   FaDownload,
   FaEnvelope,
-  FaEye,
   FaFilePdf,
   FaGraduationCap,
   FaHistory,
@@ -33,23 +30,15 @@ import {
   FaMapMarkerAlt,
   FaMoneyBillWave,
   FaPhone,
-  FaStar,
   FaTimesCircle,
   FaTrophy,
-  FaUser,
   FaUserCheck,
   FaUserSlash,
   FaAward,
-  FaCertificate,
-  FaRegBuilding,
-  FaRegCalendarAlt,
-  FaLink,
   FaFacebook,
   FaLinkedin,
   FaSpinner,
   FaUserCircle,
-  FaFileAlt,
-  FaIdCard,
   FaShieldAlt,
 } from 'react-icons/fa';
 
@@ -85,36 +74,32 @@ export default function Show({ application, atsAnalysis }) {
   // Use centralized auth hook
   const {
     user: currentUser,
-    isAuthenticated,
     hasAnyPermission,
     hasRole,
   } = useAuth();
 
   // Check permissions for application management
-  const isSuperAdmin = hasRole('super-admin');
   const isEmployer = hasRole('employer') || hasRole('employer-admin');
   const canViewApplications = hasAnyPermission(['applications.view', 'applications.manage']);
-  const canRecalculateAts = hasAnyPermission(['applications.update', 'applications.manage']);
-  const canDownloadResumes = hasAnyPermission(['applications.download', 'applications.manage']);
-  const canUpdateApplications = hasAnyPermission(['applications.update', 'applications.manage']);
+  const canDownloadResumes = hasAnyPermission(['applications.download_resume', 'applications.manage']);
 
   // Check if user is the applicant owner
   const isApplicantOwner = currentUser?.id === application?.user_id;
 
   // Check if user owns the job this application is for
-  const isJobOwner = isEmployer && currentUser?.employer_id === application?.job_listing?.employer_id;
+  const isJobOwner = isEmployer && currentUser?.id === application?.job_listing?.user_id;
 
   // Determine if user can view this application
   const canView = canViewApplications || isApplicantOwner || isJobOwner;
 
   // Determine if user can update status
-  const canUpdateStatus = canUpdateApplications || isJobOwner;
+  const canUpdateStatus = hasAnyPermission(['applications.status.update', 'applications.manage']) || isJobOwner;
 
   // Determine if user can download resume
   const canDownload = canDownloadResumes || isJobOwner || isApplicantOwner;
 
   // Determine if user can recalculate ATS
-  const canRecalcAts = canRecalculateAts || isJobOwner;
+  const canRecalcAts = hasAnyPermission(['applications.recalculate_ats', 'applications.manage']) || isJobOwner;
 
   // State
   const [isDownloadingCv, setIsDownloadingCv] = useState(false);
@@ -226,7 +211,7 @@ export default function Show({ application, atsAnalysis }) {
   // Format salary
   const formatSalary = (salary) => {
     if (!salary) return 'Not specified';
-    return `${new Intl.NumberFormat('en-US').format(salary)  } BDT`;
+    return `${new Intl.NumberFormat('en-US').format(salary)} BDT`;
   };
 
   // Handle status update
@@ -303,7 +288,7 @@ export default function Show({ application, atsAnalysis }) {
     setIsDownloadingCv(true);
 
     try {
-      const url = route('backend.applications.download', app.id);
+      const url = route('backend.applications.download_resume', app.id);
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'same-origin',

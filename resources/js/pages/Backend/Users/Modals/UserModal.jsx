@@ -111,6 +111,8 @@ export default function UserModal({ isOpen, onClose, editingUser, roles, onSucce
         showConfirmButton: false,
       });
     } catch (err) {
+      console.error(err);
+
       Swal.fire({
         icon: 'error',
         title: 'Failed to Copy',

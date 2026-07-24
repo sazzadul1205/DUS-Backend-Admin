@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\Program;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -18,13 +21,19 @@ class ProgramController extends Controller
   /**
    * Display programs
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
-    $items = Program::withTrashed()->orderBy('display_order')->get();
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view programs.');
+    }
 
-    return Inertia::render('Backend/CMS/Programs/Index', [
-      'items' => $items,
-    ]);
+    $items = Program::withTrashed()->orderBy('display_order')->get();
+    return Inertia::render('Backend/CMS/Programs/Index', ['items' => $items]);
   }
 
   /**
@@ -32,6 +41,13 @@ class ProgramController extends Controller
    */
   public function store(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create programs.');
+    }
     try {
       $validator = Validator::make($request->all(), [
         'title' => 'required|string|max:255',
@@ -109,6 +125,13 @@ class ProgramController extends Controller
    */
   public function update(Request $request, int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update programs.');
+    }
     try {
       $program = Program::withTrashed()->findOrFail($id);
 
@@ -184,6 +207,13 @@ class ProgramController extends Controller
    */
   public function toggleStatus(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change program status.');
+    }
     try {
       $program = Program::findOrFail($id);
       $program->is_active = !$program->is_active;
@@ -202,6 +232,13 @@ class ProgramController extends Controller
    */
   public function toggleFeatured(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change featured status.');
+    }
     try {
       $program = Program::findOrFail($id);
 
@@ -226,6 +263,13 @@ class ProgramController extends Controller
    */
   public function updateOrder(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.update')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
     try {
       $validator = Validator::make($request->all(), [
         'orders' => 'required|array',
@@ -255,6 +299,13 @@ class ProgramController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete programs.');
+    }
     try {
       $program = Program::findOrFail($id);
       $program->delete();
@@ -271,6 +322,13 @@ class ProgramController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore programs.');
+    }
     try {
       $program = Program::withTrashed()->findOrFail($id);
       $program->restore();
@@ -287,6 +345,13 @@ class ProgramController extends Controller
    */
   public function forceDelete(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('programs.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to permanently delete programs.');
+    }
     try {
       $program = Program::withTrashed()->findOrFail($id);
 

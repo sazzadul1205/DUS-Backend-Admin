@@ -7,13 +7,8 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // Icons
 import {
   FaArrowLeft,
-  FaSave,
   FaShieldAlt,
-  FaKey,
-  FaCheckCircle,
-  FaTimesCircle,
   FaLock,
-  FaSpinner,
   FaInfoCircle,
   FaExclamationTriangle,
 } from 'react-icons/fa';
@@ -45,7 +40,6 @@ export default function Edit({
     user: currentUser,
     hasAnyPermission,
     hasRole,
-    isAuthenticated
   } = useAuth();
 
   // Check permissions for role management
@@ -88,6 +82,33 @@ export default function Edit({
     // Module Access
     module_access: initialModuleAccess || [],
   });
+
+
+  // Track unsaved changes
+  const [hasChanges, setHasChanges] = useState(false);
+  const isDefaultRole = initialRole.is_default;
+
+  // Check for changes
+  useEffect(() => {
+    const originalPermissions = grantedPermissionIds || [];
+    const originalModuleAccess = initialModuleAccess || [];
+
+    const permissionsChanged =
+      JSON.stringify([...formData.permissions].sort()) !== JSON.stringify([...originalPermissions].sort());
+
+    const moduleAccessChanged =
+      JSON.stringify(formData.module_access) !== JSON.stringify(originalModuleAccess);
+
+    const basicInfoChanged =
+      formData.name !== initialRole.name ||
+      formData.slug !== initialRole.slug ||
+      formData.description !== initialRole.description ||
+      formData.level !== initialRole.level ||
+      formData.is_default !== initialRole.is_default ||
+      formData.is_active !== initialRole.is_active;
+
+    setHasChanges(permissionsChanged || moduleAccessChanged || basicInfoChanged);
+  }, [formData, initialRole, grantedPermissionIds, initialModuleAccess]);
 
   // If user doesn't have permission to edit roles, show access denied
   if (!canEditRoles) {
@@ -141,32 +162,6 @@ export default function Edit({
     );
   }
 
-  // Track unsaved changes
-  const [hasChanges, setHasChanges] = useState(false);
-  const isDefaultRole = initialRole.is_default;
-
-  // Check for changes
-  useEffect(() => {
-    const originalPermissions = grantedPermissionIds || [];
-    const originalModuleAccess = initialModuleAccess || [];
-
-    const permissionsChanged =
-      JSON.stringify(formData.permissions.sort()) !== JSON.stringify(originalPermissions.sort());
-
-    const moduleAccessChanged =
-      JSON.stringify(formData.module_access) !== JSON.stringify(originalModuleAccess);
-
-    const basicInfoChanged =
-      formData.name !== initialRole.name ||
-      formData.slug !== initialRole.slug ||
-      formData.description !== initialRole.description ||
-      formData.level !== initialRole.level ||
-      formData.is_default !== initialRole.is_default ||
-      formData.is_active !== initialRole.is_active;
-
-    setHasChanges(permissionsChanged || moduleAccessChanged || basicInfoChanged);
-  }, [formData, initialRole, grantedPermissionIds, initialModuleAccess]);
-
   // Handle back button with confirmation
   const handleBackToListings = () => {
     if (hasChanges) {
@@ -205,44 +200,46 @@ export default function Edit({
 
     switch (currentStep) {
       case 1: // Basic Info
-        if (!formData.name || formData.name.trim().length < 2) {
-          newErrors.name = 'Role name must be at least 2 characters';
-        }
-
-        // Only validate slug if it's not a default role OR user is super-admin
-        if (!isDefaultRole || isSuperAdmin) {
-          if (!formData.slug || formData.slug.trim().length < 2) {
-            newErrors.slug = 'Slug must be at least 2 characters';
-          } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-            newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
+        {
+          if (!formData.name || formData.name.trim().length < 2) {
+            newErrors.name = 'Role name must be at least 2 characters';
           }
 
-          // Check if slug is unique (excluding current role)
-          if (existingLevels && existingLevels.some(role => role.slug === formData.slug && role.id !== initialRole.id)) {
-            newErrors.slug = 'This slug is already in use by another role. Please choose another.';
+          // Only validate slug if it's not a default role OR user is super-admin
+          if (!isDefaultRole || isSuperAdmin) {
+            if (!formData.slug || formData.slug.trim().length < 2) {
+              newErrors.slug = 'Slug must be at least 2 characters';
+            } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
+              newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
+            }
+
+            // Check if slug is unique (excluding current role)
+            if (existingLevels && existingLevels.some(role => role.slug === formData.slug && role.id !== initialRole.id)) {
+              newErrors.slug = 'This slug is already in use by another role. Please choose another.';
+            }
           }
-        }
 
-        if (!formData.level) {
-          newErrors.level = 'Please select a level';
-        } else if (formData.level < 1 || formData.level > 100) {
-          newErrors.level = 'Level must be between 1 and 100';
-        }
+          if (!formData.level) {
+            newErrors.level = 'Please select a level';
+          } else if (formData.level < 1 || formData.level > 100) {
+            newErrors.level = 'Level must be between 1 and 100';
+          }
 
-        // FIXED: Get user's highest level properly
-        const userHighestLevel = getUserHighestLevel();
+          // FIXED: Get user's highest level properly
+          const userHighestLevel = getUserHighestLevel();
 
-        // Super admin (level 100) can create roles with level 1-99
-        // Users cannot create roles with level >= their own level
-        if (formData.level >= userHighestLevel && userHighestLevel < 100) {
-          newErrors.level = `You cannot set role level higher or equal to your own level (${userHighestLevel}). This would allow privilege escalation.`;
-        }
+          // Super admin (level 100) can create roles with level 1-99
+          // Users cannot create roles with level >= their own level
+          if (formData.level >= userHighestLevel && userHighestLevel < 100) {
+            newErrors.level = `You cannot set role level higher or equal to your own level (${userHighestLevel}). This would allow privilege escalation.`;
+          }
 
-        // For super admin (level 100), they cannot create level 100 roles
-        if (userHighestLevel === 100 && formData.level >= 100) {
-          newErrors.level = `You cannot create a role with level ${formData.level}. Maximum role level is 99 for super admins.`;
+          // For super admin (level 100), they cannot create level 100 roles
+          if (userHighestLevel === 100 && formData.level >= 100) {
+            newErrors.level = `You cannot create a role with level ${formData.level}. Maximum role level is 99 for super admins.`;
+          }
+          break;
         }
-        break;
 
       case 2: // Permissions - Optional
       case 3: // Module Access - Optional

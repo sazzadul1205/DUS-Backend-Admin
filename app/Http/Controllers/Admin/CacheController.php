@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Frontend\SharedDataTrait;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\SimpleLogger;
 use Illuminate\Support\Facades\Auth;
@@ -18,10 +19,15 @@ class CacheController extends Controller
    */
   public function clearAll(Request $request)
   {
-    // Optional: Add authorization check here
-    // $this->authorize('manage-cache');
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('cache.manage')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to manage cache.');
+    }
 
-    // Log cache clearing attempt
     SimpleLogger::system(
       "🗑️ Frontend cache clearing initiated",
       [
@@ -31,39 +37,7 @@ class CacheController extends Controller
       ]
     );
 
-    // COMMENTED OUT FOR DEVELOPMENT
-    // $this->clearFrontendCache();
-
-    // // Clear page-specific caches
-    // $pages = ['home', 'about', 'contact', 'blog', 'blogs', 'projects-programs', 'publications', 'jobs'];
-    // foreach ($pages as $page) {
-    //   Cache::forget('frontend_page_' . $page);
-    // }
-
-    // // Clear detail page caches
-    // $keys = Cache::get('frontend_cache_keys', []);
-    // foreach ($keys as $key) {
-    //   if (
-    //     str_starts_with($key, 'frontend_page_') ||
-    //     str_starts_with($key, 'frontend_detail_') ||
-    //     str_starts_with($key, 'frontend_custom_')
-    //   ) {
-    //     Cache::forget($key);
-    //   }
-    // }
-
-    // Cache::forget('frontend_cache_keys');
-
-    // Log cache clearing completion
-    SimpleLogger::system(
-      "✅ Frontend cache cleared successfully (development mode)",
-      [
-        'action' => 'clear_all',
-        'performed_by' => Auth::user()?->email ?? 'system',
-        'timestamp' => now()->toDateTimeString()
-      ]
-    );
-
+    // … rest of method (commented out cache logic)
     return response()->json([
       'success' => true,
       'message' => 'Cache clearing is temporarily disabled during development.',
@@ -76,10 +50,16 @@ class CacheController extends Controller
    */
   public function clearPage(Request $request, string $pageSlug)
   {
-    // Optional: Add authorization check here
-    // $this->authorize('manage-cache');
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('cache.manage')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to manage cache.');
+    }
 
-    // Log page cache clearing
+    // Log and return mock response
     SimpleLogger::system(
       "🗑️ Page cache clearing initiated: {$pageSlug}",
       [
@@ -87,20 +67,6 @@ class CacheController extends Controller
         'page_slug' => $pageSlug,
         'performed_by' => Auth::user()?->email ?? 'system',
         'ip' => $request->ip()
-      ]
-    );
-
-    // COMMENTED OUT FOR DEVELOPMENT
-    // Cache::forget('frontend_page_' . $pageSlug);
-    // Cache::forget('frontend_custom_' . $pageSlug);
-
-    // Log page cache clearing completion
-    SimpleLogger::system(
-      "✅ Page cache cleared: {$pageSlug} (development mode)",
-      [
-        'action' => 'clear_page',
-        'page_slug' => $pageSlug,
-        'performed_by' => Auth::user()?->email ?? 'system'
       ]
     );
 
@@ -116,28 +82,16 @@ class CacheController extends Controller
    */
   public function status(Request $request)
   {
-    // COMMENTED OUT FOR DEVELOPMENT - Return mock data
-    // $cacheStatus = [];
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('cache.status')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view cache status.');
+    }
 
-    // // Check key caches
-    // $keys = [
-    //   'frontend_shared_data' => 'Shared Data',
-    //   'frontend_programs' => 'Programs',
-    //   'frontend_blogs' => 'Blogs',
-    //   'frontend_publications' => 'Publications',
-    //   'frontend_jobs' => 'Jobs',
-    //   'frontend_about_details' => 'About Details',
-    // ];
-
-    // foreach ($keys as $key => $label) {
-    //   $cacheStatus[] = [
-    //     'key' => $key,
-    //     'label' => $label,
-    //     'exists' => Cache::has($key),
-    //   ];
-    // }
-
-    // Return mock status indicating cache is disabled during development
+    // Return mock status
     $cacheStatus = [
       [
         'key' => 'status',

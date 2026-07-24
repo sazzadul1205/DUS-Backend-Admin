@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\Page;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -44,11 +47,19 @@ class PageController extends Controller
   /**
    * Display pages
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view pages.');
+    }
+
     try {
       $items = Page::withTrashed()->get();
-
       return Inertia::render('Backend/CMS/Index', [
         'items' => $items,
         'protectedPages' => $this->getProtectedPages(),
@@ -68,6 +79,13 @@ class PageController extends Controller
    */
   public function store(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create pages.');
+    }
     try {
       $validator = Validator::make($request->all(), [
         'slug' => 'required|string|unique:pages,slug',
@@ -106,6 +124,13 @@ class PageController extends Controller
    */
   public function update(Request $request, int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update pages.');
+    }
     try {
       $page = Page::withTrashed()->findOrFail($id);
 
@@ -155,6 +180,13 @@ class PageController extends Controller
    */
   public function toggleStatus(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change page status.');
+    }
     try {
       $page = Page::findOrFail($id);
 
@@ -178,6 +210,13 @@ class PageController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete pages.');
+    }
     try {
       $page = Page::findOrFail($id);
 
@@ -199,6 +238,13 @@ class PageController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore pages.');
+    }
     try {
       $page = Page::withTrashed()->findOrFail($id);
       $page->restore();
@@ -215,6 +261,14 @@ class PageController extends Controller
    */
   public function forceDelete(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('pages.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to permanently delete pages.');
+    }
+
     try {
       $page = Page::withTrashed()->findOrFail($id);
 

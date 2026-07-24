@@ -4,6 +4,7 @@
 namespace App\Http\Controllers\Backup;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
@@ -16,16 +17,33 @@ use Illuminate\Http\JsonResponse;
 use App\Services\SimpleLogger;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * BackupController
+ * 
+ * Handles system backup operations including database backup, file backup,
+ * restore functionality, and backup management. Supports both manual and
+ * automatic backup creation with configurable retention limits.
+ */
 class BackupController extends Controller
 {
+  /** @var string Base path for all backup-related storage */
   protected string $basePath;
+
+  /** @var string Path where backup ZIP files are stored */
   protected string $backupPath;
+
+  /** @var string Path where backup operation logs are stored */
   protected string $logPath;
+
+  /** @var int Maximum number of backups to retain before automatic cleanup */
   protected int $maxBackups;
 
+  /**
+   * Constructor - Initializes backup paths and ensures required directories exist.
+   */
   public function __construct()
   {
-    // Centralized base path
+    // Centralized base path for all backup operations
     $this->basePath = storage_path('app/backups');
     $this->backupPath = $this->basePath . '/files';
     $this->logPath = $this->basePath . '/logs';
@@ -34,6 +52,10 @@ class BackupController extends Controller
     $this->ensureDirectories();
   }
 
+  /**
+   * Ensures all required backup directories exist.
+   * Creates them with appropriate permissions if they don't exist.
+   */
   protected function ensureDirectories(): void
   {
     try {
@@ -53,8 +75,24 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Display the backup management dashboard.
+   * Shows a list of available backups, operation logs, and storage information.
+   * 
+   * @return \Inertia\Response
+   */
   public function index()
   {
+    // Permission check - verify user is authenticated and has admin permissions
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view backups.');
+    }
+
     $backups = $this->getBackupList();
     $backupLogs = $this->getBackupLogs();
     $storageInfo = $this->getStorageInfo();
@@ -70,8 +108,24 @@ class BackupController extends Controller
     ]);
   }
 
+  /**
+   * Create a manual backup on demand.
+   * Allows administrators to create full, database-only, or files-only backups.
+   * 
+   * @param Request $request
+   * @return JsonResponse
+   */
   public function createManual(Request $request): JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $type = $request->input('type', 'full');
       $description = $request->input('description', 'Manual backup');
@@ -87,9 +141,10 @@ class BackupController extends Controller
         ]
       );
 
+      // Create the backup using the core backup method
       $backupId = $this->createBackup($type, $description, 'manual');
 
-      // Log backup completion
+      // Log successful completion
       SimpleLogger::system(
         "✅ Manual backup completed: {$backupId}",
         [
@@ -106,7 +161,7 @@ class BackupController extends Controller
         'location' => $this->backupPath . '/' . $backupId . '.zip'
       ]);
     } catch (\Exception $e) {
-      // Log backup failure
+      // Log failure
       SimpleLogger::system(
         "❌ Manual backup failed",
         [
@@ -124,8 +179,24 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Create an automatic/scheduled backup.
+   * Typically triggered by a cron job or scheduler.
+   * 
+   * @param Request $request
+   * @return JsonResponse
+   */
   public function createAuto(Request $request): JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $type = $request->input('type', 'full');
       $description = 'Automatic backup - ' . Carbon::now()->format('Y-m-d H:i:s');
@@ -139,9 +210,10 @@ class BackupController extends Controller
         ]
       );
 
+      // Create the backup
       $backupId = $this->createBackup($type, $description, 'auto');
 
-      // Log auto backup completion
+      // Log completion
       SimpleLogger::system(
         "✅ Automatic backup completed: {$backupId}",
         [
@@ -157,7 +229,7 @@ class BackupController extends Controller
         'location' => $this->backupPath . '/' . $backupId . '.zip'
       ]);
     } catch (\Exception $e) {
-      // Log auto backup failure
+      // Log failure
       SimpleLogger::system(
         "❌ Automatic backup failed",
         [
@@ -174,32 +246,43 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Core backup creation method.
+   * Handles the actual process of creating database and/or file backups,
+   * compressing them into a ZIP archive, and storing metadata.
+   * 
+   * @param string $type Backup type: 'full', 'database', or 'files'
+   * @param string $description Description of the backup
+   * @param string $trigger What triggered the backup: 'manual' or 'auto'
+   * @return string The generated backup ID
+   * @throws \Exception
+   */
   protected function createBackup(string $type, string $description, string $trigger): string
   {
+    // Generate a unique backup ID using timestamp
     $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
     $backupId = $type . '_' . $timestamp;
     $tempDir = $this->basePath . '/temp_' . $timestamp;
 
-
     try {
-      // Create temp directory
+      // Create temporary directory for assembling backup files
       if (!File::exists($tempDir)) {
         File::makeDirectory($tempDir, 0755, true);
       }
 
       $files = [];
 
-      // Database backup
+      // Backup database if requested
       if ($type === 'full' || $type === 'database') {
         $files['database'] = $this->backupDatabase($tempDir);
       }
 
-      // Files backup
+      // Backup files if requested
       if ($type === 'full' || $type === 'files') {
         $files['files'] = $this->backupFiles($tempDir);
       }
 
-      // Create final zip in the centralized location
+      // Create the final ZIP archive
       $zipPath = $this->backupPath . '/' . $backupId . '.zip';
 
       $zip = new ZipArchive();
@@ -207,8 +290,10 @@ class BackupController extends Controller
         throw new \Exception('Failed to create zip archive at: ' . $zipPath);
       }
 
+      // Add all files from temporary directory to the ZIP
       $this->addFilesToZip($zip, $tempDir);
 
+      // Add backup metadata as a JSON file inside the archive
       $info = [
         'id' => $backupId,
         'type' => $type,
@@ -224,29 +309,32 @@ class BackupController extends Controller
 
       $zip->addFromString('backup_info.json', json_encode($info, JSON_PRETTY_PRINT));
 
+      // Close the ZIP archive
       if (!$zip->close()) {
         throw new \Exception('Failed to close zip file');
       }
 
-      // Get file size
+      // Update metadata with actual file size
       $size = File::exists($zipPath) ? File::size($zipPath) : 0;
       $info['size'] = $size;
 
-      // Save info file
+      // Save metadata as a separate JSON file for quick access
       $infoPath = $this->backupPath . '/' . $backupId . '_info.json';
       File::put($infoPath, json_encode($info, JSON_PRETTY_PRINT));
 
-      // Clean up temp directory
+      // Clean up temporary directory
       if (File::exists($tempDir)) {
         File::deleteDirectory($tempDir);
       }
 
+      // Log the backup and clean up old backups if needed
       $this->logBackup($backupId, $type, $trigger, $description, $size, 'success');
       $this->cleanupOldBackups();
 
       return $backupId;
     } catch (\Exception $e) {
       Log::error('Backup failed: ' . $e->getMessage());
+      // Clean up temporary directory on failure
       if (File::exists($tempDir)) {
         File::deleteDirectory($tempDir);
       }
@@ -255,6 +343,14 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Export the database schema and data as a SQL file.
+   * Uses chunking to handle large tables efficiently.
+   * 
+   * @param string $tempDir Temporary directory path
+   * @return string The filename of the generated SQL file
+   * @throws \Exception
+   */
   protected function backupDatabase(string $tempDir): string
   {
     $filename = 'database.sql';
@@ -264,20 +360,25 @@ class BackupController extends Controller
       $connection = config('database.default');
       $database = config("database.connections.{$connection}.database");
 
+      // Get list of all tables
       $tables = DB::select('SHOW TABLES');
 
+      // Determine the table key from the first table result
       $firstTable = $tables[0] ?? null;
       if (!$firstTable) {
+        // Fallback - continue with default behavior
       }
 
       $tableKeys = array_keys((array) $firstTable);
       $tableKey = $tableKeys[0] ?? 'Tables_in_' . str_replace('-', '_', $database);
 
+      // Start building the SQL file
       $sql = "-- Database Backup\n";
       $sql .= "-- Generated: " . Carbon::now() . "\n";
       $sql .= "-- Database: {$database}\n\n";
       $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
+      // Process each table
       foreach ($tables as $table) {
         $tableArray = (array) $table;
         $tableName = $tableArray[$tableKey] ?? null;
@@ -286,11 +387,12 @@ class BackupController extends Controller
           continue;
         }
 
+        // Get CREATE TABLE statement
         $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
         $sql .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
         $sql .= $createTable[0]->{'Create Table'} . ";\n\n";
 
-        // --- FIX: Use chunking to get ALL rows, not just first 1000 ---
+        // Get INSERT statements using chunking for large tables
         $sql .= "INSERT INTO `{$tableName}` VALUES\n";
         $insertChunks = [];
 
@@ -320,6 +422,14 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Backup important application files.
+   * Includes config, migrations, routes, views, and key configuration files.
+   * 
+   * @param string $tempDir Temporary directory path
+   * @return string The filename of the generated files archive
+   * @throws \Exception
+   */
   protected function backupFiles(string $tempDir): string
   {
     $filename = 'files.zip';
@@ -345,7 +455,7 @@ class BackupController extends Controller
         }
       }
 
-      // Backup important files
+      // Backup important individual files
       $files = [
         '.env' => base_path('.env'),
         '.env.example' => base_path('.env.example'),
@@ -366,6 +476,14 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Recursively add a directory and its contents to a ZIP archive.
+   * Skips cache, logs, temp files, and files larger than 5MB.
+   * 
+   * @param ZipArchive $zip The ZIP archive instance
+   * @param string $directory Directory path to add
+   * @param string $prefix Prefix path inside the archive
+   */
   protected function addDirectoryToZip(ZipArchive $zip, string $directory, string $prefix = ''): void
   {
     try {
@@ -381,7 +499,7 @@ class BackupController extends Controller
           continue;
         }
 
-        // Skip large files
+        // Skip large files (>5MB) to keep backup size reasonable
         if ($file->getSize() > 5000000) { // 5MB
           continue;
         }
@@ -394,6 +512,12 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Add all files from a directory to a ZIP archive.
+   * 
+   * @param ZipArchive $zip The ZIP archive instance
+   * @param string $directory Directory path containing files to add
+   */
   protected function addFilesToZip(ZipArchive $zip, string $directory): void
   {
     try {
@@ -408,8 +532,23 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Download a backup ZIP file.
+   * 
+   * @param Request $request
+   * @return BinaryFileResponse|JsonResponse
+   */
   public function download(Request $request): BinaryFileResponse|JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $backupId = $request->input('backup_id');
 
@@ -434,8 +573,23 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Delete a backup file and its metadata.
+   * 
+   * @param Request $request
+   * @return JsonResponse
+   */
   public function delete(Request $request): JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $backupId = $request->input('backup_id');
 
@@ -443,7 +597,7 @@ class BackupController extends Controller
         throw new \Exception('Backup ID is required');
       }
 
-      // Log backup deletion
+      // Log the deletion for audit purposes
       SimpleLogger::system(
         "🗑️ Backup deleted: {$backupId}",
         [
@@ -455,6 +609,7 @@ class BackupController extends Controller
       $zipPath = $this->backupPath . '/' . $backupId . '.zip';
       $infoPath = $this->backupPath . '/' . $backupId . '_info.json';
 
+      // Delete both the ZIP file and its metadata
       if (File::exists($zipPath)) {
         File::delete($zipPath);
       }
@@ -475,8 +630,24 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Restore a backup from a ZIP file.
+   * Can restore database, files, or both based on the type parameter.
+   * 
+   * @param Request $request
+   * @return JsonResponse
+   */
   public function restore(Request $request): JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $backupId = $request->input('backup_id');
       $type = $request->input('type', 'full');
@@ -501,6 +672,7 @@ class BackupController extends Controller
         throw new \Exception('Backup file not found at: ' . $zipPath);
       }
 
+      // Extract the backup to a temporary location
       $tempDir = $this->basePath . '/temp_restore_' . Carbon::now()->timestamp;
       if (!File::exists($tempDir)) {
         File::makeDirectory($tempDir, 0755, true);
@@ -514,6 +686,7 @@ class BackupController extends Controller
       $zip->extractTo($tempDir);
       $zip->close();
 
+      // Perform the actual restore based on the type
       if ($type === 'full' || $type === 'database') {
         $this->restoreDatabase($tempDir);
       }
@@ -522,6 +695,7 @@ class BackupController extends Controller
         $this->restoreFiles($tempDir);
       }
 
+      // Clean up temporary directory
       File::deleteDirectory($tempDir);
       $this->logRestore($backupId, $type, 'success');
 
@@ -559,6 +733,13 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Restore the database from a SQL file.
+   * Executes SQL statements individually with error handling.
+   * 
+   * @param string $tempDir Temporary directory containing the SQL file
+   * @throws \Exception
+   */
   protected function restoreDatabase(string $tempDir): void
   {
     $sqlFile = $tempDir . '/database.sql';
@@ -590,6 +771,13 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Restore files from a backup.
+   * Restores .env, config files, and routes.
+   * 
+   * @param string $tempDir Temporary directory containing the files
+   * @throws \Exception
+   */
   protected function restoreFiles(string $tempDir): void
   {
     $filesZip = $tempDir . '/files.zip';
@@ -611,9 +799,10 @@ class BackupController extends Controller
     $zip->extractTo($extractDir);
     $zip->close();
 
-    // Restore .env
+    // Restore .env file with backup of existing file
     $envFile = $extractDir . '/.env';
     if (File::exists($envFile)) {
+      // Create a backup of the current .env before overwriting
       if (File::exists(base_path('.env'))) {
         File::copy(base_path('.env'), base_path('.env_backup_' . Carbon::now()->timestamp));
       }
@@ -633,7 +822,7 @@ class BackupController extends Controller
       }
     }
 
-    // Restore routes
+    // Restore routes files
     $routesDir = $extractDir . '/routes';
     if (File::exists($routesDir)) {
       $routeFiles = File::files($routesDir);
@@ -643,13 +832,22 @@ class BackupController extends Controller
       }
     }
 
+    // Clean up the temporary extraction directory
     File::deleteDirectory($extractDir);
   }
 
+  /**
+   * Split a SQL file into individual executable statements.
+   * Removes comments and handles semicolon-delimited statements.
+   * 
+   * @param string $sql The SQL content
+   * @return array Array of individual SQL statements
+   */
   protected function splitSqlStatements(string $sql): array
   {
-    // Remove comments
+    // Remove line comments
     $sql = preg_replace('/--.*$/m', '', $sql);
+    // Remove block comments
     $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
     // Split by semicolon
@@ -664,6 +862,11 @@ class BackupController extends Controller
     return array_values($statements);
   }
 
+  /**
+   * Get a list of all available backups with their metadata.
+   * 
+   * @return array Array of backup information
+   */
   protected function getBackupList(): array
   {
     try {
@@ -675,9 +878,9 @@ class BackupController extends Controller
       $backups = [];
 
       foreach ($files as $file) {
-        // $file is a SplFileInfo object
         $filename = $file->getFilename();
 
+        // Only process metadata JSON files
         if (str_ends_with($filename, '_info.json')) {
           $backupId = str_replace('_info.json', '', $filename);
           $content = File::get($file->getPathname());
@@ -698,7 +901,7 @@ class BackupController extends Controller
         }
       }
 
-      // Sort by created_at descending (newest first)
+      // Sort by creation date (newest first)
       usort($backups, function ($a, $b) {
         return strtotime($b['created_at']) - strtotime($a['created_at']);
       });
@@ -710,6 +913,12 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Get backup operation logs.
+   * 
+   * @param int $limit Maximum number of log entries to return
+   * @return array Array of log entries
+   */
   protected function getBackupLogs(int $limit = 50): array
   {
     try {
@@ -738,7 +947,7 @@ class BackupController extends Controller
         }
       }
 
-      // Return last $limit logs (newest first)
+      // Return newest logs first
       return array_slice(array_reverse($logs), 0, $limit);
     } catch (\Exception $e) {
       Log::error('Failed to get backup logs: ' . $e->getMessage());
@@ -746,20 +955,39 @@ class BackupController extends Controller
     }
   }
 
-  protected function logBackup(string $backupId, string $type, string $trigger, string $description, int $size, string $status, string $error = null): void
-  {
+  /**
+   * Log a backup operation to the backup log file.
+   *
+   * @param string $backupId The backup ID
+   * @param string $type Backup type
+   * @param string $trigger What triggered the backup
+   * @param string $description Backup description
+   * @param int $size Backup file size in bytes
+   * @param string $status 'success' or 'failed'
+   * @param string|null $error Error message if failed
+   */
+  protected function logBackup(
+    string $backupId,
+    string $type,
+    string $trigger,
+    string $description,
+    int $size,
+    string $status,
+    ?string $error = null
+  ): void {
     try {
       $logFile = $this->logPath . '/backup.log';
       $timestamp = Carbon::now()->format('Y-m-d H:i:s');
 
       $logEntry = sprintf(
-        "%s | %s | %s | %s | %s | %s | %s\n",
+        "%s | %s | %s | %s | %s | %s | %d bytes | %s\n",
         $timestamp,
         $status,
         $backupId,
         $type,
         $trigger,
         $description,
+        $size,
         $error ?? ''
       );
 
@@ -769,6 +997,13 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Log a restore operation to the restore log file.
+   * 
+   * @param string $backupId The backup ID
+   * @param string $type Restore type ('full', 'database', or 'files')
+   * @param string $status 'success' or 'failed'
+   */
   protected function logRestore(string $backupId, string $type, string $status): void
   {
     try {
@@ -789,6 +1024,10 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Automatically clean up old backups exceeding the retention limit.
+   * Removes the oldest backups when the total count exceeds maxBackups.
+   */
   protected function cleanupOldBackups(): void
   {
     try {
@@ -814,6 +1053,11 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Get storage information including backup count, total size, and disk space.
+   * 
+   * @return array Storage information
+   */
   protected function getStorageInfo(): array
   {
     try {
@@ -847,6 +1091,12 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Format bytes to a human-readable string.
+   * 
+   * @param int $bytes The number of bytes
+   * @return string Formatted string (e.g., "2.5 MB")
+   */
   protected function formatBytes(int $bytes): string
   {
     $units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -858,8 +1108,22 @@ class BackupController extends Controller
     return round($bytes, 2) . ' ' . $units[$i];
   }
 
+  /**
+   * Get the current backup status.
+   * 
+   * @return JsonResponse
+   */
   public function status(): JsonResponse
   {
+    // Permission check
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('admin.manage')) {
+      return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     try {
       $lastBackup = $this->getLastBackup();
       $storageInfo = $this->getStorageInfo();
@@ -880,6 +1144,11 @@ class BackupController extends Controller
     }
   }
 
+  /**
+   * Get the most recent backup.
+   * 
+   * @return array|null The most recent backup data or null if none exist
+   */
   protected function getLastBackup(): ?array
   {
     $backups = $this->getBackupList();

@@ -1,7 +1,7 @@
 // resources/js/pages/Backend/Users/Index.jsx
 
 import { useState, useMemo, useEffect } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 
 // Icons
 import {
@@ -17,7 +17,6 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaCheckCircle,
-  FaBan,
   FaCheckDouble,
   FaChevronLeft,
   FaChevronRight,
@@ -37,29 +36,18 @@ import UserModal from './Modals/UserModal';
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
 import { Can } from '../../../components/Auth/Can';
-import { CanAny } from '../../../components/Auth/CanAny';
-import { CanRole } from '../../../components/Auth/CanRole';
-import { CanAnyRole } from '../../../components/Auth/CanAnyRole';
 
 // SweetAlert2
 import Swal from 'sweetalert2';
 
-export default function UsersIndex({ users: initialUsers, filters: initialFilters = {}, stats: initialStats = {}, roles }) {
-  const { flash } = usePage().props;
-
+export default function UsersIndex({ users: initialUsers, filters: initialFilters = {}, roles }) {
   // Use centralized auth hook
   const {
     user: currentUser,
-    roles: currentUserRoles,
-    permissions: currentUserPermissions,
-    hasRole,
-    hasPermission,
     hasAnyPermission,
-    isOwner
   } = useAuth();
 
   // Permission helper functions using the centralized hook
-  const isSuperAdmin = hasRole('super-admin');
   const canViewUsers = hasAnyPermission(['users.view', 'users.manage']);
   const canEditUser = hasAnyPermission(['users.update', 'users.manage']);
   const canCreateUser = hasAnyPermission(['users.create', 'users.manage']);
@@ -83,7 +71,6 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
 
   // Pagination state
   const [users, setUsers] = useState(initialUsers);
-  const [currentPage, setCurrentPage] = useState(initialUsers?.current_page || 1);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -92,24 +79,6 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
     email_verified: initialFilters.email_verified || 'all',
     role: initialFilters.role || '',
   });
-
-  // If user doesn't have permission to view users, show access denied
-  if (!canViewUsers) {
-    return (
-      <AuthenticatedLayout>
-        <Head title="Access Denied" />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaShieldAlt className="w-10 h-10 text-red-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
-            <p className="text-gray-500 mt-2">You don't have permission to view users.</p>
-          </div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
 
   // Get users array from paginated response
   const userItems = useMemo(() => {
@@ -146,7 +115,6 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
         replace: true,
         onSuccess: (page) => {
           setUsers(page.props.users);
-          setCurrentPage(1);
         },
       });
     }, 300);
@@ -156,8 +124,25 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
   // Keep local users in sync
   useEffect(() => {
     setUsers(initialUsers);
-    setCurrentPage(initialUsers?.current_page || 1);
   }, [initialUsers]);
+
+  // If user doesn't have permission to view users, show access denied
+  if (!canViewUsers) {
+    return (
+      <AuthenticatedLayout>
+        <Head title="Access Denied" />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaShieldAlt className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+            <p className="text-gray-500 mt-2">You don't have permission to view users.</p>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    );
+  }
 
   // Handle page change
   const handlePageChange = (page) => {
@@ -173,48 +158,10 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
       replace: true,
       onSuccess: (page) => {
         setUsers(page.props.users);
-        setCurrentPage(page);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
     });
   };
-
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    let filtered = [...userItems];
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(user =>
-        user.name.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filters.status !== 'all') {
-      if (filters.status === 'active') {
-        filtered = filtered.filter(user => !user.deleted_at);
-      } else if (filters.status === 'deleted') {
-        filtered = filtered.filter(user => user.deleted_at);
-      }
-    }
-
-    if (filters.email_verified !== 'all') {
-      if (filters.email_verified === 'verified') {
-        filtered = filtered.filter(user => user.is_verified === true);
-      } else if (filters.email_verified === 'unverified') {
-        filtered = filtered.filter(user => user.is_verified === false && !user.deleted_at);
-      }
-    }
-
-    if (filters.role) {
-      filtered = filtered.filter(user =>
-        user.roles && user.roles.some(role => role.slug === filters.role)
-      );
-    }
-
-    return filtered;
-  }, [userItems, filters]);
 
   // Stats
   const activeCount = userItems.filter(user => !user.deleted_at).length;
@@ -244,7 +191,7 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
 
   // Bulk selection handlers
   const handleSelectAll = () => {
-    const nonDeletedUsers = filteredUsers.filter(user => !user.deleted_at);
+    const nonDeletedUsers = userItems.filter(user => !user.deleted_at);
     if (selectedUsers.length === nonDeletedUsers.length) {
       setSelectedUsers([]);
     } else {
@@ -725,26 +672,6 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
     );
   };
 
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: flash.success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: flash.error,
-        confirmButtonColor: '#2563eb',
-      });
-    }
-  }, [flash]);
 
   return (
     <AuthenticatedLayout>
@@ -952,10 +879,10 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
                     <th className="px-4 py-4 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedUsers.length === filteredUsers.filter(user => !user.deleted_at).length && filteredUsers.filter(user => !user.deleted_at).length > 0}
+                        checked={selectedUsers.length === userItems.filter(user => !user.deleted_at).length && userItems.filter(user => !user.deleted_at).length > 0}
                         onChange={handleSelectAll}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        disabled={filteredUsers.filter(user => !user.deleted_at).length === 0}
+                        disabled={userItems.filter(user => !user.deleted_at).length === 0}
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -977,7 +904,7 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
                 </thead>
 
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.length === 0 && (
+                  {userItems.length === 0 && (
                     <tr>
                       <td colSpan="6" className="text-center py-16">
                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1002,7 +929,7 @@ export default function UsersIndex({ users: initialUsers, filters: initialFilter
                     </tr>
                   )}
 
-                  {filteredUsers.map((user, index) => {
+                  {userItems.map((user, index) => {
                     const trashed = user.deleted_at !== null;
                     const userRole = user.roles?.[0]?.slug || '';
                     const isVerified = user.is_verified === true;

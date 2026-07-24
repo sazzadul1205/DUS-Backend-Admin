@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Models\pages\Blog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Services\SimpleLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
 class BlogController extends Controller
@@ -20,14 +22,20 @@ class BlogController extends Controller
   /**
    * Display blogs
    */
-  public function index(): Response
+  public function index(): Response|RedirectResponse
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.view')) {
+      return redirect()->route('unauthorized.access')
+        ->with('error', 'You do not have permission to view blogs.');
+    }
+
     try {
       $items = Blog::withTrashed()->orderBy('created_at', 'desc')->get();
-
-      return Inertia::render('Backend/CMS/Blogs/Index', [
-        'items' => $items,
-      ]);
+      return Inertia::render('Backend/CMS/Blogs/Index', ['items' => $items]);
     } catch (\Exception $e) {
       Log::error('Failed to fetch blogs: ' . $e->getMessage());
       return Inertia::render('Backend/CMS/Blogs/Index', [
@@ -42,6 +50,14 @@ class BlogController extends Controller
    */
   public function store(Request $request)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.create')) {
+      return redirect()->back()->with('error', 'You do not have permission to create blogs.');
+    }
+
     try {
       $validator = Validator::make($request->all(), [
         'title' => 'required|string|max:255',
@@ -127,6 +143,14 @@ class BlogController extends Controller
    */
   public function update(Request $request, int $id)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to update blogs.');
+    }
     try {
       $blog = Blog::withTrashed()->findOrFail($id);
 
@@ -230,6 +254,14 @@ class BlogController extends Controller
    */
   public function toggleStatus(int $id)
   {
+
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change blog status.');
+    }
     try {
       $blog = Blog::findOrFail($id);
       $blog->is_active = !$blog->is_active;
@@ -248,6 +280,13 @@ class BlogController extends Controller
    */
   public function toggleFeatured(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.update')) {
+      return redirect()->back()->with('error', 'You do not have permission to change featured status.');
+    }
     try {
       $blog = Blog::findOrFail($id);
 
@@ -272,6 +311,14 @@ class BlogController extends Controller
    */
   public function destroy(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.destroy')) {
+      return redirect()->back()->with('error', 'You do not have permission to delete blogs.');
+    }
+
     try {
       $blog = Blog::findOrFail($id);
 
@@ -298,6 +345,13 @@ class BlogController extends Controller
    */
   public function restore(int $id)
   {
+    $user = Auth::user();
+    if (!$user instanceof User) {
+      abort(401);
+    }
+    if (!$user->hasPermission('blogs.restore')) {
+      return redirect()->back()->with('error', 'You do not have permission to restore blogs.');
+    }
     try {
       $blog = Blog::withTrashed()->findOrFail($id);
       $blog->restore();

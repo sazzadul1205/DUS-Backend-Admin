@@ -1,4 +1,3 @@
- 
 // resources/js/pages/Backend/ApplicantProfile/Index.jsx
 
 import { useState, useEffect } from 'react';
@@ -53,6 +52,8 @@ export default function Index({
 }) {
   const { flash } = usePage().props;
   const { hasPermission, hasAnyPermission, hasRole } = useAuth();
+
+  // MOVE THIS BEFORE useState declarations that use it
   const safeInitialFilters = (initialFilters && !Array.isArray(initialFilters)) ? initialFilters : {};
 
   // States

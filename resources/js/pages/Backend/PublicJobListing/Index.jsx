@@ -1,4 +1,4 @@
- 
+
 // resources/js/Pages/Public/JobListings/Index.jsx
 
 // React
@@ -181,8 +181,8 @@ export default function PublicJobListingsIndex({
 
   // Apply all filters
   const handleApplyFilters = () => {
-    applyFilters();
     setShowMobileFilters(false);
+    applyFilters();
   };
 
   // Reset all filters
@@ -239,7 +239,7 @@ export default function PublicJobListingsIndex({
   };
 
   // Save/Unsave job
-  const handleSaveJob = async (jobId) => {
+  const handleSaveJob = (jobId) => {
     if (!isAuthenticated) {
       Swal.fire({
         icon: 'info',
@@ -257,46 +257,46 @@ export default function PublicJobListingsIndex({
       return;
     }
 
+    const isSaved = savedJobs.includes(jobId);
     setSavingJobId(jobId);
 
-    try {
-      const isSaved = savedJobs.includes(jobId);
-      await router.post(route('public.jobs.save', jobId), {}, {
-        preserveScroll: true,
-        onSuccess: () => {
-          if (isSaved) {
-            setSavedJobs(prev => prev.filter(id => id !== jobId));
-            Swal.fire({
-              icon: 'success',
-              title: 'Removed',
-              text: 'Job removed from saved list.',
-              timer: 1500,
-              showConfirmButton: false,
-            });
-          } else {
-            setSavedJobs(prev => [...prev, jobId]);
-            Swal.fire({
-              icon: 'success',
-              title: 'Saved!',
-              text: 'Job saved to your profile.',
-              timer: 1500,
-              showConfirmButton: false,
-            });
-          }
-        },
-        onError: (error) => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: error?.message || 'Failed to save job.',
-          });
-        },
-        onFinish: () => setSavingJobId(null),
-      });
-    } catch (error) {
-      console.error(error);
-      setSavingJobId(null);
+    // Optimistically update UI
+    if (isSaved) {
+      setSavedJobs(prev => prev.filter(id => id !== jobId));
+    } else {
+      setSavedJobs(prev => [...prev, jobId]);
     }
+
+    const endpoint = isSaved ? route('bookmarks.destroy', jobId) : route('bookmarks.store');
+    const method = isSaved ? 'delete' : 'post';
+
+    router[method](endpoint, isSaved ? {} : { job_listing_id: jobId }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        Swal.fire({
+          icon: 'success',
+          title: isSaved ? 'Removed' : 'Saved!',
+          text: isSaved ? 'Job removed from saved list.' : 'Job saved to your profile.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setSavingJobId(null);
+      },
+      onError: (error) => {
+        // Revert optimistic update
+        if (isSaved) {
+          setSavedJobs(prev => [...prev, jobId]);
+        } else {
+          setSavedJobs(prev => prev.filter(id => id !== jobId));
+        }
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error?.message || 'Failed to save job.',
+        });
+        setSavingJobId(null);
+      },
+    });
   };
 
   // Share job

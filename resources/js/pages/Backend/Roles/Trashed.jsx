@@ -22,7 +22,6 @@ import {
   FaCheckDouble,
   FaChevronLeft,
   FaChevronRight,
-  FaDatabase,
   FaUser,
   FaClock,
   FaUndo,
@@ -35,7 +34,6 @@ import AuthenticatedLayout from '../../../layouts/AuthenticatedLayout';
 // Auth
 import { useAuth } from '../../../hooks/useAuth';
 import { Can } from '../../../components/Auth/Can';
-import { CanAny } from '../../../components/Auth/CanAny';
 
 // SweetAlert2
 import Swal from 'sweetalert2';
@@ -48,7 +46,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
     user: currentUser,
     hasAnyPermission,
     hasRole,
-    isAuthenticated
   } = useAuth();
 
   // Check permissions for role management
@@ -69,7 +66,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
   // Pagination state
   const [roles, setRoles] = useState(initialRoles);
   const [stats, setStats] = useState(initialStats);
-  const [currentPage, setCurrentPage] = useState(initialRoles?.current_page || 1);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -77,6 +73,101 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
     sortBy: initialFilters.sort_by || 'deleted_at',
     sortDir: initialFilters.sort_dir || 'desc',
   });
+
+
+  // Get roles array from paginated response
+  const roleItems = useMemo(() => {
+    if (Array.isArray(roles)) return roles;
+    if (roles && Array.isArray(roles.data)) return roles.data;
+    return [];
+  }, [roles]);
+
+  // Sort roles
+  const sortedRoles = useMemo(() => {
+    const sorted = [...roleItems];
+
+    if (filters.sortBy === 'name') {
+      sorted.sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name);
+        return filters.sortDir === 'asc' ? comparison : -comparison;
+      });
+    } else if (filters.sortBy === 'level') {
+      sorted.sort((a, b) => {
+        const comparison = (a.level || 999) - (b.level || 999);
+        return filters.sortDir === 'asc' ? comparison : -comparison;
+      });
+    } else if (filters.sortBy === 'deleted_at') {
+      sorted.sort((a, b) => {
+        const comparison = new Date(a.deleted_at) - new Date(b.deleted_at);
+        return filters.sortDir === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return sorted;
+  }, [roleItems, filters.sortBy, filters.sortDir]);
+
+  // Pagination info
+  const pagination = useMemo(() => {
+    if (roles && typeof roles === 'object' && 'current_page' in roles) {
+      return {
+        currentPage: roles.current_page,
+        lastPage: roles.last_page,
+        perPage: roles.per_page,
+        total: roles.total,
+        from: roles.from,
+        to: roles.to,
+        links: roles.links || [],
+      };
+    }
+    return null;
+  }, [roles]);
+
+  // Apply filters
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      router.get(route('backend.roles.trashed'), {
+        ...filters,
+        page: 1,
+      }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onSuccess: (page) => {
+          setRoles(page.props.roles);
+          setStats(page.props.stats);
+        },
+      });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [filters]);
+
+  // Keep local roles in sync
+  useEffect(() => {
+    setRoles(initialRoles);
+    setStats(initialStats);
+  }, [initialRoles, initialStats]);
+
+  // Show flash messages
+  useEffect(() => {
+    if (flash?.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: flash.success,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+    if (flash?.error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: flash.error,
+        confirmButtonColor: '#2563eb',
+      });
+    }
+  }, [flash]);
 
   // If user doesn't have permission to view roles, show access denied
   if (!canViewRoles) {
@@ -121,57 +212,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
     return !role.is_default;
   };
 
-  // Get roles array from paginated response
-  const roleItems = useMemo(() => {
-    if (Array.isArray(roles)) return roles;
-    if (roles && Array.isArray(roles.data)) return roles.data;
-    return [];
-  }, [roles]);
-
-  // Pagination info
-  const pagination = useMemo(() => {
-    if (roles && typeof roles === 'object' && 'current_page' in roles) {
-      return {
-        currentPage: roles.current_page,
-        lastPage: roles.last_page,
-        perPage: roles.per_page,
-        total: roles.total,
-        from: roles.from,
-        to: roles.to,
-        links: roles.links || [],
-      };
-    }
-    return null;
-  }, [roles]);
-
-  // Apply filters
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      router.get(route('backend.roles.trashed'), {
-        ...filters,
-        page: 1,
-      }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        onSuccess: (page) => {
-          setRoles(page.props.roles);
-          setStats(page.props.stats);
-          setCurrentPage(1);
-        },
-      });
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [filters]);
-
-  // Keep local roles in sync
-  useEffect(() => {
-    setRoles(initialRoles);
-    setStats(initialStats);
-    setCurrentPage(initialRoles?.current_page || 1);
-  }, [initialRoles, initialStats]);
-
   // Handle page change
   const handlePageChange = (page) => {
     if (page === pagination?.currentPage) return;
@@ -187,7 +227,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
       onSuccess: (page) => {
         setRoles(page.props.roles);
         setStats(page.props.stats);
-        setCurrentPage(page);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
     });
@@ -211,30 +250,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
   const hasActiveFilters = () => {
     return filters.search !== '';
   };
-
-  // Sort roles
-  const sortedRoles = useMemo(() => {
-    const sorted = [...roleItems];
-
-    if (filters.sortBy === 'name') {
-      sorted.sort((a, b) => {
-        const comparison = a.name.localeCompare(b.name);
-        return filters.sortDir === 'asc' ? comparison : -comparison;
-      });
-    } else if (filters.sortBy === 'level') {
-      sorted.sort((a, b) => {
-        const comparison = (a.level || 999) - (b.level || 999);
-        return filters.sortDir === 'asc' ? comparison : -comparison;
-      });
-    } else if (filters.sortBy === 'deleted_at') {
-      sorted.sort((a, b) => {
-        const comparison = new Date(a.deleted_at) - new Date(b.deleted_at);
-        return filters.sortDir === 'asc' ? comparison : -comparison;
-      });
-    }
-
-    return sorted;
-  }, [roleItems, filters.sortBy, filters.sortDir]);
 
   // Bulk selection handlers
   const handleSelectAll = () => {
@@ -594,27 +609,6 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
     );
   };
 
-  // Show flash messages
-  useEffect(() => {
-    if (flash?.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: flash.success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-    if (flash?.error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: flash.error,
-        confirmButtonColor: '#2563eb',
-      });
-    }
-  }, [flash]);
-
   // Check if user can restore or force delete any role
   const canRestoreAny = canRestoreRoles && sortedRoles.some(role => canRestoreSpecificRole(role));
   const canForceDeleteAny = canForceDeleteRoles && sortedRoles.some(role => canForceDeleteSpecificRole(role));
@@ -886,7 +880,7 @@ export default function RolesTrashed({ roles: initialRoles, filters: initialFilt
                               </div>
                               {role.description && (
                                 <div className="text-xs text-gray-400 mt-1">
-                                  {role.description.length > 60 ? `${role.description.substring(0, 60)  }...` : role.description}
+                                  {role.description.length > 60 ? `${role.description.substring(0, 60)}...` : role.description}
                                 </div>
                               )}
                             </div>

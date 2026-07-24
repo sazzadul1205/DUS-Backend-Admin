@@ -1,7 +1,8 @@
+/* eslint-disable no-useless-escape */
 // resources/js/Pages/Backend/Apply/Create.jsx
 
 // React
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 // Inertia
 import { Head, router } from '@inertiajs/react';
@@ -46,11 +47,7 @@ export default function ApplyCreate({ jobListing, applicantProfile, cvs }) {
     user: currentUser,
     isAuthenticated,
     hasRole,
-    hasAnyPermission,
   } = useAuth();
-
-  // Check if user is authenticated
-  const isJobSeeker = hasRole('job_seeker') || hasAnyPermission(['applications.create']);
 
   // Simplified form state
   const [formData, setFormData] = useState({
@@ -189,7 +186,7 @@ export default function ApplyCreate({ jobListing, applicantProfile, cvs }) {
   };
 
   // Simulate ATS preview (replace with actual API call)
-  const handlePreviewAts = async () => {
+  const handlePreviewAts = () => {
     if (!formData.cv_id) {
       Swal.fire({
         icon: 'warning',
@@ -310,7 +307,7 @@ export default function ApplyCreate({ jobListing, applicantProfile, cvs }) {
               timer: 2000,
               showConfirmButton: false,
             }).then(() => {
-              router.visit(route('backend.applications.my'));
+              router.visit(route('backend.apply.index'));
             });
           },
           onError: (err) => {

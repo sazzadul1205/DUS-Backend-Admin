@@ -1471,10 +1471,11 @@ class ApplicantProfileController extends Controller
     public function bulkDelete(Request $request)
     {
         $user = Auth::user();
-
-        // Check if user is logged in
         if (!$user instanceof User) {
             abort(401);
+        }
+        if (!$user->hasPermission('applicant-profiles.bulk_delete')) {
+            return redirect()->back()->with('error', 'You do not have permission to bulk delete profiles.');
         }
 
         $request->validate([
@@ -1493,10 +1494,11 @@ class ApplicantProfileController extends Controller
     public function bulkRestore(Request $request)
     {
         $user = Auth::user();
-
-        // Check if user is logged in
         if (!$user instanceof User) {
             abort(401);
+        }
+        if (!$user->hasPermission('applicant-profiles.bulk_restore')) {
+            return redirect()->back()->with('error', 'You do not have permission to bulk restore profiles.');
         }
 
         $request->validate([
@@ -1517,10 +1519,11 @@ class ApplicantProfileController extends Controller
     public function forceDelete(int $id)
     {
         $user = Auth::user();
-
-        // Check if user is logged in
         if (!$user instanceof User) {
             abort(401);
+        }
+        if (!$user->hasPermission('applicant-profiles.force_delete')) {
+            return redirect()->back()->with('error', 'You do not have permission to permanently delete profiles.');
         }
 
         $profile = ApplicantProfile::withTrashed()->findOrFail($id);
@@ -1550,12 +1553,12 @@ class ApplicantProfileController extends Controller
     public function export(Request $request)
     {
         $user = Auth::user();
-
-        // Check if user is logged in
         if (!$user instanceof User) {
             abort(401);
         }
-
+        if (!$user->hasPermission('applicant-profiles.export')) {
+            return redirect()->back()->with('error', 'You do not have permission to export profiles.');
+        }
         $request->validate([
             'format' => 'required|in:csv,xlsx',
         ]);
